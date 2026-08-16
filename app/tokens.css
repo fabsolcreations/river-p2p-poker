@@ -1,0 +1,160 @@
+/*
+ * RIVER — single source of truth for colour, type, and spacing.
+ *
+ * This file replaces two competing palettes that were previously layered on top
+ * of each other: the original `--river-*` set in globals.css and the `--pn-*`
+ * set introduced by refresh.css. Both are now aliases onto the tokens below, so
+ * existing selectors keep working while there is only one place to change a
+ * value.
+ *
+ * Direction: charcoal room, paper surfaces, felt green as the single action
+ * colour, olive reserved for identity/wallet, clay reserved for warnings.
+ */
+
+:root {
+  /* ---- Neutrals: the room ------------------------------------------------
+   * This used to be its own flat-gray scale, independent of the separate
+   * (better, already-shipping) --r3-* palette client.css had been carrying
+   * on its own since the casino-treatment pass. That was the THIRD parallel
+   * palette in this codebase, on top of the --river-* and --pn-* aliases below -
+   * client.css's :root now resolves --r3-* through these values instead of
+   * redeclaring its own, so there is finally exactly one place to change a
+   * color. Values below are that palette's, carried up here as the source.
+   */
+  --rv-void: #0b0d0c;      /* deepest chrome, page background behind panels  */
+  --rv-shell: #101311;     /* nav, footer, docked toolbars                   */
+  --rv-surface: #161a17;   /* raised panels inside dark areas                */
+  --rv-raised: #1c211d;    /* hover / active panel state                     */
+  --rv-hairline: rgba(238, 235, 225, 0.12);
+  --rv-hairline-soft: rgba(238, 235, 225, 0.07);
+  --rv-shadow: 0 30px 80px rgba(0, 0, 0, .35);
+
+  /* ---- Neutrals: paper ----------------------------------------------- */
+  --rv-paper: #f4f1e8;     /* light page background                          */
+  --rv-card: #ffffff;      /* cards and rows on paper                        */
+  --rv-rule: #d6d6d3;      /* borders on paper                               */
+  --rv-ink: #1c1c1b;       /* primary text on paper                          */
+
+  /* ---- Text ----------------------------------------------------------- */
+  --rv-text: #eeeade;      /* primary text on dark - warm, not stark white   */
+  --rv-text-2: #b6b2a4;    /* secondary text on dark                         */
+  --rv-text-3: #92978f;    /* captions, metadata on dark                     */
+  --rv-ink-2: #5e5e5b;     /* secondary text on paper                        */
+  --rv-ink-3: #83837f;     /* captions on paper                              */
+
+  /* ---- Accents: one per job ------------------------------------------
+   * Deepened and desaturated from the original bright mint - closer to
+   * real felt cloth than a stock "success" green. felt-bright exists only
+   * for small live/active indicators (dots, hover edges) - felt itself
+   * stays the one accent doing the heavy lifting on buttons and links.
+   */
+  --rv-felt: #2f8f60;      /* the only "go" colour: primary actions, live    */
+  --rv-felt-bright: #52b780; /* live dots, active borders, hover states      */
+  --rv-felt-deep: #123e2b; /* felt gradient floor, link text on paper        */
+  --rv-felt-tint: #dbe8dd; /* success/verified backgrounds on paper          */
+  --rv-brass: #a9925f;     /* sparing use: host/dealer marks, premium touch  */
+  --rv-olive: #9aa64c;     /* identity, wallet, seat marker                  */
+  --rv-clay: #b95449;      /* warnings and scope notes only                  */
+
+  /* ---- Type ------------------------------------------------------------
+   * Floor is 11px. Anything smaller was unreadable on a phone and is the
+   * fastest way for an interface to read as unfinished.
+   *
+   * --rv-font-display carries headlines only (see layout.tsx's Fraunces
+   * import) - everything else stays on the system UI stack already wired
+   * through --font-geist-sans in globals.css, so this is additive, not a
+   * site-wide font swap.
+   */
+  --rv-font-display: var(--font-display), Georgia, "Iowan Old Style", serif;
+  --rv-text-caption: 11px; /* mono labels, table headers, metadata           */
+  --rv-text-small: 12px;   /* dense secondary copy                           */
+  --rv-text-body: 13px;    /* default UI text                                */
+  --rv-text-lead: 15px;    /* intro copy, form inputs                        */
+  --rv-text-h4: 17px;
+  --rv-text-h3: 21px;
+  --rv-text-h2: 27px;
+  --rv-text-h1: clamp(2rem, 4vw, 3.25rem);
+  --rv-text-display: clamp(2.75rem, 6vw, 4.75rem);
+
+  --rv-tracking-caption: 0.07em;
+  --rv-tracking-tight: -0.025em;
+  --rv-leading-tight: 1.15;
+  --rv-leading-body: 1.55;
+
+  /* ---- Space: 4px base ------------------------------------------------ */
+  --rv-1: 4px;
+  --rv-2: 8px;
+  --rv-3: 12px;
+  --rv-4: 16px;
+  --rv-5: 24px;
+  --rv-6: 32px;
+  --rv-7: 48px;
+  --rv-8: 64px;
+  --rv-9: 88px;
+
+  /* ---- Shape ----------------------------------------------------------- */
+  --rv-radius: 4px;
+  --rv-radius-lg: 8px;
+  --rv-tap: 44px;          /* minimum interactive target                     */
+
+  /* ================================================================
+   * Legacy aliases. Existing selectors resolve through these.
+   * Do not add new usages — reach for the --rv-* tokens above.
+   * ================================================================ */
+  --river-black: var(--rv-void);
+  --river-ink: var(--rv-ink);
+  --river-panel: var(--rv-surface);
+  --river-panel-2: var(--rv-raised);
+  --river-paper: var(--rv-paper);
+  --river-paper-2: var(--rv-rule);
+  --river-white: var(--rv-text);
+  --river-mint: var(--rv-felt);
+  --river-mint-soft: var(--rv-felt-tint);
+  --river-coral: var(--rv-clay);
+  --river-blue: #5154e8;
+  --river-violet: #7d6ae0;
+  --river-amber: var(--rv-olive);
+  --river-muted: var(--rv-text-3);
+  --river-line: var(--rv-rule);
+  --river-line-dark: var(--rv-hairline);
+  --river-max: 1500px;
+
+  --pn-bg: var(--rv-surface);
+  --pn-bg-deep: var(--rv-void);
+  --pn-panel: var(--rv-raised);
+  --pn-panel-light: var(--rv-paper);
+  --pn-border: var(--rv-hairline);
+  --pn-green: var(--rv-felt);
+  --pn-green-dark: var(--rv-felt-deep);
+  --pn-olive: var(--rv-olive);
+  --pn-blue: #5154e8;
+  --pn-text: var(--rv-text);
+  --pn-muted: var(--rv-text-2);
+}
+
+/* ---- Quality floor ---------------------------------------------------- */
+
+/* Every interactive element gets a visible keyboard ring. Previously focus was
+ * only styled on form inputs, so tabbing through the table was invisible. */
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--rv-felt);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* Hit targets. Several nav and action controls were under 32px tall. */
+:where(.river-button, .pn-primary-button, .pn-secondary-button, .create-room-submit) {
+  min-height: var(--rv-tap);
+}
+
+/* Card faces used a serif stack that fell back inconsistently across platforms
+ * and made rank glyphs jump between the preview and the live table. */
+:where(.preview-board i, .card-face, .poc-card, .room-card) {
+  font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  font-variant-numeric: lining-nums tabular-nums;
+}
+
+/* Monospaced values (hashes, seeds, stacks) should not reflow as digits change. */
+:where(.hash-value, .seed-value, .stack-value, .pot-value, code, pre) {
+  font-variant-numeric: tabular-nums;
+}

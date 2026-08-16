@@ -1,0 +1,14 @@
+# Copy to .dev.vars (gitignored) for local dev. Read automatically by
+# @cloudflare/vite-plugin (Wrangler's unstable_getVarsForDev) - no
+# vite.config.ts changes needed.
+#
+# This is the OPERATOR hot key - worker/chain.ts uses it to sign
+# EscrowVault.withdraw() calls. Keep it separate from the vault's owner/
+# deployer key (contracts/.env.example) - operator can only ever call
+# `withdraw`, owner can pause/rotate it.
+#
+# For LOCAL testing only, any Hardhat default test account's private key is
+# fine (public, well-known, zero real value - e.g. the first `npx hardhat
+# node` account). For a real network, generate a fresh key yourself and
+# fund it - this app never generates or sees a real-value private key.
+OPERATOR_PRIVATE_KEY=

@@ -1,0 +1,118 @@
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--river-paper);
+  color: var(--river-ink);
+  font-family: var(--font-geist-sans), Arial, sans-serif;
+  margin: 0;
+  min-width: 320px;
+  text-rendering: optimizeLegibility;
+}
+button, input, select, textarea { font: inherit; }
+button, a { -webkit-tap-highlight-color: transparent; }
+button { cursor: pointer; }
+a { color: inherit; text-decoration: none; }
+img { max-width: 100%; }
+::selection { background: var(--river-mint); color: var(--river-black); }
+
+/* Every headline site-wide gets the display face - see tokens.css's
+   --rv-font-display and layout.tsx's Fraunces import. Individual pages
+   still set their own size/weight/tracking per heading; this only carries
+   the typeface itself so the whole site reads as one considered system
+   instead of every page's headline defaulting to the same UI sans as its
+   body copy. */
+h1, h2, h3 { font-family: var(--rv-font-display); font-weight: 600; }
+
+.river-site { min-height: 100vh; overflow: clip; }
+.river-site-dark { background: var(--river-black); color: var(--river-white); }
+
+/* .river-nav/.river-footer/.river-wordmark/.nav-wallet/.identity-* etc. used
+   to be redefined here AND in refresh.css AND in experience.css AND in
+   client.css - four competing layers from four redesign passes, with only
+   client.css's (loaded last) actually rendering. That's now the one
+   authoritative definition (see client.css, "Shell"); the dead copies here
+   and in refresh.css/experience.css are removed rather than left as inert
+   archaeology for the next pass to trip over. */
+
+.river-button {
+  align-items: center;
+  border: 1px solid rgba(255,255,255,.28);
+  display: inline-flex;
+  font-size: 13px;
+  font-weight: 730;
+  gap: 12px;
+  justify-content: center;
+  min-height: 48px;
+  padding: 0 20px;
+  transition: background .18s ease, color .18s ease, transform .18s ease;
+}
+.river-button:hover { transform: translateY(-2px); }
+.river-button.primary { background: var(--river-mint); border-color: var(--river-mint); color: var(--river-black); }
+.river-button.primary:hover { background: var(--river-white); border-color: var(--river-white); }
+.river-button.ghost { color: var(--river-white); }
+.river-button.ghost:hover { background: rgba(255,255,255,.08); }
+.text-link { align-items: center; display: inline-flex; font-size: 13px; font-weight: 720; gap: 8px; }
+.text-link:hover { color: var(--river-coral); }
+
+.section-title-row { align-items: flex-end; display: grid; gap: 50px; grid-template-columns: 1fr minmax(260px, 410px); }
+.section-title-row > div > span, .section-title-row > span, .dialog-index {
+  color: var(--river-coral);
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 12px;
+  font-weight: 750;
+  letter-spacing: .13em;
+}
+.section-title-row h2 { font-size: clamp(2.5rem, 5vw, 5.7rem); letter-spacing: -.075em; line-height: .91; margin: 18px 0 0; }
+.section-title-row > p { color: #626963; font-size: 14px; line-height: 1.7; margin: 0; }
+
+.river-dialog-backdrop {
+  align-items: center;
+  background: rgba(3, 5, 4, .8);
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  padding: 18px;
+  position: fixed;
+  z-index: 120;
+  backdrop-filter: blur(8px);
+}
+.river-dialog {
+  background: var(--river-paper);
+  box-shadow: 14px 14px 0 var(--river-coral);
+  color: var(--river-ink);
+  max-height: calc(100vh - 40px);
+  max-width: 520px;
+  overflow-y: auto;
+  padding: 38px;
+  position: relative;
+  width: 100%;
+}
+.dialog-close { align-items: center; background: transparent; border: 1px solid var(--river-line); display: flex; height: 34px; justify-content: center; position: absolute; right: 16px; top: 16px; width: 34px; }
+.river-dialog h2 { font-size: 42px; letter-spacing: -.065em; line-height: .95; margin: 17px 40px 14px 0; }
+.river-dialog > p { color: #636a65; font-size: 13px; line-height: 1.65; margin-bottom: 24px; }
+
+.river-form { display: grid; gap: 13px; }
+.river-form label { color: #69706b; display: grid; font-size: 12px; font-weight: 700; gap: 7px; letter-spacing: .05em; }
+.river-form input, .river-form select { background: var(--river-white); border: 1px solid var(--river-line); color: var(--river-ink); min-height: 44px; outline: 0; padding: 0 12px; width: 100%; }
+.river-form input:focus, .river-form select:focus { border-color: var(--river-ink); }
+.form-pair { display: grid; gap: 11px; grid-template-columns: 1fr 1fr; }
+.river-form > button, .dialog-primary-link { align-items: center; background: var(--river-ink); border: 0; color: white; display: flex; font-size: 13px; font-weight: 750; gap: 10px; justify-content: center; min-height: 47px; margin-top: 5px; padding: 0 16px; width: 100%; }
+.river-form > button:hover, .dialog-primary-link:hover { background: var(--river-coral); color: var(--river-black); }
+.fee-preview { background: #dcefb9; grid-template-columns: 1fr auto !important; padding: 12px; }
+.fee-preview span { grid-column: 1 / -1; }
+.fee-preview b { color: var(--river-ink); font-size: 13px; letter-spacing: normal; }
+.fee-preview small { color: #60695f; font-size: 12px; font-weight: 500; }
+.river-toast { align-items: center; background: var(--river-mint); bottom: 20px; box-shadow: 8px 8px 0 var(--river-black); color: var(--river-black); display: flex; font-size: 13px; font-weight: 700; gap: 8px; left: 50%; padding: 13px 17px; position: fixed; transform: translateX(-50%); z-index: 200; }
+
+@media (max-width: 680px) {
+  .section-title-row { align-items: start; gap: 24px; grid-template-columns: 1fr; }
+  .river-dialog { box-shadow: 7px 7px 0 var(--river-coral); padding: 30px 22px; }
+  .river-dialog h2 { font-size: 34px; }
+  .form-pair { grid-template-columns: 1fr; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  * { animation: none !important; transition: none !important; }
+}

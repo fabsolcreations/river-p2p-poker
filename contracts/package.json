@@ -1,0 +1,20 @@
+{
+  "name": "river-escrow-contracts",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "compile": "hardhat compile",
+    "test": "hardhat test",
+    "node": "hardhat node",
+    "deploy:local": "hardhat run scripts/deploy.ts --network localhost",
+    "deploy:sepolia": "hardhat run scripts/deploy.ts --network baseSepolia"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox-viem": "^5.0.7",
+    "@openzeppelin/contracts": "^5.6.1",
+    "hardhat": "^3.13.0",
+    "typescript": "^5.9.3",
+    "viem": "^2.55.16"
+  }
+}
