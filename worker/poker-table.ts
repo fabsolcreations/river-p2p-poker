@@ -1,10 +1,20 @@
 import { and, eq, gte, sql } from "drizzle-orm";
+import { env } from "cloudflare:workers";
 import { getDb } from "../db";
+import { randomHex } from "../app/play/proof.ts";
 import { handParticipants, hands, ledgerEntries, tables, users } from "../db/schema";
 import { getSessionUser } from "./auth";
+import { signSeedAck, type SeedAck } from "./fairness-attestation.ts";
+import * as mp from "./mental-poker-protocol.ts";
+import type { ProofBundleV3 as MentalPokerBundle } from "../app/play/mental-poker.ts";
 import {
   applyAction,
   buildProofBundle,
+  cardsFromCodes,
+  finishShowdown,
+  startTrustlessHand,
+  legalActions,
+  serverSeedCommitment,
   startHand,
   IllegalActionError,
   type ActionType,
@@ -43,10 +53,13 @@ const CHAT_HISTORY_LIMIT = 50;
 
 export type ClientMessage =
   // seed rides along in the sit message itself, not a separate follow-up -
-  // maybeStartHand() runs synchronously at the end of handleSit, so a seed
-  // sent as its own later message would almost always lose the race to a
-  // table that's already full (confirmed live: two seats filling back-to-
-  // back both fell back to server randomness before this fix).
+  // originally because handleSit used to start a hand synchronously, so a
+  // seed sent as its own later message would almost always lose that race
+  // (confirmed live: two seats filling back-to-back both fell back to
+  // server randomness before this fix). Hand start is now deferred by
+  // armHandStart's fixed window (see below), which gives a follow-up
+  // message real margin too - but there's no reason to add a second path
+  // for something this cheap to just always include upfront.
   | { type: "sit"; seatHint?: Seat; buyIn?: number; seed?: string }
   | { type: "action"; action: ActionType; amount?: number }
   | { type: "ready-for-next-hand" }
@@ -57,7 +70,7 @@ export type ClientMessage =
   | { type: "voice-signal"; toSeat: Seat; signal: unknown }
   // Host-only; rejected unless the sender IS the host seat and no hand is
   // in progress - see handleUpdateSettings.
-  | { type: "update-settings"; smallBlind: number; bigBlind: number; minBuyIn: number; maxBuyIn: number }
+  | { type: "update-settings"; smallBlind: number; bigBlind: number; minBuyIn: number; maxBuyIn: number; actionClockSeconds: number }
   // Any seated player can request it once a hand has ended before the
   // river - see handleRabbitHunt. The board is already deterministically
   // fixed at hand start (commit-reveal), so this needs no new randomness,
@@ -67,7 +80,17 @@ export type ClientMessage =
   // shuffle - see handleProvideSeed. Sent proactively (right after sitting
   // down and again after every hand-complete), not requested by the
   // server, so it's normally already on hand by the time a hand deals.
-  | { type: "provide-seed"; seed: string };
+  | { type: "provide-seed"; seed: string }
+  // Trustless (mental-poker) tables only. These carry the two browsers'
+  // dealing protocol; the Durable Object relays and orders them but holds no
+  // key and cannot read a card from any of them. See
+  // worker/mental-poker-protocol.ts.
+  | { type: "mp-commit"; commitment: string; publicKey: string }
+  | { type: "mp-mask"; deck: string[] }
+  | { type: "mp-hole-partial"; position: number; partial: string }
+  | { type: "mp-board-partial"; position: number; partial: string }
+  | { type: "mp-showdown-reveal"; cards: [string, string]; partials: [string, string] }
+  | { type: "mp-seed-reveal"; seed: string };
 
 export type PublicHandState = {
   handId: string | null;
@@ -79,6 +102,21 @@ export type PublicHandState = {
   bigBlind: number;
   minBuyIn: number;
   maxBuyIn: number;
+  // 0 means no clock (host disabled it). When non-zero and a hand is in
+  // progress, actionDeadline is the epoch ms the acting seat auto-folds
+  // (or auto-checks, when legal) - null whenever no seat is actively on
+  // the clock (no hand, hand complete, or the clock is disabled).
+  actionClockSeconds: number;
+  actionDeadline: number | null;
+  // True for a room opened via the lounge matchmaker (app/api/lounge/join)
+  // - stakes stay house-managed, so the client hides the settings gear.
+  isLounge: boolean;
+  // The NEXT hand's server-entropy commitment and hand id, both published
+  // before that hand's client seeds are collected - record these before you
+  // play and check them against the bundle afterwards (see
+  // table-engine.ts's serverSeedCommitment).
+  nextServerSeedCommitment: string;
+  nextHandId: string;
   rabbitHuntRevealed: boolean;
   buttonSeat: Seat | null;
   smallBlindSeat: Seat | null;
@@ -106,13 +144,39 @@ export type PublicHandState = {
 
 export type ServerMessage =
   | { type: "seat-assigned"; seat: Seat }
+  // Signed proof that the server received this seat's seed for the named
+  // hand - keep it to be able to prove a later substitution.
+  | { type: "seed-ack"; ack: SeedAck }
+  // Trustless protocol progress: what phase the deal is in, which seats it
+  // is waiting on, and the artifacts a client needs to take its next step.
+  | {
+      type: "mp-progress";
+      phase: mp.MpPhase;
+      waitingOn: number[];
+      handId: string;
+      deckToMask: string[] | null;
+      maskedDeck: string[] | null;
+      openBoardPositions: number[];
+      board: string[];
+      publicKeys: (string | null)[];
+      abortReason: string | null;
+    }
+  // A partial for one of YOUR hole positions, produced by your opponent.
+  | { type: "mp-hole-partial"; position: number; partial: string }
+  | { type: "mp-aborted"; reason: string }
+  // The trustless hand's real, independently verifiable receipt
+  // (verifyMentalPokerBundle in app/play/mental-poker.ts).
+  | { type: "mp-receipt"; bundle: MentalPokerBundle }
   | { type: "hole-cards"; handId: string; cards: [string, string] }
   | { type: "state"; state: PublicHandState }
   | {
       type: "hand-complete";
       sidePots: { amount: number; eligibleSeats: Seat[]; winners: Seat[] }[];
       payouts: number[]; // net chips gained (or lost, negative) this hand, per seat
-      bundle: TableProofBundle;
+      // null on a trustless table: this object never held a deck, so a
+      // server-dealt bundle here would be a fabrication. The real receipt
+      // arrives as mp-receipt once both parties reveal their masker seeds.
+      bundle: TableProofBundle | null;
     }
   | { type: "opponent-left"; seat: Seat }
   | { type: "chat"; message: ChatMessage }
@@ -141,11 +205,31 @@ const DEFAULT_SMALL_BLIND = 1;
 const DEFAULT_BIG_BLIND = 2;
 const DEFAULT_MIN_BUY_IN = 40;
 const DEFAULT_MAX_BUY_IN = 200;
+// How long a hand-start, once armed, always waits before dealing -
+// fixed and content-independent on purpose (see armHandStart) so the
+// server has no discretion over the moment left to exploit. Short enough
+// not to feel like a real delay to players.
+const FAIR_START_WINDOW_MS = 2000;
+// How long a trustless table waits on any single protocol step (a masking
+// round, a partial, a showdown reveal) before abandoning the hand and
+// refunding. Generous: these steps involve real elliptic-curve work in the
+// browser, and abandoning a hand is worse than waiting a moment longer.
+const MP_STEP_TIMEOUT_MS = 45_000;
+// Per-action countdown default (0 = no clock). Host-configurable, same
+// pattern as blinds/buy-in range - see isValidTableSettings.
+const DEFAULT_ACTION_CLOCK_SECONDS = 30;
+const MAX_ACTION_CLOCK_SECONDS = 300;
 
 // Shared by handleUpdateSettings (a host changing an existing room) and
 // fetch() (whoever creates a room choosing its opening stakes) - one rule,
 // checked in both places, rather than two copies drifting apart.
-function isValidTableSettings(smallBlind: number, bigBlind: number, minBuyIn: number, maxBuyIn: number): boolean {
+function isValidTableSettings(
+  smallBlind: number,
+  bigBlind: number,
+  minBuyIn: number,
+  maxBuyIn: number,
+  actionClockSeconds: number,
+): boolean {
   return (
     Number.isInteger(smallBlind) &&
     smallBlind >= 1 &&
@@ -155,6 +239,9 @@ function isValidTableSettings(smallBlind: number, bigBlind: number, minBuyIn: nu
     minBuyIn >= bigBlind * 2 &&
     Number.isInteger(maxBuyIn) &&
     maxBuyIn >= minBuyIn &&
+    Number.isInteger(actionClockSeconds) &&
+    actionClockSeconds >= 0 &&
+    actionClockSeconds <= MAX_ACTION_CLOCK_SECONDS &&
     maxBuyIn <= 1_000_000
   );
 }
@@ -180,15 +267,47 @@ export class PokerTable {
   private bigBlind = DEFAULT_BIG_BLIND;
   private minBuyIn = DEFAULT_MIN_BUY_IN;
   private maxBuyIn = DEFAULT_MAX_BUY_IN;
-  // Reset to false at the start of every new hand (maybeStartHand). Once
+  private actionClockSeconds = DEFAULT_ACTION_CLOCK_SECONDS;
+  // True for a room opened via the lounge "Join <tier>" matchmaker
+  // (app/api/lounge/join) - stakes stay house-managed for these, so
+  // handleUpdateSettings rejects any change once this is set. Fixed at
+  // room-creation time in fetch(), never changes afterward.
+  private isLounge = false;
+  // Trustless (mental-poker) room: the two browsers deal to each other and
+  // this object never holds a key or sees a card before showdown. Fixed at
+  // room creation, heads-up only.
+  private isTrustless = false;
+  private mpState: mp.MpState | null = null;
+  private mpDeadline: number | null = null;
+  // The epoch ms the currently-acting seat auto-folds/checks at, once
+  // armed - see armActionDeadline()/alarm(). null whenever no seat is
+  // actively on the clock.
+  private actionDeadline: number | null = null;
+  // Reset to false at the start of every new hand (startHandIfReady). Once
   // true, publicState() reveals the full board even past finalStreet.
   private rabbitHuntRevealed = false;
+  // The fixed, content-independent deadline a hand is allowed to start at,
+  // once armed - see armHandStart()/alarm() for why this is what actually
+  // closes the timing-discretion gap /fairness discloses (the server can
+  // never move this earlier OR later based on what seeds have arrived).
+  // null when no start is currently pending.
+  private pendingHandStartAt: number | null = null;
+  // The NEXT hand's server entropy and hand id, both fixed (and their
+  // commitment published in publicState) strictly before that hand's client
+  // seeds are collected - see ensureNextHandCommitment(). Persisted like
+  // every other authoritative field: a hibernation that lost these would
+  // silently let the server pick a fresh pair after already seeing seeds,
+  // which is exactly the grind this design exists to prevent.
+  private nextServerSeed = "";
+  private nextHandId = "";
+  // Stored rather than re-hashed, so publicState() can stay synchronous.
+  private nextServerSeedCommitment = "";
   // Client-supplied randomness for each seat's NEXT hand - deliberately
   // NOT persisted, same as voiceSeats: it's transient per-connection state,
   // not authoritative game state. If a Durable Object hibernation wipes it
   // before a hand starts, the only consequence is that seat's contribution
   // falls back to server-generated randomness for that one hand (see
-  // maybeStartHand + table-engine.ts's clientSeeds fallback) - never a
+  // startHandIfReady + table-engine.ts's clientSeeds fallback) - never a
   // correctness or security problem, just slightly less player-controlled
   // entropy for that single hand. Consumed and cleared the moment a hand
   // actually uses it, since reusing a seed across hands would be a real bug.
@@ -214,7 +333,17 @@ export class PokerTable {
       this.bigBlind = (await this.ctx.storage.get<number>("bigBlind")) ?? DEFAULT_BIG_BLIND;
       this.minBuyIn = (await this.ctx.storage.get<number>("minBuyIn")) ?? DEFAULT_MIN_BUY_IN;
       this.maxBuyIn = (await this.ctx.storage.get<number>("maxBuyIn")) ?? DEFAULT_MAX_BUY_IN;
+      this.actionClockSeconds = (await this.ctx.storage.get<number>("actionClockSeconds")) ?? DEFAULT_ACTION_CLOCK_SECONDS;
+      this.isLounge = (await this.ctx.storage.get<boolean>("isLounge")) ?? false;
+      this.isTrustless = (await this.ctx.storage.get<boolean>("isTrustless")) ?? false;
+      this.mpState = (await this.ctx.storage.get<mp.MpState | null>("mpState")) ?? null;
+      this.mpDeadline = (await this.ctx.storage.get<number | null>("mpDeadline")) ?? null;
+      this.actionDeadline = (await this.ctx.storage.get<number | null>("actionDeadline")) ?? null;
       this.rabbitHuntRevealed = (await this.ctx.storage.get<boolean>("rabbitHuntRevealed")) ?? false;
+      this.pendingHandStartAt = (await this.ctx.storage.get<number | null>("pendingHandStartAt")) ?? null;
+      this.nextServerSeed = (await this.ctx.storage.get<string>("nextServerSeed")) ?? "";
+      this.nextHandId = (await this.ctx.storage.get<string>("nextHandId")) ?? "";
+      this.nextServerSeedCommitment = (await this.ctx.storage.get<string>("nextServerSeedCommitment")) ?? "";
       this.ready = true;
     });
   }
@@ -234,7 +363,17 @@ export class PokerTable {
       | "bigBlind"
       | "minBuyIn"
       | "maxBuyIn"
+      | "actionClockSeconds"
+      | "isLounge"
+      | "isTrustless"
+      | "mpState"
+      | "mpDeadline"
+      | "actionDeadline"
       | "rabbitHuntRevealed"
+      | "pendingHandStartAt"
+      | "nextServerSeed"
+      | "nextHandId"
+      | "nextServerSeedCommitment"
     )[],
   ): Promise<void> {
     for (const key of keys) {
@@ -251,7 +390,17 @@ export class PokerTable {
       else if (key === "bigBlind") await this.ctx.storage.put("bigBlind", this.bigBlind);
       else if (key === "minBuyIn") await this.ctx.storage.put("minBuyIn", this.minBuyIn);
       else if (key === "maxBuyIn") await this.ctx.storage.put("maxBuyIn", this.maxBuyIn);
-      else await this.ctx.storage.put("rabbitHuntRevealed", this.rabbitHuntRevealed);
+      else if (key === "actionClockSeconds") await this.ctx.storage.put("actionClockSeconds", this.actionClockSeconds);
+      else if (key === "isLounge") await this.ctx.storage.put("isLounge", this.isLounge);
+      else if (key === "isTrustless") await this.ctx.storage.put("isTrustless", this.isTrustless);
+      else if (key === "mpState") await this.ctx.storage.put("mpState", this.mpState);
+      else if (key === "mpDeadline") await this.ctx.storage.put("mpDeadline", this.mpDeadline);
+      else if (key === "actionDeadline") await this.ctx.storage.put("actionDeadline", this.actionDeadline);
+      else if (key === "rabbitHuntRevealed") await this.ctx.storage.put("rabbitHuntRevealed", this.rabbitHuntRevealed);
+      else if (key === "nextServerSeed") await this.ctx.storage.put("nextServerSeed", this.nextServerSeed);
+      else if (key === "nextHandId") await this.ctx.storage.put("nextHandId", this.nextHandId);
+      else if (key === "nextServerSeedCommitment") await this.ctx.storage.put("nextServerSeedCommitment", this.nextServerSeedCommitment);
+      else await this.ctx.storage.put("pendingHandStartAt", this.pendingHandStartAt);
     }
   }
 
@@ -281,13 +430,48 @@ export class PokerTable {
       const requestedBigBlind = Number(url.searchParams.get("bigBlind"));
       const requestedMinBuyIn = Number(url.searchParams.get("minBuyIn"));
       const requestedMaxBuyIn = Number(url.searchParams.get("maxBuyIn"));
-      const openingStakesValid = isValidTableSettings(requestedSmallBlind, requestedBigBlind, requestedMinBuyIn, requestedMaxBuyIn);
+      // Not sourced from a URL param (the lobby's "New table" dialog has no
+      // clock picker yet) - always DEFAULT_ACTION_CLOCK_SECONDS here, always
+      // valid, so it never affects openingStakesValid either way.
+      const openingStakesValid = isValidTableSettings(
+        requestedSmallBlind,
+        requestedBigBlind,
+        requestedMinBuyIn,
+        requestedMaxBuyIn,
+        DEFAULT_ACTION_CLOCK_SECONDS,
+      );
       this.smallBlind = openingStakesValid ? requestedSmallBlind : DEFAULT_SMALL_BLIND;
       this.bigBlind = openingStakesValid ? requestedBigBlind : DEFAULT_BIG_BLIND;
       this.minBuyIn = openingStakesValid ? requestedMinBuyIn : DEFAULT_MIN_BUY_IN;
       this.maxBuyIn = openingStakesValid ? requestedMaxBuyIn : DEFAULT_MAX_BUY_IN;
-      await this.persist(["seatCount", "seats", "stacks", "readyForNext", "roomCode", "smallBlind", "bigBlind", "minBuyIn", "maxBuyIn"]);
+      this.actionClockSeconds = DEFAULT_ACTION_CLOCK_SECONDS;
+      // Only meaningful at creation - set by the lounge matchmaker
+      // (app/api/lounge/join, connectTable's InitialTableSettings.isLounge)
+      // when it mints a fresh room for a tier rather than finding an open
+      // one. A room created any other way is never a lounge room.
+      this.isLounge = url.searchParams.get("lounge") === "1";
+      // Heads-up only: mental poker needs every party online for every card,
+      // so it does not generalise past two seats.
+      this.isTrustless = url.searchParams.get("trustless") === "1" && this.seatCount === 2;
+      await this.persist([
+        "seatCount",
+        "seats",
+        "stacks",
+        "readyForNext",
+        "roomCode",
+        "smallBlind",
+        "bigBlind",
+        "minBuyIn",
+        "maxBuyIn",
+        "actionClockSeconds",
+        "isLounge",
+        "isTrustless",
+      ]);
     }
+    // Before the first socket is even accepted, so the opening hand's
+    // commitment is already fixed and public before anyone can sit down
+    // (and a "sit" is what carries the first client seed).
+    await this.ensureNextHandCommitment();
     if (request.headers.get("Upgrade") !== "websocket") {
       return new Response("Expected WebSocket upgrade", { status: 426 });
     }
@@ -333,9 +517,17 @@ export class PokerTable {
     if (message.type === "voice-leave") return this.handleVoiceLeave(ws);
     if (message.type === "voice-signal") return this.handleVoiceSignal(ws, message.toSeat, message.signal);
     if (message.type === "update-settings")
-      return this.handleUpdateSettings(ws, message.smallBlind, message.bigBlind, message.minBuyIn, message.maxBuyIn);
+      return this.handleUpdateSettings(
+        ws,
+        message.smallBlind,
+        message.bigBlind,
+        message.minBuyIn,
+        message.maxBuyIn,
+        message.actionClockSeconds,
+      );
     if (message.type === "rabbit-hunt") return this.handleRabbitHunt(ws);
     if (message.type === "provide-seed") return this.handleProvideSeed(ws, message.seed);
+    if (message.type.startsWith("mp-")) return this.handleMpMessage(ws, message);
   }
 
   async webSocketClose(ws: WebSocket): Promise<void> {
@@ -402,12 +594,19 @@ export class PokerTable {
       const db = getDb();
       const occupiedCount = this.seats.filter((seat) => seat?.connected).length;
       const status = this.hand && this.hand.street !== "complete" ? "playing" : "waiting";
+      const stakes = {
+        smallBlind: this.smallBlind,
+        bigBlind: this.bigBlind,
+        minBuyIn: this.minBuyIn,
+        maxBuyIn: this.maxBuyIn,
+        isLounge: this.isLounge,
+      };
       await db
         .insert(tables)
-        .values({ roomCode: this.roomCode, seatCount: this.seatCount, occupiedCount, status })
+        .values({ roomCode: this.roomCode, seatCount: this.seatCount, occupiedCount, status, ...stakes })
         .onConflictDoUpdate({
           target: tables.roomCode,
-          set: { seatCount: this.seatCount, occupiedCount, status, updatedAt: sql`CURRENT_TIMESTAMP` },
+          set: { seatCount: this.seatCount, occupiedCount, status, ...stakes, updatedAt: sql`CURRENT_TIMESTAMP` },
         });
     } catch {
       // Best-effort - the lobby listing is a convenience, never a gate on gameplay.
@@ -435,6 +634,11 @@ export class PokerTable {
         bigBlind: this.bigBlind,
         minBuyIn: this.minBuyIn,
         maxBuyIn: this.maxBuyIn,
+        actionClockSeconds: this.actionClockSeconds,
+        actionDeadline: null,
+        isLounge: this.isLounge,
+        nextServerSeedCommitment: this.nextServerSeedCommitment,
+        nextHandId: this.nextHandId,
         rabbitHuntRevealed: false,
         buttonSeat: null,
         smallBlindSeat: null,
@@ -458,7 +662,9 @@ export class PokerTable {
     // preflop fold) instead of always showing all 5 - UNLESS a rabbit hunt
     // was requested, which is the one thing allowed to override it.
     const revealStreet = this.hand.street === "complete" && !this.rabbitHuntRevealed ? this.hand.finalStreet : this.hand.street;
-    const visibleCount = { preflop: 0, flop: 3, turn: 4, river: 5, complete: 5 }[revealStreet];
+    // "showdown" means betting finished and the full board was dealt - the
+    // hand is only waiting on trustless reveals, so the board shows as river.
+    const visibleCount = { preflop: 0, flop: 3, turn: 4, river: 5, showdown: 5, complete: 5 }[revealStreet];
     return {
       handId: this.hand.handId,
       street: this.hand.street,
@@ -469,6 +675,11 @@ export class PokerTable {
       bigBlind: this.bigBlind,
       minBuyIn: this.minBuyIn,
       maxBuyIn: this.maxBuyIn,
+      actionClockSeconds: this.actionClockSeconds,
+      actionDeadline: this.actionDeadline,
+      isLounge: this.isLounge,
+      nextServerSeedCommitment: this.nextServerSeedCommitment,
+      nextHandId: this.nextHandId,
       rabbitHuntRevealed: this.rabbitHuntRevealed,
       buttonSeat: this.hand.buttonSeat,
       smallBlindSeat: this.hand.smallBlindSeat,
@@ -590,10 +801,13 @@ export class PokerTable {
 
     ws.serializeAttachment({ ...attachment, seat });
     this.seats[seat] = { connected: true, userId: attachment.userId };
-    // Store this seat's seed BEFORE maybeStartHand() runs below, in the
+    // Store this seat's seed BEFORE armHandStart() runs below, in the
     // same message rather than a separate follow-up - see the ClientMessage
     // comment on "sit" for why that ordering matters.
-    if (this.isValidSeed(seed)) this.pendingSeeds.set(seat, seed);
+    if (this.isValidSeed(seed)) {
+      this.pendingSeeds.set(seat, seed);
+      await this.sendSeedAck(ws, seat, seed);
+    }
     if (this.hostSeat === null) {
       this.hostSeat = seat;
       await this.persist(["seats", "hostSeat"]);
@@ -609,7 +823,7 @@ export class PokerTable {
     if (this.chatLog.length > 0) this.send(ws, { type: "chat-history", messages: this.chatLog });
     this.broadcastState();
     await this.syncRegistry();
-    await this.maybeStartHand();
+    await this.armHandStart();
   }
 
   private async handleLeave(ws: WebSocket): Promise<void> {
@@ -676,7 +890,14 @@ export class PokerTable {
     if (target) this.send(target, { type: "voice-signal", fromSeat, signal });
   }
 
-  private async handleUpdateSettings(ws: WebSocket, smallBlind: number, bigBlind: number, minBuyIn: number, maxBuyIn: number): Promise<void> {
+  private async handleUpdateSettings(
+    ws: WebSocket,
+    smallBlind: number,
+    bigBlind: number,
+    minBuyIn: number,
+    maxBuyIn: number,
+    actionClockSeconds: number,
+  ): Promise<void> {
     const seat = this.seatOf(ws);
     if (seat === null || seat !== this.hostSeat) {
       this.send(ws, { type: "error", message: "Only the host can change table settings." });
@@ -686,15 +907,20 @@ export class PokerTable {
       this.send(ws, { type: "error", message: "Table settings can only change between hands." });
       return;
     }
-    if (!isValidTableSettings(smallBlind, bigBlind, minBuyIn, maxBuyIn)) {
-      this.send(ws, { type: "error", message: "Those settings don't add up - check the blinds and buy-in range." });
+    if (this.isLounge) {
+      this.send(ws, { type: "error", message: "Lounge tables keep house-managed stakes - they can't be changed." });
+      return;
+    }
+    if (!isValidTableSettings(smallBlind, bigBlind, minBuyIn, maxBuyIn, actionClockSeconds)) {
+      this.send(ws, { type: "error", message: "Those settings don't add up - check the blinds, buy-in range, and clock." });
       return;
     }
     this.smallBlind = smallBlind;
     this.bigBlind = bigBlind;
     this.minBuyIn = minBuyIn;
     this.maxBuyIn = maxBuyIn;
-    await this.persist(["smallBlind", "bigBlind", "minBuyIn", "maxBuyIn"]);
+    this.actionClockSeconds = actionClockSeconds;
+    await this.persist(["smallBlind", "bigBlind", "minBuyIn", "maxBuyIn", "actionClockSeconds"]);
     this.broadcastState();
   }
 
@@ -722,10 +948,267 @@ export class PokerTable {
     return typeof seed === "string" && /^[0-9a-f]{64}$/i.test(seed);
   }
 
+  // ---- trustless (mental-poker) relay ---------------------------------
+  //
+  // Everything below moves protocol artifacts between the two browsers and
+  // enforces ordering via worker/mental-poker-protocol.ts. This object never
+  // holds a masking key, so it cannot decrypt a hole card at any point - the
+  // one thing it does verify (a showdown reveal) needs only the partials
+  // both parties already published.
+
+  private async handleMpMessage(ws: WebSocket, message: ClientMessage): Promise<void> {
+    const seat = this.seatOf(ws);
+    if (seat === null) return;
+    if (!this.isTrustless || !this.mpState) {
+      this.send(ws, { type: "error", message: "This table is not a trustless table." });
+      return;
+    }
+    try {
+      await this.routeMpMessage(seat, message);
+    } catch (error) {
+      // A protocol violation is a client bug or an attempted shortcut, not a
+      // reason to kill the hand - tell that seat and let the clock decide if
+      // it never recovers.
+      const text = error instanceof mp.MpProtocolError ? error.message : "Protocol error.";
+      this.send(ws, { type: "error", message: text });
+      return;
+    }
+    await this.persist(["mpState"]);
+    this.broadcastMpProgress();
+    await this.armMpDeadline();
+    await this.maybeStartTrustlessBetting();
+  }
+
+  private async routeMpMessage(seat: Seat, message: ClientMessage): Promise<void> {
+    const state = this.mpState!;
+    if (message.type === "mp-commit") {
+      this.mpState = mp.applyCommitment(state, seat, message.commitment, message.publicKey);
+      return;
+    }
+    if (message.type === "mp-mask") {
+      this.mpState = mp.applyMaskRound(state, seat, message.deck);
+      return;
+    }
+    if (message.type === "mp-hole-partial") {
+      this.mpState = mp.applyHolePartial(state, seat, message.position, message.partial);
+      // Straight to the seat that owns the card - it's useless to anyone else.
+      const owner = mp.holeOwner(message.position);
+      const target = this.socketFor(owner);
+      if (target) this.send(target, { type: "mp-hole-partial", position: message.position, partial: message.partial });
+      return;
+    }
+    if (message.type === "mp-board-partial") {
+      const result = await mp.applyBoardPartial(state, seat, message.position, message.partial);
+      this.mpState = result.state;
+      return;
+    }
+    if (message.type === "mp-showdown-reveal") {
+      this.mpState = await mp.applyShowdownReveal(state, seat, message.cards, message.partials);
+      await this.maybeFinishTrustlessShowdown();
+      return;
+    }
+    if (message.type === "mp-seed-reveal") {
+      this.mpState = mp.applyMaskerSeedReveal(state, seat, message.seed);
+      if (this.mpState.phase === "complete") await this.emitTrustlessReceipt();
+      return;
+    }
+  }
+
+  private broadcastMpProgress(): void {
+    const state = this.mpState;
+    if (!state) return;
+    const openBoardPositions = Object.keys(state.boardPartials)
+      .map(Number)
+      .filter((position) => !state.releasedBoardPositions.includes(position));
+    // deckToMask is whichever deck the next masker needs as input: the fresh
+    // one for seat 0 (built client-side) and seat 0's output for seat 1.
+    const deckToMask = state.phase === "mask-seat-1" ? state.deckAfterSeat0 : null;
+    this.broadcast({
+      type: "mp-progress",
+      phase: state.phase,
+      waitingOn: mp.waitingOn(state, this.contestingSeatsForMp()),
+      handId: state.handId,
+      deckToMask,
+      maskedDeck: state.maskedDeck,
+      openBoardPositions,
+      board: state.board,
+      publicKeys: state.publicKeys,
+      abortReason: state.abortReason,
+    });
+  }
+
+  private contestingSeatsForMp(): number[] {
+    if (!this.hand) return [0, 1];
+    const out: number[] = [];
+    for (let s = 0; s < this.seatCount; s += 1) if (this.hand.inHand[s] && !this.hand.folded[s]) out.push(s);
+    return out;
+  }
+
+  /** Once dealing completes, the betting engine takes over for the hand. */
+  private async maybeStartTrustlessBetting(): Promise<void> {
+    if (!this.mpState || this.mpState.phase !== "betting") return;
+    if (this.hand && this.hand.street !== "complete") return;
+
+    const occupiedSeats: { seat: Seat; stack: number }[] = [];
+    for (let s = 0; s < this.seatCount; s += 1) {
+      if (this.seats[s]?.connected && this.stacks[s] > 0) occupiedSeats.push({ seat: s, stack: this.stacks[s] });
+    }
+    if (occupiedSeats.length !== 2) return;
+
+    this.handStartStacks = this.stacks.slice();
+    this.hand = await startTrustlessHand(
+      this.mpState.handId,
+      this.seatCount,
+      occupiedSeats,
+      this.hand?.buttonSeat ?? null,
+      this.smallBlind,
+      this.bigBlind,
+    );
+    this.stacks = this.mergedStacks(this.hand);
+    await this.persist(["hand", "stacks", "handStartStacks"]);
+    await this.armActionDeadline();
+    this.broadcastState();
+    await this.syncRegistry();
+  }
+
+  /**
+   * Opens the board cards for a street the betting engine has just reached.
+   * Called after every action, so the flop is only unsealed once preflop
+   * betting is genuinely closed.
+   */
+  private async openTrustlessBoardStreet(street: string): Promise<void> {
+    if (!this.isTrustless || !this.mpState) return;
+    if (mp.positionsForStreet(street).length === 0) return;
+    if (this.mpState.phase !== "betting") return;
+    this.mpState = mp.openBoardStreet(this.mpState, street);
+    await this.persist(["mpState"]);
+    this.broadcastMpProgress();
+  }
+
+  private async maybeFinishTrustlessShowdown(): Promise<void> {
+    if (!this.hand || !this.mpState || this.hand.street !== "showdown") return;
+    const contesting = this.contestingSeatsForMp();
+    if (!mp.allRequiredRevealsIn(this.mpState, contesting)) return;
+    if (this.mpState.board.length !== 5) return;
+
+    const holeCards: EngineState["holeCards"] = new Array(this.seatCount).fill(null);
+    for (const seat of contesting) {
+      const codes = this.mpState.revealedHole[seat];
+      if (!codes) return;
+      const [first, second] = cardsFromCodes(codes);
+      holeCards[seat] = [first, second];
+    }
+    const settled = await finishShowdown(this.hand, holeCards, cardsFromCodes(this.mpState.board));
+    this.hand = settled;
+    this.stacks = this.mergedStacks(settled);
+    await this.persist(["hand", "stacks"]);
+    this.broadcastState();
+    await this.completeTrustlessHand();
+  }
+
+  /**
+   * Returns every chip contributed this hand. Used when the protocol can't
+   * finish - with dealing incomplete there is no honest way to pick a
+   * winner, and awarding the pot to whoever stayed online would make
+   * stalling profitable.
+   */
+  private async abortTrustlessHand(reason: string): Promise<void> {
+    if (!this.mpState) return;
+    this.mpState = mp.abort(this.mpState, reason);
+    if (this.hand && this.hand.street !== "complete") {
+      const refunded = this.stacks.slice();
+      for (let s = 0; s < this.seatCount; s += 1) refunded[s] = (this.handStartStacks[s] ?? refunded[s]);
+      this.stacks = refunded;
+      this.hand = null;
+      await this.persist(["hand", "stacks"]);
+    }
+    this.actionDeadline = null;
+    await this.persist(["mpState", "actionDeadline"]);
+    this.broadcast({ type: "mp-aborted", reason });
+    this.broadcastState();
+    await this.beginTrustlessHand();
+  }
+
+  /** Fresh protocol state for the next trustless hand. */
+  private async beginTrustlessHand(): Promise<void> {
+    if (!this.isTrustless) return;
+    await this.ensureNextHandCommitment();
+    this.mpState = mp.initialMpState(this.nextHandId);
+    this.nextServerSeed = "";
+    this.nextHandId = "";
+    this.nextServerSeedCommitment = "";
+    await this.ensureNextHandCommitment();
+    await this.persist(["mpState"]);
+    this.broadcastMpProgress();
+    await this.armMpDeadline();
+  }
+
+  private async completeTrustlessHand(): Promise<void> {
+    if (!this.hand || !this.hand.sidePots) return;
+    const payouts = this.stacks.map((stack, s) => (this.hand!.inHand[s] ? stack - (this.handStartStacks[s] ?? stack) : 0));
+    this.broadcast({
+      type: "hand-complete",
+      sidePots: this.hand.sidePots,
+      payouts,
+      bundle: null,
+    });
+    this.readyForNext = new Array(this.seatCount).fill(false);
+    await this.persist(["readyForNext"]);
+    await this.syncRegistry();
+
+    // Now ask both parties to reveal their masker seeds, which is what lets
+    // anyone replay the shuffle from scratch and check it.
+    if (this.mpState) {
+      this.mpState = mp.beginSettle(this.mpState);
+      await this.persist(["mpState"]);
+      this.broadcastMpProgress();
+      await this.armMpDeadline();
+    }
+  }
+
+  private async emitTrustlessReceipt(): Promise<void> {
+    if (!this.mpState || this.mpState.phase !== "complete") return;
+    try {
+      const bundle = await mp.buildMentalPokerBundle(this.mpState);
+      this.broadcast({ type: "mp-receipt", bundle });
+    } catch {
+      // A receipt that can't be assembled is worth surfacing as absent
+      // rather than as something fabricated - the hand result already stands
+      // on the betting engine's own transcript.
+    }
+    this.mpDeadline = null;
+    await this.persist(["mpDeadline"]);
+  }
+
   private async handleProvideSeed(ws: WebSocket, seed: string): Promise<void> {
     const seat = this.seatOf(ws);
     if (seat === null || !this.isValidSeed(seed)) return;
     this.pendingSeeds.set(seat, seed);
+    await this.sendSeedAck(ws, seat, seed);
+  }
+
+  /**
+   * Signs "for hand H, seat N, I hold a seed hashing to X" and hands it to
+   * the seat that sent it. Keeping this is what lets a player later prove -
+   * not merely assert - that their contribution was swapped, since the
+   * signature contradicts the published receipt for that same hand. See
+   * worker/fairness-attestation.ts.
+   *
+   * Issued against nextHandId, which is already fixed and public before any
+   * of this hand's seeds are collected, so the acknowledgement names the
+   * exact hand the seed will be used in.
+   */
+  private async sendSeedAck(ws: WebSocket, seat: Seat, seed: string): Promise<void> {
+    const signingKey = env.FAIRNESS_SIGNING_KEY;
+    if (!signingKey || !this.nextHandId) return;
+    try {
+      const ack = await signSeedAck(this.nextHandId, seat, seed, signingKey);
+      this.send(ws, { type: "seed-ack", ack });
+    } catch {
+      // Never let attestation trouble block someone from playing - the hand
+      // itself is unaffected, and an ack that never arrives is visible to
+      // the client as a missing receipt rather than a silent downgrade.
+    }
   }
 
   private async handleChat(ws: WebSocket, text: string): Promise<void> {
@@ -752,9 +1235,8 @@ export class PokerTable {
       this.send(ws, { type: "error", message: "No hand in progress." });
       return;
     }
-    let next: EngineState;
     try {
-      next = await applyAction(this.hand, seat, action, amount);
+      await this.applyEngineAction(seat, action, amount);
     } catch (error) {
       if (error instanceof IllegalActionError) {
         this.send(ws, { type: "error", message: error.message });
@@ -762,10 +1244,32 @@ export class PokerTable {
       }
       throw error;
     }
+  }
+
+  // Shared by handleAction (a real player's WebSocket message) and alarm()
+  // (an auto-fold/auto-check when the action clock expires) - one path for
+  // "an action just happened," so the two can never drift apart on what
+  // happens after (persist, broadcast, re-arm the next deadline, hand-
+  // complete handling).
+  private async applyEngineAction(seat: Seat, action: ActionType, amount?: number): Promise<void> {
+    if (!this.hand) return;
+    const previousStreet = this.hand.street;
+    const next = await applyAction(this.hand, seat, action, amount);
     this.hand = next;
     this.stacks = this.mergedStacks(next);
     await this.persist(["hand", "stacks"]);
+    await this.armActionDeadline();
     this.broadcastState();
+
+    // Trustless tables unseal board cards only after the street that
+    // precedes them has finished betting - the cards physically cannot be
+    // read before both parties publish partials for them.
+    if (this.isTrustless && this.hand.street !== previousStreet) {
+      if (this.hand.street === "showdown") this.mpState = mp.beginShowdown(this.mpState!);
+      else await this.openTrustlessBoardStreet(this.hand.street);
+      await this.persist(["mpState"]);
+      this.broadcastMpProgress();
+    }
 
     if (this.hand.street === "complete" && this.hand.sidePots) {
       const bundle = buildProofBundle(this.hand);
@@ -776,6 +1280,24 @@ export class PokerTable {
       await this.syncRegistry();
       await this.recordHandHistory(bundle, payouts);
     }
+  }
+
+  // Arms (or clears) the per-action countdown alarm for whoever's currently
+  // toAct. Called after every action (real or clock-triggered) and after a
+  // hand deals - anywhere toAct changes. Safe to call liberally: a no-op
+  // clock (actionClockSeconds === 0) or no one currently to act just clears
+  // any stale deadline instead of arming one.
+  private async armActionDeadline(): Promise<void> {
+    if (!this.hand || this.hand.street === "complete" || this.hand.toAct === null || this.actionClockSeconds <= 0) {
+      if (this.actionDeadline !== null) {
+        this.actionDeadline = null;
+        await this.persist(["actionDeadline"]);
+      }
+      return;
+    }
+    this.actionDeadline = Date.now() + this.actionClockSeconds * 1000;
+    await this.persist(["actionDeadline"]);
+    await this.ctx.storage.setAlarm(this.actionDeadline);
   }
 
   // Best-effort - only records a hand if at least one seat was an
@@ -818,11 +1340,125 @@ export class PokerTable {
     if (allReady) {
       this.readyForNext = new Array(this.seatCount).fill(false);
       await this.persist(["readyForNext"]);
-      await this.maybeStartHand();
+      await this.armHandStart();
     }
   }
 
-  private async maybeStartHand(): Promise<void> {
+  // Arms a fixed, content-independent delay before a hand is allowed to
+  // start, the moment the ready condition is first met. This is what
+  // actually closes the timing-discretion gap /fairness discloses: the
+  // server commits to a deal time that can never be moved earlier (more
+  // seeds arriving doesn't shorten it) or later (it can't wait past this
+  // deadline to see how a set of seeds "looks") - there's no window left in
+  // which "wait and see" is even possible, not just a smaller one.
+  // Idempotent by design: if a start is already armed, sitting down or
+  // readying up again does not reset or move the deadline.
+  private async armHandStart(): Promise<void> {
+    if (this.pendingHandStartAt !== null) return;
+    const occupiedCount = this.seats.filter((seat, s) => seat?.connected && this.stacks[s] > 0).length;
+    const noHandInProgress = !this.hand || this.hand.street === "complete";
+    if (occupiedCount < 2 || !noHandInProgress) return;
+    this.pendingHandStartAt = Date.now() + FAIR_START_WINDOW_MS;
+    await this.persist(["pendingHandStartAt"]);
+    await this.ctx.storage.setAlarm(this.pendingHandStartAt);
+  }
+
+  // Called automatically by the runtime when an armed alarm fires -
+  // platform-guaranteed at-least-once, even across hibernation, which is
+  // exactly the durability property a "the server MUST wait this long, no
+  // exceptions" guarantee needs. A Durable Object only ever has ONE pending
+  // alarm at a time (a later setAlarm call replaces an earlier one), so
+  // this dispatches on which deadline is actually set - safe because the
+  // two are mutually exclusive by construction: pendingHandStartAt is only
+  // ever armed while no hand is in progress, actionDeadline only while one
+  // is, so at most one is ever non-null at once.
+  async alarm(): Promise<void> {
+    await this.hydrate();
+    if (this.pendingHandStartAt !== null) {
+      this.pendingHandStartAt = null;
+      await this.persist(["pendingHandStartAt"]);
+      await this.startHandIfReady();
+      return;
+    }
+    if (this.actionDeadline !== null && this.hand && this.hand.toAct !== null && this.hand.street !== "complete") {
+      const seat = this.hand.toAct;
+      const auto: ActionType = legalActions(this.hand, seat).includes("check" as ActionType) ? "check" : "fold";
+      this.actionDeadline = null;
+      await this.applyEngineAction(seat, auto);
+      return;
+    }
+    // A trustless hand can also stall outside anyone's betting turn - waiting
+    // on a masking round, a partial, or a showdown reveal. There is no
+    // auto-play substitute for those (they need a key only that browser
+    // has), so the hand is abandoned and every chip goes back.
+    if (this.isTrustless && this.mpDeadline !== null && Date.now() >= this.mpDeadline) {
+      const stalled = this.mpState ? mp.waitingOn(this.mpState, this.contestingSeatsForMp()) : [];
+      this.mpDeadline = null;
+      await this.persist(["mpDeadline"]);
+      await this.abortTrustlessHand(
+        stalled.length > 0
+          ? `seat ${stalled.join(" and ")} did not complete the dealing protocol in time`
+          : "the dealing protocol did not complete in time",
+      );
+    }
+  }
+
+  /**
+   * Arms a deadline for whatever the trustless protocol is currently waiting
+   * on. Separate from actionDeadline because a stalled protocol step has no
+   * legal auto-action to substitute - it can only be abandoned.
+   */
+  private async armMpDeadline(): Promise<void> {
+    if (!this.isTrustless || !this.mpState) return;
+    const active = this.mpState.phase !== "betting" && this.mpState.phase !== "complete" && this.mpState.phase !== "aborted";
+    const next = active ? Date.now() + MP_STEP_TIMEOUT_MS : null;
+    if (next === null) {
+      if (this.mpDeadline !== null) {
+        this.mpDeadline = null;
+        await this.persist(["mpDeadline"]);
+      }
+      return;
+    }
+    this.mpDeadline = next;
+    await this.persist(["mpDeadline"]);
+    await this.ctx.storage.setAlarm(next);
+  }
+
+  // The actual dealing logic - unchanged in substance from before this
+  // phase, except it's now only ever reached after armHandStart's fixed
+  // window has fully elapsed, never called directly from a client message
+  // handler. Re-checks readiness at fire time (not just at arm time) since
+  // a seat may have left during the window - that naturally no-ops here
+  // rather than needing the alarm itself to be cancelable.
+  // Fixes the next hand's server entropy AND its hand id together, if they
+  // aren't already fixed, so publicState() can publish the commitment
+  // before any client seed for that hand is collected. Both have to be
+  // pinned at the same moment: the hand id feeds the combined seed too, so
+  // a server that committed a seed but still got to pick the hand id
+  // afterwards could grind the shuffle through the id instead.
+  //
+  // Idempotent on purpose - it only generates when a slot is empty, so
+  // calling it from several places (room creation, post-deal rotation,
+  // hydration-after-hibernation) can never silently replace a commitment
+  // that clients have already seen.
+  private async ensureNextHandCommitment(): Promise<void> {
+    if (this.nextServerSeed && this.nextHandId && this.nextServerSeedCommitment) return;
+    this.nextServerSeed = randomHex();
+    this.nextHandId = `river-table-${crypto.randomUUID()}`;
+    this.nextServerSeedCommitment = await serverSeedCommitment(this.nextServerSeed);
+    await this.persist(["nextServerSeed", "nextHandId", "nextServerSeedCommitment"]);
+  }
+
+  private async startHandIfReady(): Promise<void> {
+    // A trustless room's hand begins with the two browsers' dealing
+    // protocol, not a server-side shuffle. Betting starts once that
+    // protocol reaches its betting phase (see maybeStartTrustlessBetting).
+    if (this.isTrustless) {
+      if (!this.mpState || this.mpState.phase === "complete" || this.mpState.phase === "aborted") {
+        await this.beginTrustlessHand();
+      }
+      return;
+    }
     const occupiedSeats: { seat: Seat; stack: number }[] = [];
     for (let s = 0; s < this.seatCount; s += 1) {
       if (this.seats[s]?.connected && this.stacks[s] > 0) occupiedSeats.push({ seat: s, stack: this.stacks[s] });
@@ -830,7 +1466,13 @@ export class PokerTable {
     const noHandInProgress = !this.hand || this.hand.street === "complete";
     if (occupiedSeats.length < 2 || !noHandInProgress) return;
 
-    const handId = `river-table-${crypto.randomUUID()}`;
+    // Both were committed to before any of this hand's client seeds were
+    // collected (see ensureNextHandCommitment) - that ordering is the whole
+    // basis of the fairness guarantee, so this consumes them rather than
+    // generating anything fresh here.
+    await this.ensureNextHandCommitment();
+    const handId = this.nextHandId;
+    const serverSeed = this.nextServerSeed;
     const previousButton = this.hand?.buttonSeat ?? null;
     this.handStartStacks = this.stacks.slice();
     // Each dealt-in seat's own browser-generated seed, if it sent one
@@ -846,10 +1488,27 @@ export class PokerTable {
         this.pendingSeeds.delete(seat);
       }
     }
-    this.hand = await startHand(handId, this.seatCount, occupiedSeats, previousButton, this.smallBlind, this.bigBlind, clientSeeds);
+    this.hand = await startHand(
+      handId,
+      this.seatCount,
+      occupiedSeats,
+      previousButton,
+      this.smallBlind,
+      this.bigBlind,
+      clientSeeds,
+      serverSeed,
+    );
     this.stacks = this.mergedStacks(this.hand);
     this.rabbitHuntRevealed = false;
+    // Rotate immediately, so the NEXT hand's commitment is already public
+    // (via publicState) while this one is still being played - well before
+    // any seat pre-supplies its seed for that next hand after hand-complete.
+    this.nextServerSeed = "";
+    this.nextHandId = "";
+    this.nextServerSeedCommitment = "";
+    await this.ensureNextHandCommitment();
     await this.persist(["hand", "stacks", "handStartStacks", "rabbitHuntRevealed"]);
+    await this.armActionDeadline();
 
     for (const { seat } of occupiedSeats) {
       const socket = this.socketFor(seat);

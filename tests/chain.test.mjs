@@ -94,9 +94,10 @@ test("submitWithdrawal pays out on-chain and the recipient's balance actually in
 
   const netChips = 40;
   const ledgerEntryId = crypto.randomUUID();
-  const txHash = await submitWithdrawal(recipientAccount.address, netChips, ledgerEntryId, OPERATOR_PRIVATE_KEY);
+  const outcome = await submitWithdrawal(recipientAccount.address, netChips, ledgerEntryId, OPERATOR_PRIVATE_KEY);
+  assert.equal(outcome.status, "paid");
 
-  const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
+  const receipt = await publicClient.waitForTransactionReceipt({ hash: outcome.hash });
   assert.equal(receipt.status, "success");
 
   const after = await publicClient.readContract({
@@ -113,5 +114,36 @@ test("submitWithdrawal rejects a non-operator key", async () => {
   // Hardhat account #1 - not the operator this vault was deployed with
   // (that's account #0, OPERATOR_PRIVATE_KEY above).
   const nonOperatorKey = bytesToHex(userAccount.getHdKey().privateKey);
-  await assert.rejects(() => submitWithdrawal(recipientAccount.address, 1, crypto.randomUUID(), nonOperatorKey));
+  const outcome = await submitWithdrawal(recipientAccount.address, 1, crypto.randomUUID(), nonOperatorKey);
+  // Rejected before broadcast, so nothing moved and the caller is safe to
+  // refund - that is exactly what "not-paid" is for.
+  assert.equal(outcome.status, "not-paid");
+});
+
+test("the same withdrawal cannot be paid twice, so a retry is always safe", async () => {
+  const ledgerEntryId = crypto.randomUUID();
+  const first = await submitWithdrawal(recipientAccount.address, 5, ledgerEntryId, OPERATOR_PRIVATE_KEY);
+  assert.equal(first.status, "paid");
+
+  const before = await publicClient.readContract({
+    address: activeChainConfig.tokenAddress,
+    abi: ERC20_ABI,
+    functionName: "balanceOf",
+    args: [recipientAccount.address],
+  });
+
+  // Retrying the SAME ledger entry - what a reconciliation job or an
+  // impatient user would trigger after an ambiguous first attempt.
+  const second = await submitWithdrawal(recipientAccount.address, 5, ledgerEntryId, OPERATOR_PRIVATE_KEY);
+  // Never "not-paid": reporting that would tell the caller to refund chips
+  // for a withdrawal that really did pay out.
+  assert.notEqual(second.status, "not-paid");
+
+  const after = await publicClient.readContract({
+    address: activeChainConfig.tokenAddress,
+    abi: ERC20_ABI,
+    functionName: "balanceOf",
+    args: [recipientAccount.address],
+  });
+  assert.equal(after - before, 0n);
 });

@@ -1,7 +1,6 @@
 import {
   appendTranscript,
   evaluateSeven,
-  randomHex,
   sha256,
   shuffleDeck,
   transcriptGenesis,
@@ -45,7 +44,10 @@ import {
  */
 
 export type Seat = number;
-export type Street = "preflop" | "flop" | "turn" | "river" | "complete";
+// "showdown" only occurs in trustless (mental-poker) hands: betting is over
+// but the engine is still waiting on each contesting seat to reveal the
+// cards it alone can decrypt. Server-dealt hands go straight to "complete".
+export type Street = "preflop" | "flop" | "turn" | "river" | "showdown" | "complete";
 export type ActionType = "fold" | "call" | "check" | "raise" | "bet";
 
 export type SidePot = { amount: number; eligibleSeats: Seat[]; winners: Seat[] };
@@ -67,16 +69,20 @@ export type EngineState = {
   // crypto.getRandomValues) or "server" (this Durable Object, ONLY as a
   // fallback when a seat didn't supply its own in time). This is what
   // makes the commit-reveal scheme actually provably fair rather than
-  // merely tamper-evident: if the server generated every seed itself, it
-  // could privately test candidate shuffles before ever publishing a
-  // commitment - a single independently-generated client contribution is
-  // enough to make that impossible, since the server can't predict what
-  // any client's browser will send before it arrives. Purely informational
-  // (not itself cryptographically verified - the commit/reveal/combined-seed
-  // checks are unaffected by who supplied the raw value), surfaced so the
-  // UI and proof bundle can be honest about how much of a given hand's
-  // entropy was actually player-controlled.
+  // merely tamper-evident. Unlike earlier versions this is NOT merely
+  // informational: verifyTableBundle re-derives every "server" seat's seed
+  // from the pre-committed serverSeed and rejects the bundle if it doesn't
+  // match, so the server can't quietly substitute a hand-picked value into
+  // a fallback seat. The one thing this can't prove to a third party is
+  // that a seat labelled "client" really carries the value that client
+  // sent - but that seat's own browser generated it, so the player it
+  // matters to can always check their own contribution survived.
   seedSources: ("client" | "server" | null)[];
+  // Revealed after the hand. Its commitment (serverSeedCommitment) is
+  // published to every seat BEFORE that hand's client seeds are collected,
+  // which is what removes the server's ability to grind the shuffle.
+  serverSeed: string;
+  serverSeedCommitmentValue: string;
   combinedSeedValue: string;
   deck: Card[];
   holeCards: ([Card, Card] | null)[];
@@ -104,6 +110,10 @@ export type EngineState = {
 
   transcript: TranscriptEntry[];
   sidePots: SidePot[] | null; // populated only once street === "complete"
+  // Set for trustless tables, where the engine never holds the hole cards.
+  // Makes a contested showdown park in street "showdown" until the Durable
+  // Object supplies verified reveals via finishShowdown().
+  deferShowdown?: boolean;
 };
 
 export type BetBounds = { action: "bet" | "raise"; min: number; max: number };
@@ -228,8 +238,35 @@ async function seatCommitment(seat: Seat, handId: string, seed: string): Promise
   return sha256(`RIVER_TABLE_COMMIT_V1|seat_${seat}|${handId}|${seed}`);
 }
 
-async function tableCombinedSeed(handId: string, seedsBySeatAsc: string[]): Promise<string> {
-  return sha256(`RIVER_TABLE_DECK_V1|${handId}|${seedsBySeatAsc.join("|")}`);
+/**
+ * The server's own per-hand entropy commitment. Deliberately binds ONLY the
+ * seed - not the handId - because the commitment is published before the
+ * hand it belongs to is dealt, and worker/poker-table.ts fixes the handId at
+ * the same moment it fixes this seed (see armHandStart). Binding a handId
+ * the server could still choose afterwards would hand back exactly the
+ * grinding freedom this commitment exists to remove.
+ */
+export async function serverSeedCommitment(serverSeed: string): Promise<string> {
+  return sha256(`RIVER_TABLE_SERVER_COMMIT_V1|${serverSeed}`);
+}
+
+/**
+ * A seat that didn't supply its own randomness in time gets this instead of
+ * a freshly-generated value. Deriving it deterministically from the
+ * already-committed server seed is the whole point: a `randomHex()` call at
+ * deal time would be generated AFTER the server has seen every client seed
+ * that did arrive, letting it re-roll that one value until the resulting
+ * deck suited it - and since the server also decides whether a seed
+ * "arrived", it could force that fallback on any seat at will. Pinning the
+ * fallback to the pre-commitment leaves the server no freedom in either
+ * direction.
+ */
+async function fallbackSeatSeed(serverSeed: string, handId: string, seat: Seat): Promise<string> {
+  return sha256(`RIVER_TABLE_FALLBACK_V1|${handId}|seat_${seat}|${serverSeed}`);
+}
+
+async function tableCombinedSeed(handId: string, serverSeed: string, seedsBySeatAsc: string[]): Promise<string> {
+  return sha256(`RIVER_TABLE_DECK_V2|${handId}|${serverSeed}|${seedsBySeatAsc.join("|")}`);
 }
 
 // ---- hand comparison (local - proof.ts's compareScores isn't exported) ----
@@ -321,10 +358,16 @@ export async function startHand(
   smallBlind: number = SMALL_BLIND,
   bigBlind: number = BIG_BLIND,
   // A seat missing here (didn't supply its own randomness in time - a slow
-  // connection, a very fast first hand, an older client) falls back to
-  // server-generated randomness for that seat only. That fallback is
+  // connection, a very fast first hand, an older client) falls back to a
+  // value derived deterministically from serverSeed. That fallback is
   // tracked in seedSources and never hidden - see EngineState's comment.
   clientSeeds: Partial<Record<Seat, string>> = {},
+  // The server's own entropy for this hand. Must already have been
+  // committed to (and that commitment published to every seat) BEFORE any
+  // of the clientSeeds above were collected - see serverSeedCommitment and
+  // worker/poker-table.ts's armHandStart, which is what makes this whole
+  // scheme grind-proof rather than merely tamper-evident.
+  serverSeed: string,
 ): Promise<EngineState> {
   if (occupiedSeats.length < 2) throw new Error("need at least 2 seats to start a hand");
   const n = occupiedSeats.length;
@@ -346,7 +389,7 @@ export async function startHand(
   const seedSources: ("client" | "server" | null)[] = new Array(seatCount).fill(null);
   for (const seat of dealtSeats) {
     const clientSeed = clientSeeds[seat];
-    const seed = clientSeed ?? randomHex();
+    const seed = clientSeed ?? (await fallbackSeatSeed(serverSeed, handId, seat));
     seedsBySeat[seat] = seed;
     seedSources[seat] = clientSeed ? "client" : "server";
     commitmentsBySeat[seat] = await seatCommitment(seat, handId, seed);
@@ -355,7 +398,7 @@ export async function startHand(
     .slice()
     .sort((a, b) => a - b)
     .map((s) => seedsBySeat[s]!);
-  const combinedSeedValue = await tableCombinedSeed(handId, seedsBySeatAsc);
+  const combinedSeedValue = await tableCombinedSeed(handId, serverSeed, seedsBySeatAsc);
   const deck = await shuffleDeck(combinedSeedValue);
 
   const holeCards: ([Card, Card] | null)[] = new Array(seatCount).fill(null);
@@ -385,6 +428,8 @@ export async function startHand(
     seedCommitments: commitmentsBySeat,
     seedReveals: seedsBySeat,
     seedSources,
+    serverSeed,
+    serverSeedCommitmentValue: await serverSeedCommitment(serverSeed),
     combinedSeedValue,
     deck,
     holeCards,
@@ -461,7 +506,135 @@ async function beginStreet(state: EngineState): Promise<EngineState> {
   return { ...state, toAct, needsToAct: withOption };
 }
 
+/**
+ * Starts a hand the engine holds no cards for - the trustless (mental-poker)
+ * path, where the two browsers deal to each other and this process only
+ * referees betting. Seating, blinds and the transcript are identical to
+ * startHand; everything card-shaped is left empty and arrives later:
+ * the board via finishShowdown, hole cards via verified reveals.
+ *
+ * Kept as its own entry point rather than a flag on startHand so there is no
+ * code path where a trustless table quietly generates a real deck the server
+ * could read.
+ */
+export async function startTrustlessHand(
+  handId: string,
+  seatCount: number,
+  occupiedSeats: { seat: Seat; stack: number }[],
+  previousButton: Seat | null,
+  smallBlind: number = SMALL_BLIND,
+  bigBlind: number = BIG_BLIND,
+): Promise<EngineState> {
+  if (occupiedSeats.length !== 2) throw new Error("trustless hands are heads-up only");
+  const occupied = new Array(seatCount).fill(false);
+  const stackBySeat = new Array(seatCount).fill(0);
+  for (const { seat, stack } of occupiedSeats) {
+    occupied[seat] = true;
+    stackBySeat[seat] = stack;
+  }
+
+  const buttonSeat = nextOccupiedSeat(seatCount, previousButton ?? -1, occupied);
+  const smallBlindSeat = buttonSeat; // heads-up: button posts the small blind
+  const bigBlindSeat = nextOccupiedSeat(seatCount, smallBlindSeat, occupied);
+  const dealtSeats = dealOrder(seatCount, smallBlindSeat, occupied, occupiedSeats.length);
+
+  const inHand = new Array(seatCount).fill(false);
+  for (const seat of dealtSeats) inHand[seat] = true;
+
+  let state: EngineState = {
+    handId,
+    seatCount,
+    buttonSeat,
+    smallBlindSeat,
+    bigBlindSeat,
+    smallBlind,
+    bigBlind,
+    inHand,
+    // The seed/commit fields belong to the server-dealt scheme. A trustless
+    // hand's cryptographic record is the ProofBundleV3 the two parties build
+    // instead, so these stay empty rather than carrying misleading values.
+    seedCommitments: new Array(seatCount).fill(null),
+    seedReveals: new Array(seatCount).fill(null),
+    seedSources: new Array(seatCount).fill(null),
+    serverSeed: "",
+    serverSeedCommitmentValue: "",
+    combinedSeedValue: "",
+    deck: [],
+    holeCards: new Array(seatCount).fill(null),
+    holeCardIndices: new Array(seatCount).fill(null),
+    boardIndices: [],
+    board: [],
+    street: "preflop",
+    finalStreet: "preflop",
+    contributed: new Array(seatCount).fill(0),
+    streetContributed: new Array(seatCount).fill(0),
+    stacks: stackBySeat,
+    folded: new Array(seatCount).fill(false),
+    allIn: new Array(seatCount).fill(false),
+    toAct: null,
+    needsToAct: [],
+    minRaiseIncrement: bigBlind,
+    transcript: [],
+    sidePots: null,
+    deferShowdown: true,
+  };
+
+  {
+    const { state: next, posted } = postBlind(state, smallBlindSeat, smallBlind);
+    state = await log(next, `seat_${smallBlindSeat}`, "post_small_blind", posted);
+  }
+  {
+    const { state: next, posted } = postBlind(state, bigBlindSeat, bigBlind);
+    state = await log(next, `seat_${bigBlindSeat}`, "post_big_blind", posted);
+  }
+
+  return beginStreet(state);
+}
+
+/**
+ * In a trustless (mental-poker) hand the engine genuinely does not have the
+ * hole cards - only the two browsers do - so a contested showdown can't be
+ * resolved inline the way a server-dealt one is. Parking the hand in
+ * "showdown" lets the Durable Object collect and verify each seat's reveal
+ * first, then call finishShowdown with real cards.
+ *
+ * A hand that ends with a single contestant needs no cards at all (nobody's
+ * hand is compared to anything), so it still resolves immediately - which
+ * keeps the common fold-out case free of an extra round trip.
+ */
+function needsRevealBeforeResolve(state: EngineState): boolean {
+  return state.deferShowdown === true && contestingSeats(state).length > 1;
+}
+
 async function resolveHandEnd(state: EngineState): Promise<EngineState> {
+  if (needsRevealBeforeResolve(state)) {
+    return { ...state, street: "showdown", toAct: null, needsToAct: [] };
+  }
+  return awardAndComplete(state);
+}
+
+/**
+ * Completes a trustless hand once every contesting seat's hole cards have
+ * been revealed and checked against the committed deck by the caller. The
+ * cards are dropped straight into state.holeCards, so the award logic below
+ * is the exact same code path a server-dealt hand takes.
+ */
+export async function finishShowdown(
+  state: EngineState,
+  holeCards: EngineState["holeCards"],
+  board: Card[],
+): Promise<EngineState> {
+  if (state.street !== "showdown") throw new IllegalActionError("hand is not awaiting a showdown reveal");
+  if (board.length !== 5) throw new IllegalActionError("a showdown needs the full five-card board");
+  return awardAndComplete({ ...state, holeCards, board, finalStreet: "river" });
+}
+
+/** Turns the protocol's card codes ("As") into the engine's Card shape. */
+export function cardsFromCodes(codes: string[]): Card[] {
+  return codes.map(codeToCard);
+}
+
+async function awardAndComplete(state: EngineState): Promise<EngineState> {
   let next = state;
   const contesting = contestingSeats(state);
   if (contesting.length > 1) {
@@ -481,7 +654,10 @@ async function resolveHandEnd(state: EngineState): Promise<EngineState> {
     next = await log(next, "protocol", "award_pot", sp.amount);
   }
 
-  return { ...next, stacks, street: "complete", finalStreet: state.street, toAct: null, needsToAct: [], sidePots };
+  // state.street is "showdown" when we came via finishShowdown, which isn't
+  // a street anyone played - the caller set the real one already.
+  const finalStreet = state.street === "showdown" ? state.finalStreet : state.street;
+  return { ...next, stacks, street: "complete", finalStreet, toAct: null, needsToAct: [], sidePots };
 }
 
 export async function applyAction(state: EngineState, seat: Seat, action: ActionType, amount?: number): Promise<EngineState> {
@@ -536,7 +712,7 @@ function advanceOrClose(state: EngineState, actingSeat: Seat, needsToAct: Seat[]
 // ---- proof bundle / verifier ---------------------------------------------
 
 export type TableProofBundle = {
-  version: "RIVER_TABLE_V1";
+  version: "RIVER_TABLE_V2";
   handId: string;
   seatCount: number;
   buttonSeat: number;
@@ -545,9 +721,14 @@ export type TableProofBundle = {
   inHand: boolean[];
   commitments: (string | null)[];
   reveals: (string | null)[];
-  // Informational only, not itself cryptographically checked by
-  // verifyTableBundle - see EngineState.seedSources for why it exists.
+  // Cryptographically checked for every seat marked "server" - see
+  // EngineState.seedSources and verifyTableBundle's fallbackSeeds check.
   entropySource: ("client" | "server" | null)[];
+  // The server's revealed entropy plus the commitment that was published
+  // before this hand's client seeds were collected. verifyTableBundle
+  // re-hashes the seed and rejects any mismatch.
+  serverSeed: string;
+  serverSeedCommitment: string;
   combinedSeed: string;
   deck: string[];
   holeCardDeckIndices: ([number, number] | null)[];
@@ -562,6 +743,8 @@ export type TableVerificationResult = {
   checks: {
     version: boolean;
     commitments: boolean;
+    serverCommitment: boolean;
+    fallbackSeeds: boolean;
     combinedSeed: boolean;
     deterministicDeck: boolean;
     uniqueDeck: boolean;
@@ -574,7 +757,7 @@ export type TableVerificationResult = {
 
 export function buildProofBundle(state: EngineState): TableProofBundle {
   return {
-    version: "RIVER_TABLE_V1",
+    version: "RIVER_TABLE_V2",
     handId: state.handId,
     seatCount: state.seatCount,
     buttonSeat: state.buttonSeat,
@@ -584,6 +767,8 @@ export function buildProofBundle(state: EngineState): TableProofBundle {
     commitments: state.seedCommitments,
     reveals: state.seedReveals,
     entropySource: state.seedSources,
+    serverSeed: state.serverSeed,
+    serverSeedCommitment: state.serverSeedCommitmentValue,
     combinedSeed: state.combinedSeedValue,
     deck: state.deck.map((c) => c.code),
     holeCardDeckIndices: state.holeCardIndices,
@@ -639,12 +824,33 @@ export async function verifyTableBundle(bundle: TableProofBundle): Promise<Table
     }
   }
 
+  // The server's own entropy has to hash to the commitment it published
+  // before this hand's client seeds were collected. Without this, every
+  // other seed check below is still satisfiable by a server that simply
+  // re-rolled its own contribution until it liked the resulting deck.
+  const serverCommitmentOk =
+    typeof bundle.serverSeed === "string" &&
+    bundle.serverSeed.length > 0 &&
+    (await serverSeedCommitment(bundle.serverSeed)) === bundle.serverSeedCommitment;
+
+  // Every seat that fell back to server randomness must carry exactly the
+  // value derived from that committed seed - so "this seat didn't send one
+  // in time" can never be a cover story for a hand-picked seed.
+  let fallbackSeedsOk = serverCommitmentOk;
+  for (const seat of dealtSeats) {
+    if (bundle.entropySource[seat] !== "server") continue;
+    const expected = await fallbackSeatSeed(bundle.serverSeed, bundle.handId, seat);
+    if (bundle.reveals[seat] !== expected) fallbackSeedsOk = false;
+  }
+
   const seedsAsc = dealtSeats
     .slice()
     .sort((a, b) => a - b)
     .map((s) => bundle.reveals[s]);
   const allSeedsRevealed = seedsAsc.every((s): s is string => s !== null);
-  const expectedCombinedSeed = allSeedsRevealed ? await tableCombinedSeed(bundle.handId, seedsAsc as string[]) : null;
+  const expectedCombinedSeed = allSeedsRevealed
+    ? await tableCombinedSeed(bundle.handId, bundle.serverSeed, seedsAsc as string[])
+    : null;
   const combinedSeedOk = expectedCombinedSeed !== null && expectedCombinedSeed === bundle.combinedSeed;
 
   const expectedDeck = combinedSeedOk ? (await shuffleDeck(bundle.combinedSeed)).map((c) => c.code) : [];
@@ -690,8 +896,10 @@ export async function verifyTableBundle(bundle: TableProofBundle): Promise<Table
   }
 
   const checks = {
-    version: bundle.version === "RIVER_TABLE_V1",
+    version: bundle.version === "RIVER_TABLE_V2",
     commitments: commitmentsOk,
+    serverCommitment: serverCommitmentOk,
+    fallbackSeeds: fallbackSeedsOk,
     combinedSeed: combinedSeedOk,
     deterministicDeck: deterministicDeckOk,
     uniqueDeck: uniqueDeckOk,

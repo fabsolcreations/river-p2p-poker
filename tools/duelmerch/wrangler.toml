@@ -1,0 +1,19 @@
+name = "duelmerch"
+pages_build_output_dir = "public"
+compatibility_date = "2026-08-01"
+
+[[kv_namespaces]]
+binding = "WAITLIST"
+id = "507d8c3f915841b5934e887593be736a"
+
+[[kv_namespaces]]
+binding = "SUBMISSIONS"
+id = "2d2f580b406845499c15dc7781092bd7"
+
+[[kv_namespaces]]
+binding = "ORDERS"
+id = "c55dd3df4a304a9da408659c354dfaf1"
+
+[[kv_namespaces]]
+binding = "INTEREST"
+id = "4b8d433b77bf4cd1bfd36a4d3431bb04"

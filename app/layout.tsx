@@ -31,24 +31,30 @@ export async function generateMetadata(): Promise<Metadata> {
   const origin = `${protocol}://${host}`;
 
   return {
-    title: "RIVER — Poker without the house",
-    description: "Open a private poker table, invite your people with one link, and independently verify every completed hand.",
+    // Kept in step with the homepage hero deliberately. "Poker without the
+    // house" was the pre-pivot peer-to-peer framing and is now simply false
+    // - a trusted server deals every hand - so it doesn't belong on the tab
+    // title or the link preview, which are the first thing anyone shared a
+    // link actually sees.
+    title: "RIVER — Real hands. Real receipts.",
+    description:
+      "Server-dealt hold'em where every completed hand ships a cryptographic receipt you can verify yourself. 2-10 seats, host-set stakes, test chips.",
     applicationName: "RIVER",
     category: "games",
-    keywords: ["private poker", "peer-to-peer poker", "provably fair poker", "poker with friends"],
+    keywords: ["provably fair poker", "online poker", "verifiable poker", "poker with friends", "hold'em"],
     alternates: { canonical: origin },
     openGraph: {
       type: "website",
       url: origin,
       siteName: "RIVER",
-      title: "RIVER — Poker without the house",
-      description: "Private tables, one-link invites, and portable proof after every hand.",
-      images: [{ url: `${origin}/og-v2.png`, width: 1672, height: 941, alt: "RIVER — Poker without the house" }],
+      title: "RIVER — Real hands. Real receipts.",
+      description: "Server-dealt hold'em with a verifiable receipt after every hand. Test chips.",
+      images: [{ url: `${origin}/og-v2.png`, width: 1672, height: 941, alt: "RIVER — Real hands. Real receipts." }],
     },
     twitter: {
       card: "summary_large_image",
-      title: "RIVER — Poker without the house",
-      description: "Private tables, one-link invites, and portable proof after every hand.",
+      title: "RIVER — Real hands. Real receipts.",
+      description: "Server-dealt hold'em with a verifiable receipt after every hand. Test chips.",
       images: [`${origin}/og-v2.png`],
     },
     robots: { index: true, follow: true },

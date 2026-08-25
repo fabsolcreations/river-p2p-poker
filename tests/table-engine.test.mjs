@@ -9,9 +9,19 @@ import {
   buildProofBundle,
   computeSidePots,
   legalActions,
-  startHand,
+  serverSeedCommitment,
+  startHand as startHandRaw,
   verifyTableBundle,
 } from "../worker/table-engine.ts";
+
+// Every hand now needs the server's pre-committed entropy (see
+// table-engine.ts's serverSeedCommitment - it's what stops the server
+// grinding the shuffle after seeing client seeds). These tests care about
+// betting rules, not entropy plumbing, so they get a fixed, explicit seed
+// by default; the entropy-specific tests below pass their own.
+const TEST_SERVER_SEED = "5e".repeat(32);
+const startHand = (handId, seatCount, seats, previousButton, sb = 1, bb = 2, clientSeeds = {}, serverSeed = TEST_SERVER_SEED) =>
+  startHandRaw(handId, seatCount, seats, previousButton, sb, bb, clientSeeds, serverSeed);
 
 const HU_STACKS = [
   { seat: 0, stack: 100 },
@@ -398,4 +408,42 @@ test("with no client seeds supplied at all, every seat falls back to the server 
   const bundle = buildProofBundle(await playPassively(state));
   assert.deepEqual(bundle.entropySource.filter((s) => s !== null), ["server", "server"]);
   assert.equal((await verifyTableBundle(bundle)).valid, true);
+});
+
+test("the server's revealed seed must hash to the commitment it published beforehand", async () => {
+  const state = await startHand("t-server-commit", 2, HU_STACKS, null);
+  const bundle = buildProofBundle(await playPassively(state));
+  assert.equal((await verifyTableBundle(bundle)).valid, true);
+  assert.equal(bundle.serverSeedCommitment, await serverSeedCommitment(bundle.serverSeed));
+
+  // A server that published one commitment and then dealt from a different
+  // seed is exactly the "wait and see, then re-roll" attack - it has to be
+  // caught even though every per-seat commitment still checks out.
+  const swapped = { ...bundle, serverSeed: randomHex() };
+  const result = await verifyTableBundle(swapped);
+  assert.equal(result.valid, false);
+  assert.equal(result.checks.serverCommitment, false);
+});
+
+test("a fallback seat's seed is pinned to the committed server seed, so it can't be ground", async () => {
+  // Same inputs twice must give the identical fallback: the value is a
+  // function of the pre-commitment, not a fresh roll taken after the
+  // server has already seen the other seat's seed.
+  const clientSeed = randomHex();
+  const a = await startHand("t-pinned", 2, HU_STACKS, null, 1, 2, { 0: clientSeed }, TEST_SERVER_SEED);
+  const b = await startHand("t-pinned", 2, HU_STACKS, null, 1, 2, { 0: clientSeed }, TEST_SERVER_SEED);
+  assert.equal(a.seedSources[1], "server");
+  assert.equal(a.seedReveals[1], b.seedReveals[1]);
+  assert.equal(a.combinedSeedValue, b.combinedSeedValue);
+
+  // And substituting a hand-picked value into that fallback seat - the
+  // actual grind - is rejected, even after re-deriving the combined seed
+  // and deck so every other check would still pass.
+  const ground = randomHex();
+  const state = await playPassively(a);
+  const bundle = buildProofBundle(state);
+  const tampered = { ...bundle, reveals: bundle.reveals.map((r, i) => (i === 1 ? ground : r)) };
+  const result = await verifyTableBundle(tampered);
+  assert.equal(result.valid, false);
+  assert.equal(result.checks.fallbackSeeds, false);
 });

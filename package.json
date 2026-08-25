@@ -16,7 +16,11 @@
     "chain:node": "npm --prefix contracts run node",
     "chain:test": "npm --prefix contracts test",
     "chain:deploy:local": "npm --prefix contracts run deploy:local",
-    "chain:deploy:sepolia": "npm --prefix contracts run deploy:sepolia"
+    "chain:deploy:sepolia": "npm --prefix contracts run deploy:sepolia",
+    "cf:d1:create": "wrangler d1 create river-playriver",
+    "cf:schema": "node tools/deploy/apply-remote-schema.mjs",
+    "cf:deploy": "node tools/deploy/deploy.mjs",
+    "cf:preflight": "node tools/deploy/preflight.mjs"
   },
   "dependencies": {
     "@noble/curves": "^2.3.0",

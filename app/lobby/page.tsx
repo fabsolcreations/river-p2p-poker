@@ -1,32 +1,58 @@
 "use client";
 
-import { ArrowRight, Plus, RefreshCcw, Search, Users, X } from "lucide-react";
+import { ArrowRight, Plus, RefreshCcw, Search, Users, X, Zap } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { RiverShell } from "../components/river-shell";
+import { randomRoomCode } from "../play/table-transport";
+import { STAKES_PRESETS, stakesPresetForTier, type StakesTier } from "./stakes-presets";
 
-type TableRow = { roomCode: string; seatCount: number; occupiedCount: number; status: "waiting" | "playing"; updatedAt: string };
+type TableRow = {
+  roomCode: string;
+  seatCount: number;
+  occupiedCount: number;
+  status: "waiting" | "playing";
+  updatedAt: string;
+  smallBlind: number;
+  bigBlind: number;
+  minBuyIn: number;
+  maxBuyIn: number;
+  isLounge: boolean;
+};
 
 const seatOptions = [2, 4, 6, 8, 9, 10];
-
-// The room's opening stakes - the host can still change all four values
-// any time between hands once the table exists (see the settings modal in
-// table-lab), this just picks a sane starting point instead of always
-// defaulting to the smallest stakes. Index 0 matches poker-table.ts's own
-// defaults exactly, so a table created without touching this picker behaves
-// identically to before this feature existed.
-const stakesPresets = [
-  { label: "Micro", smallBlind: 1, bigBlind: 2, minBuyIn: 40, maxBuyIn: 200 },
-  { label: "Low", smallBlind: 5, bigBlind: 10, minBuyIn: 200, maxBuyIn: 1000 },
-  { label: "Mid", smallBlind: 25, bigBlind: 50, minBuyIn: 1000, maxBuyIn: 5000 },
-  { label: "High", smallBlind: 100, bigBlind: 200, minBuyIn: 4000, maxBuyIn: 20000 },
-];
 
 export default function LobbyPage() {
   const [tables, setTables] = useState<TableRow[] | "loading">("loading");
   const [query, setQuery] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
   const [createSeats, setCreateSeats] = useState(6);
-  const [createStakes, setCreateStakes] = useState(stakesPresets[0]);
+  const [createStakes, setCreateStakes] = useState(STAKES_PRESETS[0]);
+  const [loungeBusy, setLoungeBusy] = useState<StakesTier | null>(null);
+
+  // Finds an open public table at this tier (any seat free) and joins it,
+  // or - if none exists yet - mints a fresh one at that tier's stakes, the
+  // same lazy-DO-creation pattern the "New table" flow already uses. Either
+  // way lands on table-lab with autosit=1, which sits the player down
+  // immediately instead of the normal spectate-first flow (see
+  // table-lab's bootstrap effect) - the whole point of a lounge tile is
+  // "one click, in a hand," not "one click, choose a seat."
+  async function joinLounge(tier: StakesTier) {
+    const preset = stakesPresetForTier(tier);
+    if (!preset || loungeBusy) return;
+    setLoungeBusy(tier);
+    try {
+      const response = await fetch(`/api/lounge/join?tier=${tier}`);
+      const body = (await response.json()) as { roomCode: string | null };
+      if (body.roomCode) {
+        window.location.href = `/play/table-lab?room=${encodeURIComponent(body.roomCode)}&seats=6&autosit=1`;
+        return;
+      }
+      const code = randomRoomCode();
+      window.location.href = `/play/table-lab?room=${code}&seats=6&smallBlind=${preset.smallBlind}&bigBlind=${preset.bigBlind}&minBuyIn=${preset.minBuyIn}&maxBuyIn=${preset.maxBuyIn}&lounge=1&autosit=1`;
+    } finally {
+      setLoungeBusy(null);
+    }
+  }
 
   async function loadTables() {
     const response = await fetch("/api/lobby/tables");
@@ -61,13 +87,26 @@ export default function LobbyPage() {
           </div>
         </section>
 
+        <section className="lounge-tiles">
+          <div className="lounge-tiles-head"><Zap size={15} /><span>LOUNGE</span><p>One click, in a hand - joins an open public table at this tier, or opens a fresh one.</p></div>
+          <div className="lounge-tiles-grid">
+            {STAKES_PRESETS.map((preset) => (
+              <button key={preset.tier} type="button" disabled={loungeBusy !== null} onClick={() => joinLounge(preset.tier)}>
+                <b>{preset.label}</b>
+                <small>{preset.smallBlind}/{preset.bigBlind}</small>
+                <span>{loungeBusy === preset.tier ? "Joining..." : "Join"}</span>
+              </button>
+            ))}
+          </div>
+        </section>
+
         <section className="r3-lobby-controls">
           <label className="r3-lobby-search"><Search size={15} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search by room code" /></label>
           <button className="r3-new-game" onClick={() => setCreateOpen(true)}><Plus size={16} /> New table</button>
         </section>
 
         <section className="r3-game-directory lobby-directory">
-          <div className="lobby-row lobby-row-head"><span>ROOM</span><span>SEATS</span><span>STATUS</span><span /></div>
+          <div className="lobby-row lobby-row-head"><span>ROOM</span><span>STAKES</span><span>SEATS</span><span>STATUS</span><span /></div>
           {tables === "loading" ? (
             <div className="r3-empty"><Search size={22} /><b>Loading tables...</b></div>
           ) : rows.length === 0 ? (
@@ -79,7 +118,8 @@ export default function LobbyPage() {
           ) : (
             rows.map((table) => (
               <a className="lobby-row" href={`/play/table-lab?room=${encodeURIComponent(table.roomCode)}&seats=${table.seatCount}`} key={table.roomCode}>
-                <span className="lobby-room-name"><b>{table.roomCode}</b></span>
+                <span className="lobby-room-name"><b>{table.roomCode}</b>{table.isLounge && <i className="casino-badge idle">LOUNGE</i>}</span>
+                <span className="lobby-stakes-cell">{table.smallBlind}/{table.bigBlind}</span>
                 <span className="lobby-seats"><b>{table.occupiedCount}<i> / {table.seatCount}</i></b></span>
                 <span><i className={`casino-badge ${table.status === "playing" ? "live" : "idle"}`}>{table.status === "playing" ? "IN HAND" : "WAITING"}</i></span>
                 <ArrowRight size={16} className="r3-row-arrow" />
@@ -108,11 +148,11 @@ export default function LobbyPage() {
             </div>
             <span className="lobby-dialog-subhead">Stakes (changeable later by the host)</span>
             <div className="lobby-stakes-picker">
-              {stakesPresets.map((preset) => (
+              {STAKES_PRESETS.map((preset) => (
                 <button
-                  key={preset.label}
+                  key={preset.tier}
                   type="button"
-                  className={createStakes.label === preset.label ? "active" : ""}
+                  className={createStakes.tier === preset.tier ? "active" : ""}
                   onClick={() => setCreateStakes(preset)}
                 >
                   <b>{preset.label}</b>

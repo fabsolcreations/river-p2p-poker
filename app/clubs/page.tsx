@@ -4,43 +4,50 @@ import {
   ArrowRight,
   CalendarDays,
   Check,
-  ChevronDown,
-  CircleDollarSign,
   Copy,
   Crown,
   Gamepad2,
   Layers3,
-  MoreHorizontal,
   Plus,
-  Search,
   RefreshCw,
+  Search,
   ShieldCheck,
-  SlidersHorizontal,
+  UserPlus,
   Users,
   X,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { RiverShell } from "../components/river-shell";
+import { randomRoomCode } from "../play/table-transport";
 
-const members = [
-  { name: "mira.sol", role: "Host", games: 42, status: "Online", initials: "M", color: "violet" },
-  { name: "oxcoast", role: "Moderator", games: 31, status: "In game", initials: "OX", color: "blue" },
-  { name: "riverside", role: "Member", games: 18, status: "Online", initials: "RS", color: "mint" },
-  { name: "juno", role: "Member", games: 12, status: "Away", initials: "JU", color: "coral" },
-  { name: "lowkey", role: "Member", games: 9, status: "Offline", initials: "LK", color: "amber" },
-];
+type Account = { id: string; username: string; balance: number };
+type ClubRow = { id: string; name: string; inviteCode: string; ownerId: string; role: string; memberCount: number };
+type MemberRow = { username: string; role: string; joinedAt: string };
+type GameRow = { id: string; clubId: string; name: string; format: string; stakes: string; scheduledAt: string; rsvpCount: number; rsvped: boolean };
+type ClubTableRow = { roomCode: string; seatCount: number; occupiedCount: number; status: string; smallBlind: number; bigBlind: number };
+type Stats = { members: number; linkedRooms: number; scheduledGames: number; handsLast7d: number };
 
-const scheduledGames = [
-  { day: "14", month: "AUG", name: "After Hours", time: "9:00 PM CT", format: "NLH", stakes: "$0.25 / $0.50", rsvps: 5 },
-  { day: "16", month: "AUG", name: "Sunday Signal", time: "7:00 PM CT", format: "NLH MTT", stakes: "20 USDC", rsvps: 18 },
-  { day: "19", month: "AUG", name: "Blackbird", time: "8:30 PM CT", format: "PLO", stakes: "$0.50 / $1", rsvps: 4 },
-];
+const EMPTY_STATS: Stats = { members: 0, linkedRooms: 0, scheduledGames: 0, handsLast7d: 0 };
 
-type Tab = "overview" | "members" | "games" | "treasury";
+type Tab = "overview" | "members" | "games";
 
 export default function ClubsPage() {
+  const [account, setAccount] = useState<Account | null | "loading">("loading");
+  const [myClubs, setMyClubs] = useState<ClubRow[] | "loading">("loading");
+  const [activeClubId, setActiveClubId] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>("overview");
+
+  const [members, setMembers] = useState<MemberRow[]>([]);
+  const [games, setGames] = useState<GameRow[]>([]);
+  const [rooms, setRooms] = useState<ClubTableRow[]>([]);
+  const [stats, setStats] = useState<Stats>(EMPTY_STATS);
+  const [memberQuery, setMemberQuery] = useState("");
+
+  const [createOpen, setCreateOpen] = useState(false);
+  const [joinOpen, setJoinOpen] = useState(false);
   const [scheduleOpen, setScheduleOpen] = useState(false);
+  const [formError, setFormError] = useState("");
+  const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState("");
 
   function notify(message: string) {
@@ -48,15 +55,210 @@ export default function ClubsPage() {
     window.setTimeout(() => setToast(""), 2400);
   }
 
-  async function copyCode() {
-    await navigator.clipboard.writeText("NIGHT-RIVER-88");
+  async function loadAccount() {
+    const response = await fetch("/api/auth/me");
+    const body = (await response.json()) as { user: Account | null };
+    setAccount(body.user);
+    if (body.user) await loadMyClubs();
+    else setMyClubs([]);
+  }
+
+  async function loadMyClubs(preferClubId?: string) {
+    const response = await fetch("/api/clubs/mine");
+    if (!response.ok) {
+      setMyClubs([]);
+      return;
+    }
+    const body = (await response.json()) as { clubs: ClubRow[] };
+    setMyClubs(body.clubs);
+    const next = preferClubId ?? (body.clubs.some((c) => c.id === activeClubId) ? activeClubId : body.clubs[0]?.id ?? null);
+    setActiveClubId(next);
+  }
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time client-only session bootstrap
+    loadAccount();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- loadAccount is intentionally called only once, on mount
+  }, []);
+
+  async function loadClubData(clubId: string) {
+    const [membersRes, gamesRes, roomsRes, statsRes] = await Promise.all([
+      fetch(`/api/clubs/members?clubId=${clubId}`),
+      fetch(`/api/clubs/games?clubId=${clubId}`),
+      fetch(`/api/clubs/tables?clubId=${clubId}`),
+      fetch(`/api/clubs/stats?clubId=${clubId}`),
+    ]);
+    setMembers(membersRes.ok ? ((await membersRes.json()) as { members: MemberRow[] }).members : []);
+    setGames(gamesRes.ok ? ((await gamesRes.json()) as { games: GameRow[] }).games : []);
+    setRooms(roomsRes.ok ? ((await roomsRes.json()) as { tables: ClubTableRow[] }).tables : []);
+    setStats(statsRes.ok ? ((await statsRes.json()) as { stats: Stats }).stats : EMPTY_STATS);
+  }
+
+  useEffect(() => {
+    if (!activeClubId) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- loads the newly-selected club's real data, unavailable until activeClubId changes
+    loadClubData(activeClubId);
+    // Refreshes the sidebar's memberCount too (myClubs is otherwise only
+    // refetched after this account's own create/join actions, so another
+    // member joining wouldn't otherwise show up there until next visit).
+    loadMyClubs(activeClubId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- loadClubData/loadMyClubs are intentionally re-run only when activeClubId itself changes
+  }, [activeClubId]);
+
+  const activeClub = myClubs === "loading" ? null : (myClubs.find((c) => c.id === activeClubId) ?? null);
+
+  async function createClub(name: string) {
+    setBusy(true);
+    setFormError("");
+    try {
+      const response = await fetch("/api/clubs/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name }),
+      });
+      const body = (await response.json()) as { club?: ClubRow; error?: string };
+      if (!response.ok || !body.club) throw new Error(body.error ?? "Could not create club.");
+      await loadMyClubs(body.club.id);
+      setCreateOpen(false);
+      notify(`${body.club.name} created`);
+    } catch (error) {
+      setFormError(error instanceof Error ? error.message : "Could not create club.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function joinClub(inviteCode: string) {
+    setBusy(true);
+    setFormError("");
+    try {
+      const response = await fetch("/api/clubs/join", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ inviteCode }),
+      });
+      const body = (await response.json()) as { club?: ClubRow; error?: string };
+      if (!response.ok || !body.club) throw new Error(body.error ?? "Could not join club.");
+      await loadMyClubs(body.club.id);
+      setJoinOpen(false);
+      notify(`Joined ${body.club.name}`);
+    } catch (error) {
+      setFormError(error instanceof Error ? error.message : "Could not join club.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function copyInvite() {
+    if (!activeClub) return;
+    await navigator.clipboard.writeText(activeClub.inviteCode);
     notify("Invite code copied");
   }
 
-  function schedule(event: React.FormEvent<HTMLFormElement>) {
+  async function scheduleGame(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setScheduleOpen(false);
-    notify("Game saved as a local draft");
+    if (!activeClubId) return;
+    const form = new FormData(event.currentTarget);
+    setBusy(true);
+    setFormError("");
+    try {
+      const response = await fetch("/api/clubs/games", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          clubId: activeClubId,
+          name: form.get("name"),
+          format: form.get("format"),
+          stakes: form.get("stakes"),
+          scheduledAt: `${form.get("date")}T${form.get("time")}`,
+        }),
+      });
+      const body = (await response.json()) as { error?: string };
+      if (!response.ok) throw new Error(body.error ?? "Could not schedule game.");
+      await loadClubData(activeClubId);
+      setScheduleOpen(false);
+      notify("Game scheduled");
+    } catch (error) {
+      setFormError(error instanceof Error ? error.message : "Could not schedule game.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function toggleRsvp(gameId: string) {
+    const response = await fetch("/api/clubs/games/rsvp", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ gameId }),
+    });
+    if (!response.ok) return;
+    const body = (await response.json()) as { rsvped: boolean };
+    setGames((prev) => prev.map((game) => (game.id === gameId ? { ...game, rsvped: body.rsvped, rsvpCount: game.rsvpCount + (body.rsvped ? 1 : -1) } : game)));
+  }
+
+  async function openClubTable() {
+    if (!activeClubId) return;
+    const roomCode = randomRoomCode();
+    await fetch("/api/clubs/tables", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ clubId: activeClubId, roomCode }),
+    });
+    window.location.href = `/play/table-lab?room=${encodeURIComponent(roomCode)}&seats=6`;
+  }
+
+  const filteredMembers = members.filter((m) => m.username.toLowerCase().includes(memberQuery.toLowerCase()));
+  const upcomingGames = [...games].sort((a, b) => a.scheduledAt.localeCompare(b.scheduledAt));
+
+  function formatWhen(iso: string) {
+    const date = new Date(iso);
+    if (Number.isNaN(date.getTime())) return { day: "--", month: "---", time: iso };
+    return {
+      day: date.toLocaleDateString(undefined, { day: "2-digit" }),
+      month: date.toLocaleDateString(undefined, { month: "short" }).toUpperCase(),
+      time: date.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }),
+    };
+  }
+
+  if (account === "loading" || myClubs === "loading") {
+    return (
+      <RiverShell active="clubs" dark footer={false}>
+        <main className="club-empty-state"><Users size={30} /><h1>Loading clubs…</h1></main>
+      </RiverShell>
+    );
+  }
+
+  if (!account) {
+    return (
+      <RiverShell active="clubs" dark footer={false}>
+        <main className="club-empty-state">
+          <ShieldCheck size={30} />
+          <h1>Sign in to use clubs</h1>
+          <p>Clubs are real member groups with an invite code, real linked rooms, and a real game calendar - sign in first so RIVER knows who&apos;s joining.</p>
+          <div className="club-empty-actions"><a href="/account"><UserPlus size={16} /> Sign in</a></div>
+        </main>
+      </RiverShell>
+    );
+  }
+
+  if (myClubs.length === 0) {
+    return (
+      <RiverShell active="clubs" dark footer={false}>
+        <main className="club-empty-state">
+          <Users size={30} />
+          <h1>No clubs yet</h1>
+          <p>Create a club to get a real invite code, or join one with a code a friend shared with you.</p>
+          <div className="club-empty-actions">
+            <button onClick={() => setCreateOpen(true)}><Plus size={16} /> Create a club</button>
+            <button className="ghost" onClick={() => setJoinOpen(true)}><UserPlus size={16} /> Join with code</button>
+          </div>
+        </main>
+        {createOpen && (
+          <ClubCreateDialog busy={busy} error={formError} onClose={() => setCreateOpen(false)} onSubmit={createClub} />
+        )}
+        {joinOpen && <ClubJoinDialog busy={busy} error={formError} onClose={() => setJoinOpen(false)} onSubmit={joinClub} />}
+      </RiverShell>
+    );
   }
 
   return (
@@ -64,78 +266,223 @@ export default function ClubsPage() {
       <main className="clubs-page">
         <aside className="club-sidebar">
           <div className="club-identity">
-            <div className="club-emblem"><span>NR</span><i /><i /></div>
-            <div><span>PRIVATE CLUB MODEL</span><h1>Night River</h1><p>128 modeled members</p></div>
+            <div className="club-emblem"><span>{(activeClub?.name ?? "??").slice(0, 2).toUpperCase()}</span><i /><i /></div>
+            <div><span>REAL CLUB</span><h1>{activeClub?.name ?? "Club"}</h1><p>{activeClub?.memberCount ?? 0} real members</p></div>
           </div>
           <nav aria-label="Club console">
             {([
               ["overview", "Overview", Gamepad2],
               ["members", "Members", Users],
               ["games", "Games", CalendarDays],
-              ["treasury", "Fee ledger", CircleDollarSign],
             ] as const).map(([id, label, Icon]) => <button className={tab === id ? "active" : ""} onClick={() => setTab(id)} key={id}><Icon size={16} />{label}<ArrowRight size={14} /></button>)}
           </nav>
-          <div className="club-sidebar-note"><ShieldCheck size={17} /><p><b>Host without custody</b>The operator configures games and access. The production target keeps player funds outside the host account.</p></div>
+          {myClubs.length > 1 && (
+            <div className="club-switcher">
+              {myClubs.map((club) => (
+                <button key={club.id} className={club.id === activeClubId ? "active" : ""} onClick={() => setActiveClubId(club.id)}>
+                  <span>{club.name}</span>{club.role === "host" && <Crown size={12} />}
+                </button>
+              ))}
+            </div>
+          )}
+          <div className="club-sidebar-note">
+            <ShieldCheck size={17} />
+            <p><b>Real invite gate</b>Anyone with the invite code can join - approval queues aren&apos;t built yet, so keep the code to people you trust.</p>
+          </div>
+          <button className="back-to-lobby" style={{ background: "transparent", border: 0, cursor: "pointer" }} onClick={() => setJoinOpen(true)}>Join another club <ArrowRight size={14} /></button>
           <a className="back-to-lobby" href="/lobby">Browse public lobby <ArrowRight size={14} /></a>
         </aside>
 
         <section className="club-console">
           <header className="club-console-head">
-            <div><span>CLUB CONSOLE / {tab.toUpperCase()}</span><h2>{tab === "overview" ? "Good evening, darc." : tab === "members" ? "Member directory" : tab === "games" ? "Game calendar" : "Transparent fee ledger"}</h2></div>
+            <div><span>CLUB CONSOLE / {tab.toUpperCase()}</span><h2>{tab === "overview" ? `Good to see you, ${account.username}.` : tab === "members" ? "Member directory" : "Game calendar"}</h2></div>
             <button onClick={() => setScheduleOpen(true)}><Plus size={16} /> Schedule game</button>
           </header>
 
           {tab === "overview" && <>
-            <div className="club-truth-banner"><i /><span>PRODUCT MODEL</span><p>All balances, members, and revenue below are illustrative interface data. No live club or treasury exists.</p></div>
             <div className="club-metric-grid">
-              <article><span>ACTIVE MEMBERS / 30D</span><b>64</b><small>of 128 modeled</small><i style={{ width: "50%" }} /></article>
-              <article><span>HANDS / 7D</span><b>2,418</b><small>interface sample</small><i style={{ width: "72%" }} /></article>
-              <article><span>MODELED VOLUME / 7D</span><b>42.8K</b><small>USDC example</small><i style={{ width: "61%" }} /></article>
-              <article className="accent"><span>HOST FEE / CURRENT</span><b>0.50%</b><small>hard cap: 1 USDC</small><i style={{ width: "35%" }} /></article>
+              <article><span>MEMBERS</span><b>{stats.members}</b><small>real, joined by code</small><i style={{ width: "100%" }} /></article>
+              <article><span>CLUB ROOMS</span><b>{stats.linkedRooms}</b><small>real linked rooms</small><i style={{ width: "100%" }} /></article>
+              <article><span>SCHEDULED GAMES</span><b>{stats.scheduledGames}</b><small>upcoming + past</small><i style={{ width: "100%" }} /></article>
+              <article className="accent"><span>HANDS / 7D</span><b>{stats.handsLast7d}</b><small>real hands, club rooms only</small><i style={{ width: "100%" }} /></article>
             </div>
 
             <div className="club-overview-grid">
               <section className="upcoming-panel">
                 <div className="panel-heading"><div><span>NEXT ON THE CALENDAR</span><h3>Scheduled games</h3></div><button onClick={() => setTab("games")}>View all <ArrowRight size={14} /></button></div>
-                <div className="schedule-list">{scheduledGames.map((game) => <article key={game.name}><div className="schedule-date"><b>{game.day}</b><span>{game.month}</span></div><div><h4>{game.name}</h4><p>{game.time} / {game.format}</p></div><div><span>STAKES</span><b>{game.stakes}</b></div><div><span>RSVP</span><b>{game.rsvps}</b></div><button><MoreHorizontal size={16} /></button></article>)}</div>
+                {upcomingGames.length === 0 ? (
+                  <p className="club-rooms-empty">No games scheduled yet.</p>
+                ) : (
+                  <div className="schedule-list">
+                    {upcomingGames.slice(0, 3).map((game) => {
+                      const when = formatWhen(game.scheduledAt);
+                      return (
+                        <article key={game.id}>
+                          <div className="schedule-date"><b>{when.day}</b><span>{when.month}</span></div>
+                          <div><h4>{game.name}</h4><p>{when.time} / {game.format}</p></div>
+                          <div><span>STAKES</span><b>{game.stakes}</b></div>
+                          <div><span>RSVP</span><b>{game.rsvpCount}</b></div>
+                          <button onClick={() => toggleRsvp(game.id)}>{game.rsvped ? <Check size={16} /> : <Plus size={16} />}</button>
+                        </article>
+                      );
+                    })}
+                  </div>
+                )}
               </section>
               <section className="invite-panel">
-                <span>CLUB ACCESS</span><h3>Bring the right players.</h3><p>One invite code, optional approval, visible table rules.</p>
-                <button className="invite-code" onClick={copyCode}><span><small>INVITE CODE</small><b>NIGHT-RIVER-88</b></span><Copy size={17} /></button>
-                <div className="invite-settings"><div><span>NEW MEMBERS</span><b>Manual approval</b></div><div><span>GAME VISIBILITY</span><b>Members only</b></div></div>
+                <span>CLUB ACCESS</span><h3>Bring the right players.</h3><p>One real invite code - anyone who has it can join.</p>
+                <button className="invite-code" onClick={copyInvite}><span><small>INVITE CODE</small><b>{activeClub?.inviteCode}</b></span><Copy size={17} /></button>
+                <div className="invite-settings"><div><span>YOUR ROLE</span><b>{activeClub?.role === "host" ? "Host" : "Member"}</b></div><div><span>MEMBERS</span><b>{stats.members}</b></div></div>
               </section>
             </div>
 
             <section className="recent-members-panel">
-              <div className="panel-heading"><div><span>TABLE REGULARS</span><h3>Member pulse</h3></div><button onClick={() => setTab("members")}>Manage members <ArrowRight size={14} /></button></div>
-              <div className="member-mini-grid">{members.slice(0, 4).map((member) => <div key={member.name}><span className={`member-avatar ${member.color}`}>{member.initials}</span><div><b>{member.name}</b><small>{member.role} / {member.games} games</small></div><i className={member.status.toLowerCase().replace(" ", "-")} /></div>)}</div>
+              <div className="panel-heading"><div><span>CLUB REGULARS</span><h3>Member pulse</h3></div><button onClick={() => setTab("members")}>Manage members <ArrowRight size={14} /></button></div>
+              <div className="member-mini-grid">
+                {members.slice(0, 4).map((member) => (
+                  <div key={member.username}>
+                    <span className="member-avatar">{member.username.slice(0, 2).toUpperCase()}</span>
+                    <div><b>{member.username}</b><small>{member.role}</small></div>
+                  </div>
+                ))}
+              </div>
             </section>
           </>}
 
           {tab === "members" && <section className="members-view">
-            <div className="console-toolbar"><label><Search size={15} /><input placeholder="Search members" /></label><button><SlidersHorizontal size={15} /> Filters</button><button><Plus size={15} /> Invite</button></div>
-            <div className="members-table-head"><span>PLAYER</span><span>ROLE</span><span>GAMES</span><span>STATUS</span><span /></div>
-            {members.map((member) => <article className="member-row" key={member.name}><div><span className={`member-avatar ${member.color}`}>{member.initials}</span><b>{member.name}</b></div><span>{member.role}{member.role === "Host" && <Crown size={13} />}</span><b>{member.games}</b><span className={`member-status ${member.status.toLowerCase().replace(" ", "-")}`}><i />{member.status}</span><button><MoreHorizontal size={16} /></button></article>)}
+            <div className="console-toolbar"><label><Search size={15} /><input placeholder="Search members" value={memberQuery} onChange={(e) => setMemberQuery(e.target.value)} /></label></div>
+            <div className="members-table-head"><span>PLAYER</span><span>ROLE</span><span>JOINED</span><span /><span /></div>
+            {filteredMembers.map((member) => (
+              <article className="member-row" key={member.username}>
+                <div><span className="member-avatar">{member.username.slice(0, 2).toUpperCase()}</span><b>{member.username}</b></div>
+                <span>{member.role}{member.role === "host" && <Crown size={13} />}</span>
+                <b>{new Date(member.joinedAt).toLocaleDateString()}</b>
+                <span />
+                <span />
+              </article>
+            ))}
           </section>}
 
           {tab === "games" && <section className="games-view">
-            <div className="club-live-groups"><div className="club-groups-head"><div><Layers3 size={18} /><span><small>LIVE ROOM GROUP</small><b>After Hours</b></span></div><p>Open-ended cash room · 6 seats per table · automatic table opening</p><button onClick={() => notify("Local table group manager opened")}><RefreshCw size={14} /> Manage balancing</button></div><div className="club-group-tables">{[["01", "Main Table", "6 / 6", "PLAYING"], ["02", "Overflow 1", "5 / 6", "PLAYING"], ["03", "Overflow 2", "2 / 6", "SEATING"], ["04+", "Next table", "—", "ON DEMAND"]].map((table) => <article key={table[0]}><i>{table[0]}</i><span><b>{table[1]}</b><small>{table[2]} seats</small></span><strong>{table[3]}</strong></article>)}</div></div>
-            <div className="calendar-strip"><button>Today</button><div className="calendar-days">{["MON 12", "TUE 13", "WED 14", "THU 15", "FRI 16", "SAT 17", "SUN 18"].map((day, index) => <button className={index === 2 ? "active" : ""} key={day}>{day}</button>)}</div><button><ChevronDown size={15} /></button></div>
-            <div className="games-agenda">{scheduledGames.map((game, index) => <article key={game.name}><div className="agenda-time"><span>{game.day} {game.month}</span><b>{game.time}</b></div><div className={`agenda-marker marker-${index}`} /><div><span>{game.format} / {game.stakes}</span><h3>{game.name}</h3><p>{game.rsvps} members have modeled RSVPs</p></div><button>Open draft <ArrowRight size={14} /></button></article>)}</div>
-          </section>}
-
-          {tab === "treasury" && <section className="treasury-view">
-            <div className="treasury-summary"><span>ILLUSTRATIVE / LAST 30 DAYS</span><h3>Every fee should reconcile.</h3><p>The production ledger will distinguish protocol fees, host fees, refunds, and payouts at the hand level.</p></div>
-            <div className="treasury-cards"><article><span>MODELED HOST FEES</span><b>428.14</b><small>USDC example</small></article><article><span>PROTOCOL FEES</span><b>856.28</b><small>1% target model</small></article><article><span>UNRECONCILED</span><b>0.00</b><small>expected invariant</small></article></div>
-            <div className="ledger-table"><div className="ledger-table-head"><span>DATE / HAND RANGE</span><span>VOLUME</span><span>HOST FEE</span><span>PROTOCOL</span><span>STATUS</span></div>{[
-              ["AUG 11 / 02A1-19FD", "8,420.00", "42.10", "84.20"], ["AUG 10 / 72B0-EEC4", "11,806.00", "59.03", "118.06"], ["AUG 09 / 11CC-90A2", "6,344.00", "31.72", "63.44"], ["AUG 08 / 4A8B-B012", "9,780.00", "48.90", "97.80"],
-            ].map((row) => <div className="ledger-table-row" key={row[0]}><span>{row[0]}</span><b>{row[1]}</b><b>{row[2]}</b><b>{row[3]}</b><span><Check size={12} /> RECONCILED</span></div>)}</div>
+            <div className="club-live-groups">
+              <div className="club-groups-head">
+                <div><Layers3 size={18} /><span><small>CLUB ROOMS</small><b>Real linked tables</b></span></div>
+                <p>Real Durable-Object rooms tagged to this club - not a formatted table group, just what&apos;s actually open.</p>
+                <button onClick={openClubTable}><RefreshCw size={14} /> Open a table</button>
+              </div>
+              {rooms.length === 0 ? (
+                <p className="club-rooms-empty">No club rooms open yet - open one above.</p>
+              ) : (
+                <div className="club-group-tables">
+                  {rooms.map((room, index) => (
+                    <a href={`/play/table-lab?room=${encodeURIComponent(room.roomCode)}&seats=${room.seatCount}`} key={room.roomCode}>
+                      <article>
+                        <i>{String(index + 1).padStart(2, "0")}</i>
+                        <span><b>{room.roomCode}</b><small>{room.occupiedCount} / {room.seatCount} seats</small></span>
+                        <strong>{room.status === "playing" ? "PLAYING" : "WAITING"}</strong>
+                      </article>
+                    </a>
+                  ))}
+                </div>
+              )}
+            </div>
+            {upcomingGames.length === 0 ? (
+              <p className="club-rooms-empty">No games scheduled yet.</p>
+            ) : (
+              <div className="games-agenda">
+                {upcomingGames.map((game, index) => {
+                  const when = formatWhen(game.scheduledAt);
+                  return (
+                    <article key={game.id}>
+                      <div className="agenda-time"><span>{when.day} {when.month}</span><b>{when.time}</b></div>
+                      <div className={`agenda-marker marker-${index % 3}`} />
+                      <div><span>{game.format} / {game.stakes}</span><h3>{game.name}</h3><p>{game.rsvpCount} member{game.rsvpCount === 1 ? "" : "s"} RSVPed</p></div>
+                      <button onClick={() => toggleRsvp(game.id)}>{game.rsvped ? "Cancel RSVP" : "RSVP"} <ArrowRight size={14} /></button>
+                    </article>
+                  );
+                })}
+              </div>
+            )}
           </section>}
         </section>
       </main>
 
-      {scheduleOpen && <div className="river-dialog-backdrop" onMouseDown={() => setScheduleOpen(false)}><section className="river-dialog schedule-dialog" role="dialog" aria-modal="true" aria-labelledby="schedule-title" onMouseDown={(event) => event.stopPropagation()}><button className="dialog-close" onClick={() => setScheduleOpen(false)} aria-label="Close"><X size={18} /></button><span className="dialog-index">CLUB TOOL / LOCAL DRAFT</span><h2 id="schedule-title">Schedule a game.</h2><p>Create a reusable club event without moving funds or opening seats.</p><form className="river-form" onSubmit={schedule}><label>Game name<input required placeholder="Friday night" /></label><div className="form-pair"><label>Format<select><option>NL Hold’em</option><option>Pot-Limit Omaha</option><option>Short Deck</option></select></label><label>Stakes<select><option>$0.25 / $0.50</option><option>$0.50 / $1</option><option>$1 / $2</option></select></label></div><div className="form-pair"><label>Date<input type="date" required /></label><label>Time<input type="time" required /></label></div><label className="fee-preview"><span>ACCESS</span><b>Club members / approval on</b><small>Editable after saving</small></label><button type="submit">Save local draft <ArrowRight size={17} /></button></form></section></div>}
+      {scheduleOpen && (
+        <div className="river-dialog-backdrop" onMouseDown={() => setScheduleOpen(false)}>
+          <section className="river-dialog schedule-dialog" role="dialog" aria-modal="true" aria-labelledby="schedule-title" onMouseDown={(event) => event.stopPropagation()}>
+            <button className="dialog-close" onClick={() => setScheduleOpen(false)} aria-label="Close"><X size={18} /></button>
+            <span className="dialog-index">CLUB TOOL</span>
+            <h2 id="schedule-title">Schedule a game.</h2>
+            <p>Real event, saved to this club - members see it immediately.</p>
+            <form className="river-form" onSubmit={scheduleGame}>
+              <label>Game name<input name="name" required placeholder="Friday night" /></label>
+              <div className="form-pair">
+                <label>Format<select name="format" defaultValue="NL Hold'em"><option>NL Hold&apos;em</option><option>Pot-Limit Omaha</option><option>Short Deck</option></select></label>
+                <label>Stakes<select name="stakes" defaultValue="1 / 2"><option>1 / 2</option><option>5 / 10</option><option>25 / 50</option><option>100 / 200</option></select></label>
+              </div>
+              <div className="form-pair">
+                <label>Date<input name="date" type="date" required /></label>
+                <label>Time<input name="time" type="time" required /></label>
+              </div>
+              {formError && <p className="auth-error">{formError}</p>}
+              <button type="submit" disabled={busy}>{busy ? "Saving…" : "Schedule game"} <ArrowRight size={17} /></button>
+            </form>
+          </section>
+        </div>
+      )}
+      {createOpen && <ClubCreateDialog busy={busy} error={formError} onClose={() => setCreateOpen(false)} onSubmit={createClub} />}
+      {joinOpen && <ClubJoinDialog busy={busy} error={formError} onClose={() => setJoinOpen(false)} onSubmit={joinClub} />}
       {toast && <div className="river-toast"><Check size={15} /> {toast}</div>}
     </RiverShell>
+  );
+}
+
+function ClubCreateDialog({ busy, error, onClose, onSubmit }: { busy: boolean; error: string; onClose: () => void; onSubmit: (name: string) => void }) {
+  return (
+    <div className="river-dialog-backdrop" onMouseDown={onClose}>
+      <section className="river-dialog schedule-dialog" role="dialog" aria-modal="true" aria-labelledby="create-club-title" onMouseDown={(event) => event.stopPropagation()}>
+        <button className="dialog-close" onClick={onClose} aria-label="Close"><X size={18} /></button>
+        <span className="dialog-index">NEW CLUB</span>
+        <h2 id="create-club-title">Name your club.</h2>
+        <p>You get a real invite code the moment it&apos;s created.</p>
+        <form
+          className="river-form"
+          onSubmit={(event) => {
+            event.preventDefault();
+            const name = new FormData(event.currentTarget).get("name");
+            if (typeof name === "string") onSubmit(name);
+          }}
+        >
+          <label>Club name<input name="name" required minLength={2} maxLength={40} placeholder="Night River" /></label>
+          {error && <p className="auth-error">{error}</p>}
+          <button type="submit" disabled={busy}>{busy ? "Creating…" : "Create club"} <ArrowRight size={17} /></button>
+        </form>
+      </section>
+    </div>
+  );
+}
+
+function ClubJoinDialog({ busy, error, onClose, onSubmit }: { busy: boolean; error: string; onClose: () => void; onSubmit: (code: string) => void }) {
+  return (
+    <div className="river-dialog-backdrop" onMouseDown={onClose}>
+      <section className="river-dialog schedule-dialog" role="dialog" aria-modal="true" aria-labelledby="join-club-title" onMouseDown={(event) => event.stopPropagation()}>
+        <button className="dialog-close" onClick={onClose} aria-label="Close"><X size={18} /></button>
+        <span className="dialog-index">JOIN CLUB</span>
+        <h2 id="join-club-title">Enter an invite code.</h2>
+        <p>Ask the club&apos;s host or a member for their real code.</p>
+        <form
+          className="river-form"
+          onSubmit={(event) => {
+            event.preventDefault();
+            const code = new FormData(event.currentTarget).get("code");
+            if (typeof code === "string") onSubmit(code);
+          }}
+        >
+          <label>Invite code<input name="code" required placeholder="A1B2C3D4" /></label>
+          {error && <p className="auth-error">{error}</p>}
+          <button type="submit" disabled={busy}>{busy ? "Joining…" : "Join club"} <ArrowRight size={17} /></button>
+        </form>
+      </section>
+    </div>
   );
 }

@@ -392,13 +392,25 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .r3-lobby-controls:has(.r3-new-game:nth-child(2)) { grid-template-columns: 1fr auto; }
 .r3-lobby-refresh { align-items: center; background: transparent; border: 1px solid var(--r3-line); color: #9aa19a; display: flex; height: 24px; justify-content: center; width: 24px; }
 .lobby-directory { min-height: 200px; }
-.lobby-row { align-items: center; color: inherit; display: grid; gap: 12px; grid-template-columns: 1.6fr 1fr 1fr 22px; padding: 0 14px; text-decoration: none; }
+.lobby-row { align-items: center; color: inherit; display: grid; gap: 12px; grid-template-columns: 1.4fr .7fr 1fr 1fr 22px; padding: 0 14px; text-decoration: none; }
 .lobby-row-head { color: #5e655f; font-size: 8px; font-weight: 720; letter-spacing: .11em; min-height: 36px; }
 a.lobby-row { border-top: 1px solid var(--r3-line-soft); min-height: 58px; transition: background .12s ease; }
 a.lobby-row:hover { background: #191e1a; }
+.lobby-room-name { align-items: center; display: flex; gap: 7px; }
 .lobby-room-name b { color: #d6d8d3; font: 11px var(--font-geist-mono); }
+.lobby-stakes-cell { color: #9aa19a; font: 11px var(--font-geist-mono); }
 .lobby-seats b { color: #d6d8d3; font-size: 11px; }
 .lobby-seats i { color: #6f766f; font-style: normal; }
+.lounge-tiles { background: #151916; border: 1px solid var(--r3-line); margin-top: 22px; padding: 16px; }
+.lounge-tiles-head { align-items: center; color: #6ff0a3; display: flex; font-size: 10px; font-weight: 750; gap: 7px; letter-spacing: .09em; }
+.lounge-tiles-head p { color: #7f867f; flex-basis: 100%; font-size: 10px; font-weight: 400; letter-spacing: normal; margin: 4px 0 0; order: 3; }
+.lounge-tiles-grid { display: grid; gap: 8px; grid-template-columns: repeat(4,1fr); margin-top: 14px; }
+.lounge-tiles-grid button { align-items: center; background: #101311; border: 1px solid var(--r3-line); color: #d6d8d3; display: flex; flex-direction: column; gap: 3px; padding: 10px; }
+.lounge-tiles-grid button:hover:not(:disabled) { background: #191e1a; border-color: var(--r3-green); }
+.lounge-tiles-grid button:disabled { opacity: .6; }
+.lounge-tiles-grid button b { font-size: 12px; }
+.lounge-tiles-grid button small { color: #7f867f; font: 10px var(--font-geist-mono); }
+.lounge-tiles-grid button span { color: var(--r3-green); font-size: 9px; font-weight: 750; letter-spacing: .07em; margin-top: 2px; text-transform: uppercase; }
 .lobby-honest-scope { grid-template-columns: auto 1fr; margin-top: 16px; padding: 14px 16px; }
 .lobby-honest-scope p { font-size: 9px; }
 .lobby-seat-picker { display: grid; gap: 8px; grid-template-columns: repeat(6,1fr); margin-top: 22px; }
@@ -502,6 +514,7 @@ a.lobby-row:hover { background: #191e1a; }
 .voice-toggle.connecting { animation: casino-pulse 1.2s infinite; border-color: #f7c948; color: #f7c948; }
 .voice-toggle.error { border-color: #e2685a; color: #e2685a; }
 .seat-voice-badge { align-items: center; background: #4ee08a; border: 2px solid #0b0e0c; border-radius: 50%; bottom: -4px; color: #0c0f0d; display: flex; height: 18px; justify-content: center; position: absolute; right: 30%; width: 18px; }
+.seat-clock { left: -6px; position: absolute; top: -6px; }
 .game-room { display: grid; grid-template-columns: minmax(0,1fr) 300px; height: calc(100% - 48px); }
 .game-room-main { background: radial-gradient(circle at 50% 44%,#252b26 0,#111512 70%); display: grid; grid-template-rows: 31px minmax(0,1fr) 106px; min-width: 0; }
 .table-status-ribbon { align-items: center; background: rgba(11,14,12,.65); border-bottom: 1px solid var(--r3-line-soft); display: flex; gap: 12px; justify-content: center; min-height: 31px; padding: 0 12px; }
@@ -771,6 +784,9 @@ a.lobby-row:hover { background: #191e1a; }
   .r3-lobby-head h1 { font-size: 38px; }
   .r3-lobby-metrics { flex-wrap: wrap; }
   .r3-lobby-controls { grid-template-columns: 1fr; }
+  .lobby-row { grid-template-columns: 1.4fr .8fr 22px; }
+  .lobby-row > span:nth-child(2), .lobby-row > span:nth-child(3) { display: none; }
+  .lounge-tiles-grid { grid-template-columns: 1fr 1fr; }
   .r3-kind-tabs { grid-column: 1; overflow-x: auto; }
   .r3-kind-tabs button { flex: 0 0 auto; padding: 0 10px; }
   .r3-game-head { display: none; }

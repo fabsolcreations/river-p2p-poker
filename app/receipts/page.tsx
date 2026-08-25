@@ -9,26 +9,53 @@ import {
   FileJson,
   Fingerprint,
   FolderOpen,
+  Pause,
+  Play,
   Search,
   ShieldCheck,
+  SkipBack,
+  SkipForward,
   Upload,
   X,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { RiverShell } from "../components/river-shell";
 import {
   appendTranscript,
+  cardLabel,
   combinedSeed,
   commitment,
+  freshDeck,
   shuffleDeck,
   verifyBundle,
+  type Card,
   type ProofBundle,
   type TranscriptEntry,
   type VerificationResult,
 } from "../play/proof";
 import { verifyTableBundle, type TableProofBundle, type TableVerificationResult } from "../../worker/table-engine";
+import { buildReplay, type ReplayData } from "./hand-replay";
 
 type Inspection = { bundle: ProofBundle; result: VerificationResult; source: string };
+
+// Same small presentational helpers table-lab/page.tsx defines locally for
+// its own live felt - duplicated here rather than shared, since it's a
+// handful of lines tightly coupled to each page's own layout.
+function suitSymbol(suit: Card["suit"]) {
+  return { s: "♠", h: "♥", d: "♦", c: "♣" }[suit];
+}
+function rankSymbol(rank: number) {
+  return ["2", "3", "4", "5", "6", "7", "8", "9", "T", "J", "Q", "K", "A"][rank - 2];
+}
+function ReplayCard({ card, hidden = false }: { card?: Card; hidden?: boolean }) {
+  if (!card || hidden) return <div className="table-card card-back mini" aria-label="Hidden card"><span>R</span></div>;
+  const red = card.suit === "h" || card.suit === "d";
+  return <div className={`table-card mini ${red ? "red" : ""}`} aria-label={cardLabel(card)}><b>{rankSymbol(card.rank)}</b><span>{suitSymbol(card.suit)}</span></div>;
+}
+function actorLabel(actor: string): string {
+  const match = /^seat_(\d+)$/.exec(actor);
+  return match ? `Seat ${match[1]}` : actor;
+}
 
 type RealHandRow = {
   handId: string;
@@ -78,10 +105,43 @@ export default function ReceiptsPage() {
   const [error, setError] = useState("");
   const [query, setQuery] = useState("");
   const [resultFilter, setResultFilter] = useState<"All" | "Won" | "Lost">("All");
+  const deckByCode = useMemo(() => new Map(freshDeck().map((card) => [card.code, card])), []);
 
   const [signedIn, setSignedIn] = useState<boolean | "loading">("loading");
   const [realHands, setRealHands] = useState<RealHandRow[]>([]);
   const [tableInspection, setTableInspection] = useState<{ bundle: TableProofBundle; result: TableVerificationResult } | null>(null);
+  const [replay, setReplay] = useState<ReplayData | null>(null);
+  const [replayIndex, setReplayIndex] = useState(0);
+  const [replaying, setReplaying] = useState(false);
+  // Derived, not stored: once the last step is reached there's nothing
+  // left to auto-advance to, so "actually playing" is false regardless of
+  // the `replaying` intent flag - avoids an effect synchronously calling
+  // setReplaying(false) just to keep the two in sync (that was the
+  // original lint complaint here).
+  const isAutoPlaying = replaying && !!replay && replayIndex < replay.steps.length - 1;
+
+  // Deliberately depends on replayIndex (not just isAutoPlaying) so a
+  // fresh timeout gets scheduled every single step - collapsing the
+  // dependency down to the derived boolean alone stops re-triggering once
+  // the boolean's VALUE stops changing between renders, even though the
+  // step itself keeps advancing (confirmed live: auto-play advanced
+  // exactly once, then silently stalled, before this fix).
+  useEffect(() => {
+    if (!replaying || !replay || replayIndex >= replay.steps.length - 1) return;
+    const timer = window.setTimeout(() => setReplayIndex((index) => index + 1), 900);
+    return () => window.clearTimeout(timer);
+  }, [replaying, replay, replayIndex]);
+
+  function openReplay(bundle: TableProofBundle) {
+    setReplay(buildReplay(bundle));
+    setReplayIndex(0);
+    setReplaying(false);
+  }
+
+  function closeReplay() {
+    setReplay(null);
+    setReplaying(false);
+  }
 
   useEffect(() => {
     async function load() {
@@ -211,9 +271,53 @@ export default function ReceiptsPage() {
                 {Object.entries(tableInspection.result.checks).map(([name, passed]) => <div key={name}><span className={passed ? "passed" : "failed"}>{passed ? <Check size={14} /> : <X size={14} />}</span><b>{name.replace(/([A-Z])/g, " $1")}</b><small>{passed ? "MATCH" : "FAILED"}</small></div>)}
               </div>
               <div className="seed-reveal"><span>REVEALED COMBINED SEED</span><code>{tableInspection.bundle.combinedSeed}</code></div>
+              <div className="proof-actions"><button onClick={() => openReplay(tableInspection.bundle)}><Play size={15} /> Replay hand</button></div>
             </section>
           </div>
         )}
+
+        {replay && (() => {
+          const step = replay.steps[replayIndex];
+          return (
+            <div className="modal-backdrop" role="presentation" onMouseDown={closeReplay}>
+              <section className="modal" role="dialog" aria-modal="true" aria-labelledby="replay-title" onMouseDown={(event) => event.stopPropagation()}>
+                <button className="modal-close" aria-label="Close replay" onClick={closeReplay}><X size={19} /></button>
+                <h2 id="replay-title">Hand replay</h2>
+                <p>Stepped forward from the stored transcript - board, pot, and contributions exactly as they happened. No pacing data is stored, so this steps one action at a time rather than replaying at the original speed.</p>
+                <div className="replay-board">
+                  {[0, 1, 2, 3, 4].map((index) => (
+                    step.board[index]
+                      ? <ReplayCard key={index} card={deckByCode.get(step.board[index])} />
+                      : <div className="empty-board-card" key={index}><span>{index < 3 ? "F" : index === 3 ? "T" : "R"}</span></div>
+                  ))}
+                </div>
+                <p className="replay-pot"><i className="chip-icon" /> Pot {step.pot} TEST</p>
+                <div className="replay-seats">
+                  {Array.from({ length: replay.seatCount }, (_, seat) => (
+                    <div className={`replay-seat ${step.folded[seat] ? "folded" : ""}`} key={seat}>
+                      <b>Seat {seat}{step.folded[seat] ? " (folded)" : ""}</b>
+                      <div className="replay-seat-cards">
+                        <ReplayCard card={replay.holeCards[seat] ? deckByCode.get(replay.holeCards[seat]![0]) : undefined} hidden={!replay.holeCards[seat]} />
+                        <ReplayCard card={replay.holeCards[seat] ? deckByCode.get(replay.holeCards[seat]![1]) : undefined} hidden={!replay.holeCards[seat]} />
+                      </div>
+                      <small>Contributed {step.contributed[seat]}</small>
+                    </div>
+                  ))}
+                </div>
+                <p className="replay-step-label">STEP {replayIndex + 1} / {replay.steps.length} · {step.street.toUpperCase()} · {actorLabel(step.actor)} {step.action}{step.amount ? ` ${step.amount}` : ""}</p>
+                <div className="proof-actions replay-controls">
+                  <button onClick={() => { setReplaying(false); setReplayIndex(0); }} disabled={replayIndex === 0}><SkipBack size={15} /> Start</button>
+                  <button onClick={() => { setReplaying(false); setReplayIndex((i) => Math.max(0, i - 1)); }} disabled={replayIndex === 0}>Prev</button>
+                  <button className="replay-play-toggle" onClick={() => setReplaying((p) => !p)} disabled={replayIndex >= replay.steps.length - 1}>
+                    {isAutoPlaying ? <><Pause size={15} /> Pause</> : <><Play size={15} /> Play</>}
+                  </button>
+                  <button onClick={() => { setReplaying(false); setReplayIndex((i) => Math.min(replay.steps.length - 1, i + 1)); }} disabled={replayIndex >= replay.steps.length - 1}>Next</button>
+                  <button onClick={() => { setReplaying(false); setReplayIndex(replay.steps.length - 1); }} disabled={replayIndex >= replay.steps.length - 1}><SkipForward size={15} /> End</button>
+                </div>
+              </section>
+            </div>
+          );
+        })()}
       </main>
     </RiverShell>
   );

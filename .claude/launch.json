@@ -4,8 +4,55 @@
     {
       "name": "river-dev",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
       "port": 3000
+    },
+    {
+      "name": "seed-lab",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "../seed-lab/scripts/serve.mjs"
+      ],
+      "port": 4321
+    },
+    {
+      "name": "pnpanel-mock",
+      "runtimeExecutable": "python",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "5599",
+        "--directory",
+        "tools/pokernow-panel"
+      ],
+      "port": 5599
+    },
+    {
+      "name": "dlv-mock",
+      "runtimeExecutable": "python",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "5601",
+        "--directory",
+        "tools/duel-live-verifier"
+      ],
+      "port": 5601
+    },
+    {
+      "name": "duelmerch",
+      "runtimeExecutable": "python",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "5603",
+        "--directory",
+        "tools/duelmerch/public"
+      ],
+      "port": 5603
     }
   ]
 }

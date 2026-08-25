@@ -1,0 +1,38 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Duel Live Verifier — mock harness</title>
+  <style>
+    body { margin: 0; background: #1b1e24; color: #eee; font: 13px/1.4 system-ui; padding: 24px; }
+    button { padding: 8px 14px; font: inherit; }
+    pre { background: #0d1117; padding: 12px; border-radius: 6px; overflow: auto; }
+  </style>
+</head>
+<body>
+  <h1>Mock harness</h1>
+  <p>Fires a fake <code>/api/v2/bets.json</code> response so the interceptor, engines and panel
+     can be exercised without a duel.com session.</p>
+  <button id="fire">Fetch bets (fetch)</button>
+  <button id="fire-xhr">Fetch bets (XHR)</button>
+  <pre id="log">idle</pre>
+
+  <script src="../duel-live-verifier.user.js"></script>
+  <script>
+    const log = document.getElementById('log');
+
+    document.getElementById('fire').addEventListener('click', async () => {
+      const res = await fetch('api/v2/bets.json', { cache: 'no-store' });
+      const body = await res.json();
+      log.textContent = `fetched ${body.data.items.length} bets via fetch`;
+    });
+
+    document.getElementById('fire-xhr').addEventListener('click', () => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('GET', 'api/v2/bets.json?x=' + Date.now());
+      xhr.onload = () => { log.textContent = 'fetched via XHR'; };
+      xhr.send();
+    });
+  </script>
+</body>
+</html>

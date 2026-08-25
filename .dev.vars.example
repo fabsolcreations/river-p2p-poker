@@ -12,3 +12,11 @@
 # node` account). For a real network, generate a fresh key yourself and
 # fund it - this app never generates or sees a real-value private key.
 OPERATOR_PRIVATE_KEY=
+
+# Operator signing key for fairness attestations (base64-encoded JWK).
+# Generate one with:
+#   node --experimental-strip-types -e "const m=await import('./worker/fairness-attestation.ts');console.log((await m.generateSigningKeyPair()).privateKey)"
+# Without it the tables still deal committed, independently verifiable hands -
+# they just don't hand out signed seed acknowledgements. See
+# worker/fairness-attestation.ts.
+FAIRNESS_SIGNING_KEY=

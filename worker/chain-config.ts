@@ -57,11 +57,40 @@ export const CHIPS_TO_BASE_UNITS = 10n ** BigInt(TOKEN_DECIMALS);
 // whole design is built around) - a plain off-chain percentage, not
 // contract logic, so it's adjustable without a redeploy.
 export const MIN_WITHDRAWAL_CHIPS = 10;
-export const WITHDRAWAL_FEE_BPS = 50; // 0.5%
+export const WITHDRAWAL_FEE_BPS = 100; // 1%
 export const MIN_WITHDRAWAL_FEE_CHIPS = 1;
 
-export function computeWithdrawalFee(chips: number): number {
-  return Math.max(MIN_WITHDRAWAL_FEE_CHIPS, Math.ceil((chips * WITHDRAWAL_FEE_BPS) / 10000));
+export type WithdrawalFeeMode = "gross" | "net";
+
+// "gross": the amount typed is the total debited from the balance; the fee
+// comes OUT of it (withdraw 100 -> pay 100, receive 99).
+export function feeForGrossAmount(amount: number): number {
+  return Math.max(MIN_WITHDRAWAL_FEE_CHIPS, Math.ceil((amount * WITHDRAWAL_FEE_BPS) / 10000));
+}
+
+// "net": the amount typed is what should land in the wallet; the fee is
+// grossed up on top so the net received matches exactly (receive 100 ->
+// pay 101.01..., debited/withdrawn rounds up to cover the fee in full).
+// Standard "who eats the fee" gross-up: debited * (1 - rate) = net, so
+// debited = net / (1 - rate) - this is the same math payment processors
+// use for a "recipient gets exactly X" toggle.
+export function debitForNetAmount(net: number): { debited: number; fee: number } {
+  const rate = WITHDRAWAL_FEE_BPS / 10000;
+  const proportionalDebited = Math.ceil(net / (1 - rate));
+  const proportionalFee = proportionalDebited - net;
+  if (proportionalFee >= MIN_WITHDRAWAL_FEE_CHIPS) return { debited: proportionalDebited, fee: proportionalFee };
+  // Below the flat-fee floor, the proportional formula would undershoot it -
+  // fall back to the flat minimum fee added on top instead.
+  return { debited: net + MIN_WITHDRAWAL_FEE_CHIPS, fee: MIN_WITHDRAWAL_FEE_CHIPS };
+}
+
+export function computeWithdrawal(amount: number, mode: WithdrawalFeeMode): { debited: number; fee: number; net: number } {
+  if (mode === "gross") {
+    const fee = feeForGrossAmount(amount);
+    return { debited: amount, fee, net: amount - fee };
+  }
+  const { debited, fee } = debitForNetAmount(amount);
+  return { debited, fee, net: amount };
 }
 
 export const VAULT_ABI = [
@@ -89,6 +118,16 @@ export const VAULT_ABI = [
     stateMutability: "view",
     inputs: [],
     outputs: [{ type: "uint256" }],
+  },
+  {
+    // Authoritative answer to "did this exact withdrawal already pay out?" -
+    // what submitWithdrawal falls back to whenever waiting for a receipt
+    // fails ambiguously. See EscrowVault.sol's usedRefIds.
+    type: "function",
+    name: "usedRefIds",
+    stateMutability: "view",
+    inputs: [{ name: "refId", type: "bytes32" }],
+    outputs: [{ type: "bool" }],
   },
   {
     type: "event",

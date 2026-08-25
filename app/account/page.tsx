@@ -16,7 +16,7 @@ import {
 import { useEffect, useState } from "react";
 import { useAccount, useConnect, useSignMessage, useWriteContract, usePublicClient } from "wagmi";
 import { RiverShell } from "../components/river-shell";
-import { activeChainConfig, ERC20_ABI, VAULT_ABI, TOKEN_DECIMALS } from "../../worker/chain-config";
+import { activeChainConfig, ERC20_ABI, VAULT_ABI, TOKEN_DECIMALS, computeWithdrawal, type WithdrawalFeeMode } from "../../worker/chain-config";
 
 type Preference = "sounds" | "fourColor" | "shortcuts" | "proofNotices";
 
@@ -76,8 +76,17 @@ export default function AccountPage() {
   const [walletError, setWalletError] = useState("");
   const [depositChips, setDepositChips] = useState("");
   const [withdrawChips, setWithdrawChips] = useState("");
+  const [withdrawFeeMode, setWithdrawFeeMode] = useState<WithdrawalFeeMode>("gross");
   const [withdrawResult, setWithdrawResult] = useState<{ txHash: string; fee: number; netChips: number } | null>(null);
   const isLinked = Boolean(address && walletStatus?.wallet && walletStatus.wallet.address.toLowerCase() === address.toLowerCase());
+
+  // Mirrors worker/chain-config.ts's computeWithdrawal exactly, purely for
+  // a responsive preview as the user types - the server recomputes this
+  // itself and stays the real authority, same pattern this project already
+  // uses for bet-size bounds on the live table.
+  const withdrawInputAmount = Math.trunc(Number(withdrawChips));
+  const withdrawPreview =
+    Number.isFinite(withdrawInputAmount) && withdrawInputAmount > 0 ? computeWithdrawal(withdrawInputAmount, withdrawFeeMode) : null;
 
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => {
@@ -208,8 +217,8 @@ export default function AccountPage() {
   }
 
   async function handleWithdraw() {
-    const chips = Math.trunc(Number(withdrawChips));
-    if (!Number.isFinite(chips) || chips <= 0) return;
+    const amount = Math.trunc(Number(withdrawChips));
+    if (!Number.isFinite(amount) || amount <= 0) return;
     setWalletBusy(true);
     setWalletError("");
     setWithdrawResult(null);
@@ -217,7 +226,7 @@ export default function AccountPage() {
       const response = await fetch("/api/wallet/withdraw-request", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ chips }),
+        body: JSON.stringify({ amount, feeMode: withdrawFeeMode }),
       });
       const body = (await response.json()) as { txHash?: string; fee?: number; netChips?: number; error?: string };
       if (!response.ok || !body.txHash) throw new Error(body.error ?? "Withdrawal failed.");
@@ -347,9 +356,23 @@ export default function AccountPage() {
                             <button type="button" onClick={handleDeposit} disabled={walletBusy}>{walletBusy ? "Working..." : "Deposit"}</button>
                           </label>
                           <label>
-                            Withdraw (chips)
+                            {withdrawFeeMode === "gross" ? "Withdraw total (chips)" : "Receive exactly (chips)"}
                             <input value={withdrawChips} onChange={(event) => setWithdrawChips(event.target.value)} inputMode="numeric" placeholder="e.g. 200" />
                           </label>
+                          <label className="wide bet-size-control">
+                            <span>FEE COMES FROM</span>
+                            <div>
+                              <button type="button" className={withdrawFeeMode === "gross" ? "active" : ""} onClick={() => setWithdrawFeeMode("gross")}>The amount I withdraw</button>
+                              <button type="button" className={withdrawFeeMode === "net" ? "active" : ""} onClick={() => setWithdrawFeeMode("net")}>Added on top</button>
+                            </div>
+                          </label>
+                          {withdrawPreview && (
+                            <p className="wide ledger-empty">
+                              {withdrawFeeMode === "gross"
+                                ? `Pay ${withdrawPreview.debited} chips total, fee ${withdrawPreview.fee}, receive ${withdrawPreview.net}.`
+                                : `Receive ${withdrawPreview.net} chips exactly, fee ${withdrawPreview.fee} added on top, ${withdrawPreview.debited} chips total from your balance.`}
+                            </p>
+                          )}
                           <label className="wide">
                             <button type="button" onClick={handleWithdraw} disabled={walletBusy}>{walletBusy ? "Working..." : "Withdraw"}</button>
                           </label>

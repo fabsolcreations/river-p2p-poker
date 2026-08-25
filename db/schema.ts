@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 
 export const STARTING_BALANCE = 1000;
 
@@ -34,6 +34,18 @@ export const tables = sqliteTable("tables", {
   seatCount: integer("seat_count").notNull(),
   occupiedCount: integer("occupied_count").notNull(),
   status: text("status").notNull(), // "waiting" | "playing"
+  // Stakes, synced alongside occupancy/status - lets the lobby show real
+  // blinds/buy-in range per room instead of nothing, and lets the lounge
+  // matchmaker find an open room at a specific tier (see
+  // app/lobby/stakes-presets.ts).
+  smallBlind: integer("small_blind").notNull().default(1),
+  bigBlind: integer("big_blind").notNull().default(2),
+  minBuyIn: integer("min_buy_in").notNull().default(40),
+  maxBuyIn: integer("max_buy_in").notNull().default(200),
+  // True for a room created via the lounge "Join <tier>" flow - stakes
+  // stay house-managed (worker/poker-table.ts rejects host settings
+  // changes on these), not whoever-sat-down-first-managed.
+  isLounge: integer("is_lounge", { mode: "boolean" }).notNull().default(false),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
@@ -98,3 +110,59 @@ export const onchainTransactions = sqliteTable("onchain_transactions", {
   status: text("status").notNull(), // "pending" | "confirmed" | "failed"
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
+
+// Real clubs (app/clubs/page.tsx) - a club is just a named group with an
+// invite code; joining requires the code (real, if narrow, access control -
+// no fake "manual approval" queue was built, since a half-working approval
+// workflow would be worse than being honest that the invite code alone
+// gates entry for now).
+export const clubs = sqliteTable("clubs", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  inviteCode: text("invite_code").notNull().unique(),
+  ownerId: text("owner_id").notNull().references(() => users.id),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+export const clubMembers = sqliteTable(
+  "club_members",
+  {
+    id: text("id").primaryKey(),
+    clubId: text("club_id").notNull().references(() => clubs.id),
+    userId: text("user_id").notNull().references(() => users.id),
+    role: text("role").notNull(), // "host" | "moderator" | "member"
+    joinedAt: text("joined_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  },
+  (table) => [uniqueIndex("club_members_club_user_idx").on(table.clubId, table.userId)],
+);
+
+// A room created via the normal table-lab creation flow, just tagged as
+// belonging to a club - the Durable Object itself doesn't know or care
+// about clubs, this is purely a lightweight label row.
+export const clubTables = sqliteTable("club_tables", {
+  id: text("id").primaryKey(),
+  clubId: text("club_id").notNull().references(() => clubs.id),
+  roomCode: text("room_code").notNull().unique(),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+export const clubScheduledGames = sqliteTable("club_scheduled_games", {
+  id: text("id").primaryKey(),
+  clubId: text("club_id").notNull().references(() => clubs.id),
+  name: text("name").notNull(),
+  format: text("format").notNull(),
+  stakes: text("stakes").notNull(),
+  scheduledAt: text("scheduled_at").notNull(),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+export const clubGameRsvps = sqliteTable(
+  "club_game_rsvps",
+  {
+    id: text("id").primaryKey(),
+    gameId: text("game_id").notNull().references(() => clubScheduledGames.id),
+    userId: text("user_id").notNull().references(() => users.id),
+    createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  },
+  (table) => [uniqueIndex("club_game_rsvps_game_user_idx").on(table.gameId, table.userId)],
+);

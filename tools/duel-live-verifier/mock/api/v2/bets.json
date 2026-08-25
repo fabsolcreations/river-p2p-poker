@@ -1,0 +1,34 @@
+{
+  "data": {
+    "items": [
+      {
+        "id": 918273,
+        "game": "dice",
+        "client_seed": "demo-client",
+        "server_seed": "a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+        "nonce": 7,
+        "result": 6960,
+        "value": 1500
+      },
+      {
+        "id": 918274,
+        "game": "dice",
+        "client_seed": "demo-client",
+        "server_seed": "a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+        "nonce": 8,
+        "result": 9999
+      },
+      {
+        "id": 918275,
+        "game": "crash",
+        "round_id": 5512,
+        "server_seed": "a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+        "server_seed_hashed": "47f9ace033df57f8076b98f8607e06e3a791ed594aec7abfc708a6f0c66ccc8d",
+        "drand_round_id": 441122,
+        "drand_randomness": "6162636465666768696a6b6c6d6e6f707172737475767778797a303132333435",
+        "crash_point": 1.12,
+        "multiplier": 1.05
+      }
+    ]
+  }
+}

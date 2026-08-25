@@ -4,7 +4,7 @@ import { friendlyDbError, getDb } from "../../../../db";
 import { ledgerEntries, onchainTransactions, users, wallets } from "../../../../db/schema";
 import { getSessionUser } from "../../../../worker/auth";
 import { chipsToBaseUnits, submitWithdrawal } from "../../../../worker/chain";
-import { computeWithdrawalFee, MIN_WITHDRAWAL_CHIPS } from "../../../../worker/chain-config";
+import { computeWithdrawal, MIN_WITHDRAWAL_CHIPS, type WithdrawalFeeMode } from "../../../../worker/chain-config";
 
 export async function POST(request: Request) {
   try {
@@ -15,11 +15,16 @@ export async function POST(request: Request) {
       return Response.json({ error: "Withdrawals are not configured yet - OPERATOR_PRIVATE_KEY is unset." }, { status: 503 });
     }
 
-    const body = (await request.json()) as { chips?: number };
-    const chips = Math.trunc(body.chips ?? 0);
-    if (!Number.isFinite(chips) || chips < MIN_WITHDRAWAL_CHIPS) {
+    const body = (await request.json()) as { amount?: number; feeMode?: WithdrawalFeeMode };
+    const inputAmount = Math.trunc(body.amount ?? 0);
+    const feeMode: WithdrawalFeeMode = body.feeMode === "net" ? "net" : "gross";
+    if (!Number.isFinite(inputAmount) || inputAmount < MIN_WITHDRAWAL_CHIPS) {
       return Response.json({ error: `Minimum withdrawal is ${MIN_WITHDRAWAL_CHIPS} chips.` }, { status: 400 });
     }
+    // "gross": chips = the amount typed (fee comes out of it).
+    // "net": chips = the debited/gross-up total that makes the typed
+    // amount land exactly, once the fee is taken - see computeWithdrawal.
+    const { debited: chips, fee, net: netChips } = computeWithdrawal(inputAmount, feeMode);
 
     const db = getDb();
     const walletRows = await db.select({ address: wallets.address }).from(wallets).where(eq(wallets.userId, user.id)).limit(1);
@@ -43,22 +48,51 @@ export async function POST(request: Request) {
     const ledgerEntryId = crypto.randomUUID();
     await db.insert(ledgerEntries).values({ id: ledgerEntryId, userId: user.id, delta: -chips, reason: "crypto_withdraw" });
 
-    const fee = computeWithdrawalFee(chips);
-    const netChips = chips - fee;
+    const outcome = await submitWithdrawal(address as `0x${string}`, netChips, ledgerEntryId, operatorPrivateKey);
 
-    let txHash: `0x${string}`;
-    try {
-      txHash = await submitWithdrawal(address as `0x${string}`, netChips, ledgerEntryId, operatorPrivateKey);
-    } catch (error) {
-      // The on-chain payout genuinely failed (RPC down, operator out of
-      // gas, reverted). Unlike worker/poker-table.ts's best-effort
-      // cashOut, this has a real external failure mode - silently eating
-      // the user's chips here would be a real bug, so refund in full.
+    // Only refund when the chain says this refId definitively never paid.
+    // Refunding on a mere error would double-spend the house every time an
+    // RPC call times out on a transaction that actually landed - see
+    // submitWithdrawal's WithdrawalOutcome for the full reasoning.
+    if (outcome.status === "not-paid") {
       await db.update(users).set({ balance: sql`${users.balance} + ${chips}` }).where(eq(users.id, user.id));
       await db.insert(ledgerEntries).values({ id: crypto.randomUUID(), userId: user.id, delta: chips, reason: "crypto_withdraw_failed_refund" });
-      const message = error instanceof Error ? error.message : "The on-chain payout failed.";
-      return Response.json({ error: `Withdrawal failed and was refunded: ${message}` }, { status: 502 });
+      return Response.json({ error: `Withdrawal failed and was refunded: ${outcome.error}` }, { status: 502 });
     }
+
+    // Broadcast but unresolved. The chips stay debited on purpose: the
+    // payout may well have gone through, and the vault's usedRefIds makes
+    // this recoverable later without ever risking a double payout (a retry
+    // with the same ledgerEntryId reverts if it already paid).
+    if (outcome.status === "unknown") {
+      if (outcome.hash) {
+        try {
+          await db.insert(onchainTransactions).values({
+            txHash: outcome.hash,
+            userId: user.id,
+            direction: "withdrawal",
+            chips: netChips,
+            tokenBaseUnits: chipsToBaseUnits(netChips).toString(),
+            ledgerEntryId,
+            status: "pending",
+          });
+        } catch {
+          // Best-effort - the ledger entry above already records the debit.
+        }
+      }
+      return Response.json(
+        {
+          pending: true,
+          txHash: outcome.hash,
+          ledgerEntryId,
+          error:
+            "Your withdrawal was submitted but couldn't be confirmed yet. It has not been refunded, because it may have already paid out - check the transaction before retrying.",
+        },
+        { status: 202 },
+      );
+    }
+
+    const txHash = outcome.hash;
 
     // The payout already succeeded on-chain by this point - recording it
     // is best-effort from here on (matching cashOut's convention). A

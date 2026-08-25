@@ -26,6 +26,7 @@ import { RiverShell } from "../../components/river-shell";
 import { cardLabel, freshDeck, randomHex, type Card } from "../proof";
 import {
   connectTable,
+  randomRoomCode,
   type ActionType,
   type ChatMessage,
   type InitialTableSettings,
@@ -42,12 +43,6 @@ import { createVoiceChat, type VoiceChat, type VoiceStatus } from "../voice-chat
 const MIN_SEATS = 2;
 const MAX_SEATS = 10;
 const DEFAULT_SEATS = 6;
-
-function randomRoomCode() {
-  const bytes = new Uint8Array(3);
-  window.crypto.getRandomValues(bytes);
-  return `TABLE-${Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("").toUpperCase()}`;
-}
 
 function suitSymbol(suit: Card["suit"]) {
   return { s: "♠", h: "♥", d: "♦", c: "♣" }[suit];
@@ -132,7 +127,8 @@ function handSummary(payouts: number[]): string {
   return winners.map((w) => `Seat ${w.seat} +${w.amount}`).join(" · ");
 }
 
-type HandCompleteState = { sidePots: SidePot[]; payouts: number[]; bundle: TableProofBundle };
+// bundle is null on trustless tables - see the mp-receipt message.
+type HandCompleteState = { sidePots: SidePot[]; payouts: number[]; bundle: TableProofBundle | null };
 
 export default function TableLab() {
   const deckByCode = useMemo(() => new Map(freshDeck().map((card) => [card.code, card])), []);
@@ -146,9 +142,10 @@ export default function TableLab() {
   // single setState call so this effect stays compliant with
   // react-hooks/set-state-in-effect (which flags effects that commit
   // state more than once).
-  const [table, setTable] = useState<{ roomCode: string; seatCount: number; initialSettings?: InitialTableSettings }>({
+  const [table, setTable] = useState<{ roomCode: string; seatCount: number; initialSettings?: InitialTableSettings; autoSit: boolean }>({
     roomCode: "",
     seatCount: DEFAULT_SEATS,
+    autoSit: false,
   });
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -163,10 +160,12 @@ export default function TableLab() {
     const bigBlind = Number(params.get("bigBlind"));
     const minBuyIn = Number(params.get("minBuyIn"));
     const maxBuyIn = Number(params.get("maxBuyIn"));
+    const isLounge = params.get("lounge") === "1";
     const initialSettings =
       Number.isInteger(smallBlind) && Number.isInteger(bigBlind) && Number.isInteger(minBuyIn) && Number.isInteger(maxBuyIn)
-        ? { smallBlind, bigBlind, minBuyIn, maxBuyIn }
+        ? { smallBlind, bigBlind, minBuyIn, maxBuyIn, isLounge }
         : undefined;
+    const autoSit = params.get("autosit") === "1";
     if (!code) {
       code = randomRoomCode();
       const url = new URL(window.location.href);
@@ -175,9 +174,9 @@ export default function TableLab() {
       window.history.replaceState(null, "", url.toString());
     }
     // eslint-disable-next-line react-hooks/set-state-in-effect -- this synchronizes state with the URL, which is unavailable at SSR time
-    setTable({ roomCode: code, seatCount, initialSettings });
+    setTable({ roomCode: code, seatCount, initialSettings, autoSit });
   }, []);
-  const { roomCode, seatCount, initialSettings } = table;
+  const { roomCode, seatCount, initialSettings, autoSit } = table;
 
   const [status, setStatus] = useState<TransportStatus>("connecting");
   const [mySeat, setMySeat] = useState<Seat | null>(null);
@@ -195,7 +194,9 @@ export default function TableLab() {
   const [sitPickerOpen, setSitPickerOpen] = useState(false);
   const [buyInChoice, setBuyInChoice] = useState<number | null>(null);
   const [showSettings, setShowSettings] = useState(false);
-  const [settingsDraft, setSettingsDraft] = useState<{ smallBlind: number; bigBlind: number; minBuyIn: number; maxBuyIn: number } | null>(null);
+  const [settingsDraft, setSettingsDraft] = useState<{ smallBlind: number; bigBlind: number; minBuyIn: number; maxBuyIn: number; actionClockSeconds: number } | null>(
+    null,
+  );
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState("");
   const [unreadChat, setUnreadChat] = useState(0);
@@ -217,6 +218,17 @@ export default function TableLab() {
     chatScrollRef.current?.scrollTo({ top: chatScrollRef.current.scrollHeight });
   }, [chatMessages]);
 
+  // Drives the acting seat's countdown ring - only ticks while a deadline
+  // is actually armed, not on every render regardless of clock state.
+  const [now, setNow] = useState(() => Date.now());
+  const actionDeadline = publicState?.actionDeadline ?? null;
+  useEffect(() => {
+    if (actionDeadline === null) return;
+    const interval = window.setInterval(() => setNow(Date.now()), 250);
+    return () => window.clearInterval(interval);
+  }, [actionDeadline]);
+  const secondsLeft = actionDeadline === null ? null : Math.max(0, Math.ceil((actionDeadline - now) / 1000));
+
   // A fresh bet/raise decision should start from a clean slate rather than
   // carrying over whatever amount was picked (or left mid-edit) last turn.
   // Adjusted during render (React's documented pattern for "reset state
@@ -235,7 +247,7 @@ export default function TableLab() {
 
   useEffect(() => {
     if (!roomCode) return;
-    const connection = connectTable(roomCode, seatCount, initialSettings);
+    const connection = connectTable(roomCode, seatCount, initialSettings, autoSit);
     connectionRef.current = connection;
     const voiceChat = createVoiceChat(connection);
     voiceChatRef.current = voiceChat;
@@ -276,7 +288,10 @@ export default function TableLab() {
         });
       } else if (message.type === "hand-complete") {
         setHandComplete({ sidePots: message.sidePots, payouts: message.payouts, bundle: message.bundle });
-        verifyTableBundle(message.bundle).then(setVerification);
+        // Trustless tables send no server-dealt bundle - their receipt is the
+        // mental-poker one, which arrives separately once both parties reveal.
+        if (message.bundle) verifyTableBundle(message.bundle).then(setVerification);
+        else setVerification(null);
         // Pre-supply the NEXT hand's seed now rather than waiting - a
         // seed is single-use (the server clears it the moment a hand
         // consumes it), so without this, only the very first hand after
@@ -305,7 +320,7 @@ export default function TableLab() {
       voiceChat.destroy();
       connection.close();
     };
-  }, [roomCode, seatCount, initialSettings]);
+  }, [roomCode, seatCount, initialSettings, autoSit]);
 
   function act(action: ActionType, amount?: number) {
     connectionRef.current?.send({ type: "action", action, amount });
@@ -342,6 +357,7 @@ export default function TableLab() {
       bigBlind: publicState?.bigBlind ?? 2,
       minBuyIn: publicState?.minBuyIn ?? 40,
       maxBuyIn: publicState?.maxBuyIn ?? 200,
+      actionClockSeconds: publicState?.actionClockSeconds ?? 30,
     });
     setShowSettings(true);
   }
@@ -363,10 +379,11 @@ export default function TableLab() {
   }
 
   async function runTamperTest() {
-    if (!handComplete) return;
+    if (!handComplete?.bundle) return;
+    const bundle = handComplete.bundle;
     const corrupted: TableProofBundle = {
-      ...handComplete.bundle,
-      deck: handComplete.bundle.deck.map((code, index) => (index === 3 ? handComplete.bundle.deck[7] : code)),
+      ...bundle,
+      deck: bundle.deck.map((code, index) => (index === 3 ? bundle.deck[7] : code)),
     };
     setTamperResult(await verifyTableBundle(corrupted));
   }
@@ -378,7 +395,7 @@ export default function TableLab() {
   }
 
   function downloadProof() {
-    if (!handComplete) return;
+    if (!handComplete?.bundle) return;
     const blob = new Blob([JSON.stringify(handComplete.bundle, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
@@ -404,6 +421,11 @@ export default function TableLab() {
   const sitBounds = { min: publicState?.minBuyIn ?? 40, max: publicState?.maxBuyIn ?? 200 };
   const buyInAmount = Math.min(sitBounds.max, Math.max(sitBounds.min, buyInChoice ?? sitBounds.max));
   const isHost = mySeat !== null && publicState?.hostSeat === mySeat;
+  // Lounge rooms (app/lobby/page.tsx's "Join <tier>" tiles) keep
+  // house-managed stakes - worker/poker-table.ts's handleUpdateSettings
+  // rejects changes outright, so the gear that would open that dialog is
+  // hidden here rather than opening a dialog that can only ever error.
+  const showSettingsButton = isHost && !publicState?.isLounge;
   const canEditSettings = street === "waiting" || street === "complete";
   const rabbitHuntAvailable = street === "complete" && (publicState?.board.length ?? 5) < 5;
 
@@ -424,7 +446,7 @@ export default function TableLab() {
   }, [handComplete]);
 
   const bundleHole = (seat: Seat): [string, string] | null => {
-    if (!handComplete) return null;
+    if (!handComplete?.bundle) return null;
     const indices = handComplete.bundle.holeCardDeckIndices[seat];
     if (!indices) return null;
     return [handComplete.bundle.deck[indices[0]], handComplete.bundle.deck[indices[1]]];
@@ -437,7 +459,7 @@ export default function TableLab() {
           <a href="/play/deal-lab">← Deal lab</a>
           <div><span>{roomCode || "..."} / LIVE TABLE</span><b>{seatCount}-MAX · SERVER DEALT · TEST CHIPS</b></div>
           <div className="table-top-proof"><span className={`casino-badge ${status === "open" ? "live" : "idle"}`}><i />{status === "open" ? "Live" : status}</span></div>
-          {isHost && (
+          {showSettingsButton && (
             <button aria-label="Table settings" title="Table settings (host only)" onClick={openSettings}>
               <Settings2 size={15} />
             </button>
@@ -502,6 +524,7 @@ export default function TableLab() {
                     </div>
                     {isButton && <span className="dealer-button">D</span>}
                     {voiceActiveSeats.has(seat) && <span className="seat-voice-badge" aria-label="In voice chat"><Mic size={10} /></span>}
+                    {acting && secondsLeft !== null && <span className="casino-badge gold seat-clock">{secondsLeft}s</span>}
                   </div>
                 );
               })}
@@ -659,7 +682,7 @@ export default function TableLab() {
                   <div><dt>DEALER</dt><dd><Check size={12} /> Trusted server</dd></div>
                 </dl>
                 <button className="invite-seat" onClick={copyLink}><LockKeyhole size={14} /> Copy room invite</button>
-                {isHost && (
+                {showSettingsButton && (
                   <button className="invite-seat" onClick={openSettings}><Settings2 size={14} /> Table settings</button>
                 )}
                 {mySeat !== null && (
@@ -718,7 +741,7 @@ export default function TableLab() {
               <div className="proof-checks">
                 {Object.entries(verification.checks).map(([name, passed]) => <div key={name}><span className={passed ? "passed" : "failed"}>{passed ? <Check size={14} /> : <X size={14} />}</span><b>{name.replace(/([A-Z])/g, " $1")}</b><small>{passed ? "MATCH" : "FAILED"}</small></div>)}
               </div>
-              <div className="seed-reveal"><span>REVEALED COMBINED SEED</span><code>{handComplete.bundle.combinedSeed}</code></div>
+              {handComplete.bundle && <div className="seed-reveal"><span>REVEALED COMBINED SEED</span><code>{handComplete.bundle.combinedSeed}</code></div>}
               {tamperResult && <div className={`tamper-result ${tamperResult.valid ? "bad" : "good"}`}><CircleAlert size={17} /><span>{tamperResult.valid ? "Unexpected acceptance" : "Tampered deck rejected - verification mismatch detected."}</span></div>}
               <div className="proof-actions"><button onClick={runTamperTest}><Sparkles size={15} /> Run tamper test</button><button onClick={copyProof}><Copy size={15} /> Copy JSON</button><button className="accent" onClick={downloadProof}><Download size={15} /> Download proof</button><a href="/receipts"><FileJson size={15} /> Receipt desk</a></div>
             </section>
@@ -766,6 +789,16 @@ export default function TableLab() {
                     min={settingsDraft.minBuyIn}
                     value={settingsDraft.maxBuyIn}
                     onChange={(event) => setSettingsDraft({ ...settingsDraft, maxBuyIn: Number(event.target.value) || 0 })}
+                  />
+                </label>
+                <label>
+                  <span>Action clock (seconds, 0 = off)</span>
+                  <input
+                    type="number"
+                    min={0}
+                    max={300}
+                    value={settingsDraft.actionClockSeconds}
+                    onChange={(event) => setSettingsDraft({ ...settingsDraft, actionClockSeconds: Math.max(0, Number(event.target.value) || 0) })}
                   />
                 </label>
               </div>

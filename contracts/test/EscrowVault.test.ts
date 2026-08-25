@@ -82,6 +82,40 @@ describe("EscrowVault", () => {
       assert.equal(await vault.read.poolBalance(), 0n);
     });
 
+    it("pays a given refId at most once, so an ambiguous withdrawal is safe to retry", async () => {
+      const amount = 100_000_000n;
+      const { token, vault } = await deployAndDeposit(amount * 2n);
+
+      await vault.write.withdraw([user.account.address, amount, REF], { account: operator.account });
+      assert.equal(await token.read.balanceOf([user.account.address]), amount);
+      assert.equal(await vault.read.usedRefIds([REF]), true);
+
+      // The retry the backend makes when it can't tell whether the first
+      // attempt landed - it must not pay a second time.
+      await viem.assertions.revertWithCustomErrorWithArgs(
+        vault.write.withdraw([user.account.address, amount, REF], { account: operator.account }),
+        vault,
+        "RefIdAlreadyUsed",
+        [REF],
+      );
+      assert.equal(await token.read.balanceOf([user.account.address]), amount);
+
+      // A different withdrawal still goes through - the guard is per-refId,
+      // not a one-payout-per-vault lock.
+      const otherRef = `0x${"ab".repeat(32)}` as `0x${string}`;
+      await vault.write.withdraw([user.account.address, amount, otherRef], { account: operator.account });
+      assert.equal(await token.read.balanceOf([user.account.address]), amount * 2n);
+    });
+
+    it("rejects a zero refId, so every payout stays auditable", async () => {
+      const { vault } = await deployAndDeposit(500_000_000n);
+      await viem.assertions.revertWithCustomError(
+        vault.write.withdraw([user.account.address, 1n, `0x${"00".repeat(32)}`], { account: operator.account }),
+        vault,
+        "ZeroRefId",
+      );
+    });
+
     it("reverts for any non-operator caller", async () => {
       const { vault } = await deployAndDeposit(500_000_000n);
 

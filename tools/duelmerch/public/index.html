@@ -1,0 +1,2258 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Duelmerch — the merch store Duel keeps promising</title>
+<meta name="description" content="Duel keeps saying the merch store is coming in 2029. These are the designs, finished, waiting on someone to press print.">
+<meta property="og:title" content="Duelmerch">
+<meta property="og:description" content="Coming 2029. Designed 2026.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://duelmerch.org/">
+<meta property="og:image" content="https://duelmerch.org/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Duelmerch">
+<meta name="twitter:description" content="Coming 2029. Designed 2026.">
+<meta name="twitter:image" content="https://duelmerch.org/og.png">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23121731'/%3E%3Ctext x='32' y='46' font-family='Times New Roman,serif' font-weight='700' font-size='40' fill='white' text-anchor='middle'%3ED%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Tinos:ital,wght@0,400;0,700;1,700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0c102b;
+    --bg-deep:#090c22;
+    --panel:#121731;
+    --panel-2:#1f2546;
+    --line:rgba(255,255,255,.08);
+    --line-strong:rgba(255,255,255,.14);
+    --text:#ffffff;
+    --muted:#8d97c9;
+    --blue:#4558ff;
+    --blue-light:#5e6eff;
+    --blue-deep:#2133dc;
+    --red:#e8305e;
+    --red-deep:#cf1745;
+    --green:#20d095;
+    --gold:#ffc100;
+    --display:'Tinos','Times New Roman',Times,serif;
+    --body:'Inter',system-ui,'Segoe UI',sans-serif;
+    --mono:ui-monospace,'Cascadia Mono',Consolas,monospace;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:var(--body);
+    font-size:15px;
+    line-height:1.55;
+    -webkit-font-smoothing:antialiased;
+    overflow-x:hidden;
+  }
+  ::selection{background:var(--blue);color:#fff}
+  a{color:inherit;text-decoration:none}
+  button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+  img,svg{display:block;max-width:100%}
+
+  /* ---------- header ---------- */
+  header{
+    position:sticky;top:0;z-index:100;
+    display:flex;align-items:center;justify-content:space-between;
+    padding:0 24px;height:64px;
+    background:rgba(9,12,34,.92);
+    backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--line);
+  }
+  .wordmark{
+    font-family:var(--display);
+    font-weight:700;
+    font-size:26px;
+    letter-spacing:.2px;
+    display:flex;align-items:center;gap:9px;
+  }
+  .wordmark em{
+    font-style:normal;
+    font-family:var(--body);
+    font-weight:700;
+    font-size:11px;
+    letter-spacing:.8px;
+    background:var(--blue);
+    color:#fff;
+    padding:4px 8px;
+    border-radius:6px;
+    transform:translateY(1px);
+  }
+  nav{display:flex;gap:4px;align-items:center}
+  nav a{
+    font-weight:600;
+    font-size:13.5px;
+    color:var(--muted);
+    padding:8px 12px;
+    border-radius:8px;
+    transition:color .15s,background .15s;
+  }
+  nav a:hover{color:#fff;background:var(--panel-2)}
+  .cart-btn{
+    font-weight:700;
+    font-size:13.5px;
+    background:var(--blue);
+    padding:9px 16px;
+    border-radius:4px;
+    color:#fff;
+    display:flex;gap:8px;align-items:center;
+    margin-left:10px;
+    transition:background .15s,transform .12s;
+  }
+  .cart-btn:hover{background:var(--blue-light)}
+  .cart-btn:active{transform:translateY(1px)}
+  .cart-btn .count{
+    background:#fff;color:var(--blue-deep);
+    font-weight:800;
+    font-size:12px;
+    min-width:19px;height:19px;
+    display:inline-flex;align-items:center;justify-content:center;
+    padding:0 5px;
+    border-radius:999px;
+  }
+
+  /* ---------- hero ---------- */
+  .hero-wrap{max-width:1240px;margin:26px auto 0;padding:0 20px}
+  .hero{
+    position:relative;
+    border-radius:4px;
+    border:1px solid var(--line);
+    background:var(--panel);
+    border-top:3px solid var(--blue);
+    padding:56px 48px 52px;
+    overflow:hidden;
+  }
+  .eyebrow{
+    font-weight:600;
+    font-size:13.5px;
+    color:var(--muted);
+    margin-bottom:18px;
+  }
+  .eyebrow b{color:var(--gold);font-weight:700}
+  .hero h1{
+    font-family:var(--display);
+    font-weight:700;
+    font-size:clamp(46px,8.5vw,110px);
+    line-height:1.02;
+    letter-spacing:-.01em;
+  }
+  .hero h1 .dead{
+    color:var(--muted);
+    position:relative;
+    display:inline-block;
+  }
+  .hero h1 .dead::after{
+    content:"";
+    position:absolute;left:-1%;right:-1%;top:52%;
+    height:.07em;
+    border-radius:99px;
+    background:var(--red);
+    transform:rotate(-1.6deg);
+  }
+  .hero-sub{
+    max-width:520px;
+    margin-top:22px;
+    color:var(--muted);
+    font-size:16px;
+  }
+  .hero-sub strong{color:#fff;font-weight:600}
+  .hero-ctas{display:flex;gap:12px;margin-top:32px;flex-wrap:wrap}
+  .btn{
+    font-weight:700;
+    font-size:14.5px;
+    padding:14px 26px;
+    border-radius:4px;
+    display:inline-flex;align-items:center;gap:9px;
+    transition:filter .15s,transform .12s,background .15s,border-color .15s;
+  }
+  .btn:active{transform:translateY(1px)}
+  .btn-solid{background:var(--blue);color:#fff}
+  .btn-solid:hover{background:var(--blue-light)}
+  .btn-ghost{
+    border:1px solid var(--line-strong);
+    color:#fff;
+    background:rgba(255,255,255,.03);
+  }
+  .btn-ghost:hover{background:var(--panel-2);border-color:rgba(255,255,255,.22)}
+
+  .stats{display:flex;gap:10px;margin-top:36px;flex-wrap:wrap}
+  .stat{
+    display:flex;align-items:baseline;gap:8px;
+    background:var(--bg-deep);
+    border:1px solid var(--line);
+    border-radius:4px;
+    padding:9px 16px;
+  }
+  .stat b{
+    font-weight:800;
+    font-size:14px;
+    color:#fff;
+  }
+  .stat span{
+    font-size:12.5px;
+    color:var(--muted);
+  }
+
+  /* ---------- sections ---------- */
+  section{max-width:1240px;margin:0 auto;padding:62px 20px 0}
+  .sec-head{display:flex;align-items:baseline;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:10px}
+  .sec-label{
+    display:flex;align-items:center;gap:10px;
+    font-weight:800;font-size:11px;letter-spacing:2.4px;text-transform:uppercase;
+    color:var(--muted);margin-bottom:14px;
+  }
+  .sec-label i{font-style:normal;color:var(--blue-light);font-variant-numeric:tabular-nums}
+  .sec-label:after{content:"";flex:1;height:1px;background:var(--line);max-width:140px}
+  .sec-head h2{
+    font-family:var(--display);
+    font-weight:700;
+    font-size:clamp(40px,6.4vw,78px);
+    line-height:.98;
+    letter-spacing:-.01em;
+  }
+  .sec-head .tag{
+    font-weight:700;
+    font-size:12px;
+    letter-spacing:.4px;
+    color:var(--muted);
+    text-transform:uppercase;
+    letter-spacing:1.2px;
+    border-bottom:1px solid var(--line-strong);
+    padding-bottom:3px;
+  }
+  .sec-sub{color:var(--muted);max-width:600px;margin-bottom:38px;font-size:16px;line-height:1.6}
+
+  /* ---------- receipts (discord style) ---------- */
+  .receipts-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill,minmax(290px,1fr));
+    gap:12px;
+  }
+  .receipt{
+    position:relative;
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:4px;
+    padding:14px 16px 15px;
+    display:flex;
+    flex-direction:column;
+  }
+  .receipt-head{display:flex;align-items:flex-start;gap:10px}
+  .avatar{
+    width:36px;height:36px;flex:none;
+    border-radius:50%;
+    overflow:hidden;
+    display:flex;align-items:center;justify-content:center;
+    font-weight:800;
+    font-size:15px;
+    color:#fff;
+  }
+  .avatar svg,.avatar img{width:100%;height:100%;display:block;object-fit:cover}
+  .receipt-namerow{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+  .receipt-name{font-weight:700;font-size:14.5px}
+  .rbadge{
+    font-size:10px;
+    font-weight:800;
+    letter-spacing:.4px;
+    padding:2px 6px;
+    border-radius:4px;
+    color:#0c102b;
+    white-space:nowrap;
+  }
+  .receipt-date{font-size:11.5px;color:var(--muted);font-weight:500}
+  .receipt-msg{font-size:14.5px;color:#d7ddf5}
+  .stamp{
+    align-self:flex-end;
+    margin:auto 4px 0 0;
+    font-family:var(--display);
+    font-weight:700;
+    font-size:17px;
+    letter-spacing:.4px;
+    color:var(--red);
+    border:2.5px solid var(--red);
+    border-radius:6px;
+    padding:0 7px;
+    transform:rotate(5deg);
+    opacity:.92;
+  }
+  .stamp.ok{color:var(--green);border-color:var(--green);transform:rotate(-4deg)}
+  .receipt.stamped .receipt-msg{margin-bottom:12px}
+  .receipt.kicker{
+    border-color:rgba(32,208,149,.45);
+    background:var(--panel);
+    border-left:3px solid var(--green);
+  }
+
+  .show-more{
+    margin:18px auto 0;display:block;
+    border:1px solid var(--line-strong);
+    background:var(--panel);
+    color:var(--muted);
+    font-weight:700;font-size:12.5px;
+    padding:11px 22px;border-radius:4px;
+    transition:color .15s,border-color .15s;
+  }
+  .show-more:hover{color:#fff;border-color:var(--blue-light)}
+  .receipt.hidden{display:none}
+
+  /* ---------- products (game lobby tiles) ---------- */
+  .grid{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:16px;
+  }
+  .card{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:4px;
+    cursor:pointer;
+    transition:border-color .15s;
+    display:flex;flex-direction:column;
+    overflow:hidden;
+  }
+  .card:hover{border-color:var(--blue-light)}
+  .card-art{
+    aspect-ratio:1/1;
+    display:flex;align-items:center;justify-content:center;
+    overflow:hidden;
+    position:relative;
+  }
+  .card-art svg{
+    width:76%;height:auto;
+    transition:transform .25s ease;
+  }
+  .card:hover .card-art svg{transform:scale(1.02)}
+  .card-tagchip{
+    position:absolute;top:12px;left:12px;
+    font-size:10.5px;
+    font-weight:800;
+    letter-spacing:.5px;
+    background:rgba(9,12,34,.75);
+    color:#fff;
+    border:1px solid rgba(255,255,255,.14);
+    padding:4px 9px;
+    border-radius:3px;
+  }
+  .card-body{padding:14px 16px 16px}
+  .card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+  .card-top{
+    position:absolute;left:12px;bottom:12px;
+    font-weight:800;font-size:10px;letter-spacing:1.2px;
+    background:var(--blue);color:#fff;padding:4px 8px;border-radius:3px;
+  }
+  .card-no{
+    position:absolute;top:12px;right:12px;
+    font-family:var(--body);font-weight:800;font-size:11px;
+    color:rgba(255,255,255,.4);letter-spacing:1px;
+  }
+  .want-count{margin-left:auto;color:var(--blue-light);font-weight:700;white-space:nowrap}
+  .card-spec{
+    display:flex;gap:14px;margin-top:10px;padding-top:10px;
+    border-top:1px solid var(--line);
+    font-size:11.5px;color:var(--muted);font-weight:600;
+  }
+  .card-actions{display:flex;gap:8px;margin-top:12px}
+  .card-want{
+    flex:1;min-height:44px;
+    background:var(--blue);color:#fff;
+    font-weight:700;font-size:12.5px;padding:11px;border-radius:4px;
+    transition:background .15s,opacity .15s;
+  }
+  .card-want:hover{background:var(--blue-light)}
+  .card-want.done{background:var(--panel-2);color:var(--green);cursor:default}
+  .card-view{
+    min-height:44px;
+    border:1px solid var(--line-strong);
+    color:var(--muted);
+    font-weight:700;font-size:12.5px;padding:11px 16px;border-radius:4px;
+    transition:color .15s,border-color .15s;
+  }
+  .card-view:hover{color:#fff;border-color:var(--blue-light)}
+  .card-name{
+    font-weight:700;
+    font-size:14.5px;
+  }
+  .card-lore{font-size:12.5px;color:var(--muted);margin-top:2px}
+  .card-price{
+    font-weight:800;
+    font-size:15px;
+    color:var(--green);
+    flex:none;
+  }
+
+  /* ---------- notify / waitlist ---------- */
+  .notify-box{
+    border:1px solid var(--line);
+    border-radius:4px;
+    background:var(--panel);
+    border-left:3px solid var(--green);
+    padding:34px 32px;
+    display:grid;
+    grid-template-columns:1.1fr 1fr;
+    gap:30px;
+    align-items:center;
+  }
+  .notify-box h3{
+    font-family:var(--display);
+    font-weight:700;
+    font-size:clamp(24px,3.2vw,34px);
+    line-height:1.08;
+  }
+  .notify-box .notify-sub{color:var(--muted);margin-top:8px;font-size:14.5px}
+  .notify-form{display:flex;gap:10px}
+  .notify-form input[type="text"]{
+    flex:1;min-width:0;
+    background:var(--bg-deep);
+    border:1px solid var(--line-strong);
+    color:#fff;
+    font-family:var(--body);
+    font-weight:500;
+    font-size:14px;
+    padding:13px 16px;
+    border-radius:999px;
+    outline:none;
+    transition:border-color .15s;
+  }
+  .notify-form input[type="text"]:focus{border-color:var(--green)}
+  .notify-form input::placeholder{color:var(--muted)}
+  .notify-form button{
+    background:var(--green);
+    color:#052b1f;
+    font-weight:800;
+    font-size:13.5px;
+    padding:13px 22px;
+    border-radius:4px;
+    transition:filter .15s,opacity .15s;
+    flex:none;
+  }
+  .notify-form button:hover{filter:brightness(1.1)}
+  .notify-form button:disabled{opacity:.55;cursor:wait}
+  .notify-hp{position:absolute;left:-5000px;width:1px;height:1px;overflow:hidden}
+  .notify-msg{
+    display:none;
+    grid-column:1/-1;
+    font-weight:700;
+    font-size:13px;
+    margin-top:-4px;
+  }
+  .notify-msg.show{display:block}
+  .notify-msg.ok{color:var(--green)}
+  .notify-msg.err{color:var(--red)}
+
+  /* ---------- drop 002 submissions ---------- */
+  .submit-box{
+    border:1px solid var(--line);
+    border-radius:4px;
+    background:var(--panel);
+    border-left:3px solid var(--blue);
+    padding:34px 32px;
+    display:grid;
+    grid-template-columns:1fr 1.15fr;
+    gap:34px;
+    align-items:center;
+  }
+  .submit-copy h3{
+    font-family:var(--display);
+    font-weight:700;
+    font-size:clamp(24px,3.2vw,34px);
+    line-height:1.08;
+  }
+  .submit-copy p{color:var(--muted);margin-top:8px;font-size:14.5px}
+  .submit-form{display:flex;flex-direction:column;gap:10px}
+  #ideaInput{
+    width:100%;
+    background:var(--bg-deep);
+    border:1px solid var(--line-strong);
+    border-radius:12px;
+    color:#fff;
+    font-family:var(--body);
+    font-size:14.5px;
+    line-height:1.5;
+    padding:14px 16px;
+    outline:none;
+    resize:vertical;
+    min-height:84px;
+    transition:border-color .15s;
+  }
+  #ideaInput:focus{border-color:var(--blue-light)}
+  #ideaInput::placeholder,#handleInput::placeholder{color:var(--muted)}
+  .submit-row{display:flex;gap:10px}
+  #handleInput{
+    flex:1;min-width:0;
+    background:var(--bg-deep);
+    border:1px solid var(--line-strong);
+    border-radius:999px;
+    color:#fff;
+    font-family:var(--body);
+    font-weight:500;
+    font-size:14px;
+    padding:12px 16px;
+    outline:none;
+    transition:border-color .15s;
+  }
+  #handleInput:focus{border-color:var(--blue-light)}
+  #submitBtn{
+    flex:none;
+    background:var(--blue);
+    color:#fff;
+    font-weight:800;
+    font-size:13.5px;
+    padding:12px 22px;
+    border-radius:4px;
+    transition:background .15s,opacity .15s;
+  }
+  #submitBtn:hover{background:var(--blue-light)}
+  #submitBtn:disabled{opacity:.55;cursor:wait}
+  .submit-foot{
+    display:flex;justify-content:space-between;align-items:center;gap:12px;
+    min-height:18px;
+  }
+  .char-count{font-size:12px;color:var(--muted);font-weight:600}
+  .char-count.low{color:var(--gold)}
+  .submit-msg{font-size:12.5px;font-weight:700;text-align:right}
+  .submit-msg.ok{color:var(--green)}
+  .submit-msg.err{color:var(--red)}
+
+  /* ---------- manifesto ---------- */
+  .manifesto{
+    border:1px solid var(--line);
+    border-radius:4px;
+    background:var(--panel);
+    padding:34px 32px;
+    display:grid;
+    grid-template-columns:1fr 1.4fr;
+    gap:36px;
+  }
+  .manifesto h3{
+    font-family:var(--display);
+    font-weight:700;
+    font-size:clamp(26px,3.4vw,38px);
+    line-height:1.06;
+  }
+  .manifesto p{color:var(--muted);margin-bottom:13px;font-size:15px}
+  .manifesto p strong{color:#fff;font-weight:600}
+  .manifesto p:last-child{margin-bottom:0}
+
+  /* ---------- faq ---------- */
+  .faq{max-width:820px;display:flex;flex-direction:column;gap:10px}
+  details{
+    border:1px solid var(--line);
+    border-radius:4px;
+    background:var(--panel);
+    padding:0 20px;
+  }
+  details[open]{border-color:var(--line-strong)}
+  summary{
+    list-style:none;
+    display:flex;justify-content:space-between;align-items:center;gap:16px;
+    padding:18px 0;
+    font-weight:600;
+    font-size:15.5px;
+    cursor:pointer;
+  }
+  summary::-webkit-details-marker{display:none}
+  summary::after{
+    content:"+";
+    font-size:19px;
+    font-weight:600;
+    color:var(--blue-light);
+    flex:none;
+  }
+  details[open] summary::after{content:"–"}
+  .faq-body{padding:0 0 20px;color:var(--muted);max-width:640px;font-size:14.5px}
+  .faq-body a{color:var(--blue-light)}
+  .faq-body a:hover{text-decoration:underline}
+  .faq-body em{color:#fff;font-style:normal;font-weight:600}
+
+  /* ---------- footer ---------- */
+  footer{
+    margin-top:100px;
+    border-top:1px solid var(--line);
+    background:var(--bg-deep);
+    padding:48px 20px 38px;
+  }
+  .foot-inner{max-width:1240px;margin:0 auto}
+  .foot-mark{
+    font-family:var(--display);
+    font-weight:700;
+    font-size:clamp(44px,9vw,110px);
+    line-height:1;
+    color:var(--panel-2);
+    user-select:none;
+  }
+  .foot-row{
+    display:flex;justify-content:space-between;gap:24px;flex-wrap:wrap;
+    margin-top:26px;
+    font-weight:600;
+    font-size:12.5px;
+    color:var(--muted);
+  }
+  .foot-row a:hover{color:#fff}
+  .foot-note{margin-top:14px;font-size:12.5px;color:var(--muted);max-width:640px}
+
+  /* ---------- cart drawer ---------- */
+  .backdrop{
+    position:fixed;inset:0;z-index:200;
+    background:rgba(4,6,20,.65);
+    opacity:0;pointer-events:none;
+    transition:opacity .2s;
+  }
+  .backdrop.show{opacity:1;pointer-events:auto}
+  .drawer{
+    position:fixed;top:0;right:0;bottom:0;z-index:201;
+    width:min(420px,100vw);
+    background:var(--bg-deep);
+    border-left:1px solid var(--line-strong);
+    transform:translateX(100%);
+    transition:transform .25s ease;
+    display:flex;flex-direction:column;
+  }
+  .drawer.show{transform:translateX(0)}
+  .drawer-head{
+    display:flex;justify-content:space-between;align-items:center;
+    padding:18px 22px;
+    border-bottom:1px solid var(--line);
+  }
+  .drawer-head h3{
+    font-family:var(--display);
+    font-weight:700;
+    font-size:22px;
+  }
+  .drawer-close{font-weight:600;font-size:13px;color:var(--muted);border-radius:8px;padding:6px 10px}
+  .drawer-close:hover{color:#fff;background:var(--panel-2)}
+  .drawer-body{flex:1;overflow-y:auto;padding:8px 22px}
+  .cart-empty{
+    padding:60px 0;text-align:center;color:var(--muted);
+    font-weight:600;font-size:13.5px;line-height:2;
+  }
+  .line-item{
+    display:flex;gap:14px;
+    padding:14px 0;
+    border-bottom:1px solid var(--line);
+  }
+  .li-art{
+    width:72px;height:72px;flex:none;
+    border-radius:10px;
+    display:flex;align-items:center;justify-content:center;
+    overflow:hidden;
+  }
+  .li-art svg{width:82%;height:auto}
+  .li-main{flex:1;min-width:0}
+  .li-name{font-weight:700;font-size:13.5px}
+  .li-size{font-size:12px;color:var(--muted);margin-top:1px}
+  .li-controls{display:flex;align-items:center;gap:9px;margin-top:9px}
+  .qty-btn{
+    width:24px;height:24px;
+    border:1px solid var(--line-strong);
+    border-radius:7px;
+    color:#fff;
+    display:flex;align-items:center;justify-content:center;
+    font-size:14px;
+  }
+  .qty-btn:hover{border-color:var(--blue-light);color:var(--blue-light)}
+  .li-qty{font-weight:700;font-size:13px;min-width:16px;text-align:center}
+  .li-remove{font-size:11.5px;font-weight:600;color:var(--muted);margin-left:auto}
+  .li-remove:hover{color:var(--red)}
+  .li-price{font-weight:800;font-size:13.5px;color:var(--green);flex:none}
+  .drawer-foot{
+    border-top:1px solid var(--line-strong);
+    padding:16px 22px 20px;
+    background:var(--panel);
+  }
+  .subtotal{
+    display:flex;justify-content:space-between;align-items:baseline;
+    font-weight:600;
+    font-size:13.5px;
+    color:var(--muted);
+    margin-bottom:4px;
+  }
+  .subtotal b{color:var(--green);font-weight:800;font-size:17px}
+  .subtotal-note{
+    font-size:11.5px;color:var(--muted);margin-bottom:12px;
+  }
+  .checkout-btn{
+    width:100%;
+    background:var(--blue);
+    color:#fff;
+    font-weight:800;
+    font-size:14.5px;
+    padding:14px;
+    border-radius:4px;
+    transition:background .15s;
+  }
+  .checkout-btn:hover{background:var(--blue-light)}
+  .checkout-note{
+    display:none;
+    margin-top:12px;
+    font-size:12.5px;
+    color:var(--muted);
+    border:1px dashed var(--line-strong);
+    border-radius:10px;
+    padding:12px;
+  }
+  .checkout-note.show{display:block}
+  .checkout-note b{color:#fff;font-weight:700}
+  .checkout-note a{color:var(--green);font-weight:700}
+
+  .back-to-cart{
+    font-weight:600;font-size:12.5px;color:var(--muted);
+    padding:6px 0;margin:4px 0 10px;
+  }
+  .back-to-cart:hover{color:#fff}
+  .ship-head{font-family:var(--display);font-weight:700;font-size:20px;margin-bottom:12px}
+  .ship-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+  .ship-grid .span2{grid-column:1/-1}
+  .ship-grid select{
+    width:100%;min-width:0;background:var(--bg-deep);border:1px solid var(--line-strong);
+    border-radius:10px;color:#fff;font-family:var(--body);font-size:14px;padding:12px 14px;outline:none;
+  }
+  .ship-grid select:focus{border-color:var(--blue-light)}
+  .ship-grid input{
+    width:100%;min-width:0;
+    background:var(--bg-deep);
+    border:1px solid var(--line-strong);
+    border-radius:10px;
+    color:#fff;
+    font-family:var(--body);
+    font-size:14px;
+    padding:12px 14px;
+    outline:none;
+    transition:border-color .15s;
+  }
+  .ship-grid input:focus{border-color:var(--blue-light)}
+  .ship-grid input::placeholder{color:var(--muted)}
+  .ship-grid input.bad{border-color:var(--red)}
+  .ship-privacy b{color:var(--green)}
+  .ship-privacy{
+    margin-top:12px;font-size:12px;line-height:1.5;color:var(--muted);
+    border-left:2px solid var(--green);padding-left:10px;
+  }
+  .ship-msg{display:none;margin-top:10px;font-size:12.5px;font-weight:700;color:var(--red)}
+  .ship-msg.show{display:block}
+  .subtotal-row{
+    display:flex;justify-content:space-between;
+    font-size:13px;color:var(--muted);font-weight:600;
+    margin-bottom:6px;
+  }
+  .total-row{border-top:1px solid var(--line);padding-top:9px;margin-bottom:12px}
+
+  /* ---------- product modal ---------- */
+  .modal{
+    position:fixed;inset:0;z-index:202;
+    display:none;
+    align-items:center;justify-content:center;
+    padding:20px;
+  }
+  .modal.show{display:flex}
+  .modal-card{
+    position:relative;
+    background:var(--bg-deep);
+    border:1px solid var(--line-strong);
+    border-radius:6px;
+    width:min(880px,100%);
+    max-height:92vh;
+    overflow-y:auto;
+    display:grid;
+    grid-template-columns:1fr 1fr;
+  }
+  .modal-art{
+    display:flex;align-items:center;justify-content:center;
+    padding:34px;
+    min-height:380px;
+    border-radius:18px 0 0 18px;
+  }
+  .modal-art svg{width:100%;max-width:340px;height:auto;filter:drop-shadow(0 14px 24px rgba(5,8,28,.5))}
+  .modal-info{padding:32px 30px}
+  .modal-close{
+    position:absolute;top:12px;right:14px;
+    font-weight:600;font-size:13px;
+    color:#fff;
+    background:rgba(9,12,34,.7);
+    border:1px solid var(--line-strong);
+    border-radius:999px;
+    padding:6px 12px;
+    z-index:2;
+    backdrop-filter:blur(4px);
+  }
+  .modal-close:hover{background:var(--panel-2)}
+  .modal-name{
+    font-family:var(--display);
+    font-weight:700;
+    font-size:30px;
+    line-height:1.05;
+  }
+  .modal-price{
+    font-weight:800;
+    font-size:18px;color:var(--green);
+    margin-top:8px;
+  }
+  .modal-desc{color:var(--muted);margin-top:14px;font-size:14.5px}
+  .modal-desc em{color:#fff;font-style:normal;font-weight:600}
+  .size-label{
+    font-weight:700;font-size:11.5px;letter-spacing:.6px;
+    text-transform:uppercase;color:var(--muted);
+    margin:22px 0 10px;
+  }
+  .amount-field{
+    display:flex;align-items:center;gap:2px;
+    background:var(--bg-deep);
+    border:1px solid var(--line-strong);
+    border-radius:12px;
+    padding:0 16px;
+    transition:border-color .15s;
+  }
+  .amount-field:focus-within{border-color:var(--green)}
+  .amount-prefix{
+    font-family:var(--body);
+    font-weight:800;
+    font-size:20px;
+    color:var(--green);
+  }
+  #customInput{
+    flex:1;min-width:0;
+    background:none;border:none;outline:none;
+    color:#fff;
+    font-family:var(--body);
+    font-weight:800;
+    font-size:20px;
+    padding:12px 0;
+  }
+  .amount-presets{display:flex;gap:7px;flex-wrap:wrap;margin-top:9px}
+  .amount-note{margin-top:8px;font-size:12px;color:var(--muted)}
+  .amount-presets button{
+    border:1px solid var(--line-strong);
+    border-radius:999px;
+    font-weight:700;font-size:12px;
+    padding:6px 12px;
+    color:var(--muted);
+    transition:all .12s;
+  }
+  .amount-presets button:hover{color:#fff;border-color:var(--green)}
+  .amount-presets button.sel{background:var(--green);color:#052b1f;border-color:transparent}
+
+  .swatches{display:flex;gap:8px;flex-wrap:wrap}
+  .swatch{
+    display:flex;align-items:center;gap:7px;
+    border:1px solid var(--line-strong);
+    border-radius:4px;
+    padding:7px 12px 7px 8px;
+    font-weight:700;font-size:12.5px;color:var(--muted);
+    transition:all .12s;
+  }
+  .swatch i{width:14px;height:14px;border-radius:3px;border:1px solid rgba(255,255,255,.25);display:block}
+  .swatch:hover{color:#fff;border-color:var(--blue-light)}
+  .swatch.sel{color:#fff;border-color:var(--blue);background:rgba(69,88,255,.12)}
+
+  .sizes{display:flex;gap:8px;flex-wrap:wrap}
+  .size-btn{
+    min-width:46px;
+    border:1px solid var(--line-strong);
+    border-radius:4px;
+    font-weight:700;font-size:13px;
+    padding:9px 12px;
+    color:#fff;
+    transition:all .12s;
+  }
+  .size-btn:hover{border-color:var(--blue-light)}
+  .size-btn.sel{
+    background:var(--blue);
+    border-color:var(--blue);
+  }
+  .modal-add{
+    width:100%;
+    margin-top:24px;
+    background:var(--blue);
+    color:#fff;
+    font-weight:800;
+    font-size:14.5px;
+    padding:14px;
+    border-radius:4px;
+    transition:background .15s,opacity .15s;
+  }
+  .modal-add:disabled{opacity:.35;cursor:not-allowed}
+  .modal-add:not(:disabled):hover{background:var(--blue-light)}
+  .modal-note{margin-top:10px;font-size:12px;color:var(--muted);text-align:center}
+  .modal-meta{margin-top:20px;border-top:1px solid var(--line);padding-top:4px}
+  .spec-row{
+    display:flex;align-items:baseline;justify-content:space-between;gap:12px;
+    padding:9px 0;
+    border-bottom:1px solid var(--line);
+    font-size:12.5px;
+  }
+  .spec-row span{color:var(--muted);font-weight:600;white-space:nowrap}
+  .spec-row b{color:#fff;font-weight:600;text-align:right}
+
+  /* ---------- toast ---------- */
+  .toast{
+    position:fixed;
+    left:50%;bottom:24px;
+    transform:translate(-50%,90px);
+    z-index:300;
+    background:var(--panel-2);
+    color:#fff;
+    border:1px solid rgba(32,208,149,.5);
+    font-weight:700;
+    font-size:13px;
+    padding:12px 20px;
+    border-radius:999px;
+    box-shadow:0 10px 30px rgba(4,6,20,.6);
+    transition:transform .25s ease;
+    max-width:92vw;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  }
+  .toast.show{transform:translate(-50%,0)}
+
+  /* ---------- responsive ---------- */
+  @media(max-width:1000px){
+    .grid{grid-template-columns:repeat(2,1fr)}
+    .manifesto{grid-template-columns:1fr;padding:32px 24px}
+    .notify-box{grid-template-columns:1fr;padding:32px 24px}
+    .notify-msg{margin-top:0}
+    .submit-box{grid-template-columns:1fr;padding:32px 24px}
+    .hero{padding:54px 34px 48px}
+  }
+  @media(max-width:640px){
+    header{padding:0 14px}
+    nav a{display:none}
+    /* two-up on phones: 15 single-column cards is 12,000px of scrolling */
+    .grid{grid-template-columns:repeat(2,1fr);gap:10px}
+    .card-body{padding:10px 10px 12px}
+    .card-name{font-size:13px}
+    .card-lore{font-size:11px}
+    .card-price{font-size:13px}
+    .card-spec{gap:8px;font-size:10.5px;flex-wrap:wrap}
+    .card-actions{flex-direction:column;gap:6px}
+    .card-want,.card-view{width:100%;min-height:44px;font-size:12px}
+    .card-top{
+    position:absolute;left:12px;bottom:12px;
+    font-weight:800;font-size:10px;letter-spacing:1.2px;
+    background:var(--blue);color:#fff;padding:4px 8px;border-radius:3px;
+  }
+  .card-no{font-size:10px}
+    .hero-wrap{margin-top:14px;padding:0 12px}
+    .hero{padding:42px 24px 40px;border-radius:16px}
+    section{padding:64px 14px 0}
+    .modal-card{grid-template-columns:1fr}
+    .modal-art{border-radius:18px 18px 0 0}
+    footer{padding:40px 14px 30px}
+  }
+  @media(max-width:520px){
+    .notify-form{flex-direction:column}
+    .submit-row{flex-direction:column}
+    .submit-foot{flex-direction:column;align-items:flex-start;gap:6px}
+    .submit-msg{text-align:left}
+  }
+</style>
+</head>
+<body>
+
+<!-- header -->
+<header>
+  <a class="wordmark" href="#top">Duel<em>MERCH</em></a>
+  <nav>
+    <a href="#concepts">Concepts</a>
+    <a href="#receipts">The receipts</a>
+    <a href="#faq">FAQ</a>
+    <a class="cart-btn" href="#notify">Get notified</a>
+  </nav>
+</header>
+
+<!-- hero -->
+<div class="hero-wrap" id="top">
+  <div class="hero">
+    <p class="eyebrow">duelmerch.org — independent, unaffiliated</p>
+    <h1>
+      <span class="dead">Coming&nbsp;2029.</span><br>
+      Designed&nbsp;2026.
+    </h1>
+    <p class="hero-sub">
+      Duel has been promising a merch store since 2025. Nobody made one, so the designs got made
+      instead — <strong>finished artwork, print files and all.</strong> Somebody just has to press go.
+    </p>
+    <div class="hero-ctas">
+      <a class="btn btn-solid" href="#concepts">See the concepts</a>
+      <a class="btn btn-ghost" href="#receipts">Read the receipts</a>
+    </div>
+    <div class="stats">
+      <div class="stat"><b id="dayStat">256 days</b><span>since the first "any day now"</span></div>
+      <div class="stat"><b id="conceptCount">15</b><span>designs, print-ready</span></div>
+      <div class="stat"><b>0</b><span>made so far</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- the concept wall -->
+<section id="concepts">
+  <p class="sec-label"><i>01</i> The wall</p>
+  <div class="sec-head">
+    <h2>The Concept Wall</h2>
+    <span class="tag">nothing ships yet</span>
+  </div>
+  <p class="sec-sub">Designs, not stock. Tell us which ones deserve to exist and those get made first.</p>
+  <div class="grid" id="productGrid"></div>
+</section>
+
+<!-- receipts -->
+<section id="receipts">
+  <p class="sec-label"><i>02</i> Evidence</p>
+  <div class="sec-head">
+    <h2>The Receipts</h2>
+    <span class="tag">#GENERAL, 2025 — 2026</span>
+  </div>
+  <p class="sec-sub">Every "any day now" we could screenshot, back to December 2025. Timestamped, immortalised, and still lazy, dollartree1.</p>
+  <div class="receipts-grid" id="receiptsGrid"></div>
+  <button class="show-more" id="showMoreReceipts">Show all 12 receipts</button>
+</section>
+
+<!-- notify / waitlist -->
+<section id="notify">
+  <div class="notify-box">
+    <div>
+      <h3>Get pinged when these get made</h3>
+      <p class="notify-sub">One message when the first run is real — no spam, no "any day now." Crypto checkout, no accounts.</p>
+    </div>
+    <form class="notify-form" id="notifyForm" novalidate>
+      <input type="text" id="notifyInput" placeholder="Email or Discord @" autocomplete="email" maxlength="200" aria-label="Email or Discord handle">
+      <input type="text" class="notify-hp" name="website" id="notifyHp" tabindex="-1" autocomplete="off" aria-hidden="true">
+      <button type="submit" id="notifyBtn">Notify me</button>
+    </form>
+    <p class="notify-msg" id="notifyMsg"></p>
+  </div>
+</section>
+
+<!-- manifesto -->
+<section>
+  <div class="manifesto">
+    <h3>Why this exists</h3>
+    <div>
+      <p><strong>The merch store was scheduled for 2029 by the people who actually work there.</strong>
+      It was promised, memed, re-promised, delegated, forgotten, and re-memed. Freefall wanted to reship hoodies
+      out of an EU warehouse. Sean said troll the company. Monarch said "someone go make merch store."</p>
+      <p>So an outsider did. Designs by the server, receipts by the server, site by darci —
+      no salary, no mandate, no meetings. If the company wants to buy the whole thing —
+      <strong>DMs are open.</strong></p>
+    </div>
+  </div>
+</section>
+
+<!-- drop 002 submissions -->
+<section id="submit">
+  <div class="submit-box">
+    <div class="submit-copy">
+      <h3>Got a better one?</h3>
+      <p>The Lousy T-Shirt came in from someone in the server and it's on the wall now.
+      If yours is good it goes up too.</p>
+    </div>
+    <form class="submit-form" id="submitForm" novalidate>
+      <textarea id="ideaInput" maxlength="280" rows="3"
+        placeholder="The quote, the design, the cursed idea…" aria-label="Your design idea"></textarea>
+      <div class="submit-row">
+        <input type="text" id="handleInput" maxlength="60" placeholder="Your @ (optional — for credit)" aria-label="Your handle, optional">
+        <button type="submit" id="submitBtn">Send it in</button>
+      </div>
+      <input type="text" class="notify-hp" name="website" id="submitHp" tabindex="-1" autocomplete="off" aria-hidden="true">
+      <div class="submit-foot">
+        <span class="char-count" id="charCount">280 left</span>
+        <span class="submit-msg" id="submitMsg"></span>
+      </div>
+    </form>
+  </div>
+</section>
+
+<!-- faq -->
+<section id="faq">
+  <p class="sec-label"><i>03</i> Questions</p>
+  <div class="sec-head">
+    <h2>FAQ</h2>
+    <span class="tag">ASKED CONSTANTLY</span>
+  </div>
+  <div class="faq">
+    <details>
+      <summary>Is this the official Duel merch store?</summary>
+      <p class="faq-body">No. This is independent — built by darci, unaffiliated, nobody's permission asked.
+      It's just what the merch store looks like when someone who actually wants the merch builds it
+      instead of scheduling it. If Duel wants it to be official, <em>DMs are open.</em></p>
+    </details>
+    <details>
+      <summary>When can I actually buy one?</summary>
+      <p class="faq-body">Not yet — and we're not going to pretend otherwise. Everything here is a finished
+      design with real print files behind it, waiting on a production partner. Hit <em>want this made</em> on
+      the ones you'd actually wear; those get made first. No pre-orders, no countdown timers, no fake dates.
+      We've had enough of those.</p>
+    </details>
+    <details>
+      <summary>Why should I trust a merch store that took this long?</summary>
+      <p class="faq-body">The store spent <span id="faqDays">256</span> days <em>not</em> existing. This site took one night.
+      Different management.</p>
+    </details>
+    <details>
+      <summary>What do you do with my address?</summary>
+      <p class="faq-body">Hand it to the printer and forget it. Your name, email and address
+      go straight to the print partner who makes and ships the garment — <em>this site stores
+      none of it.</em> There's no customer database here, so there's nothing to sell, leak,
+      or hand over. The order record kept on our side is just what was ordered and what it cost.</p>
+    </details>
+    <details>
+      <summary>How will payment work?</summary>
+      <p class="faq-body"><em>Crypto only</em>, when it opens. No cards, no PayPal, no account to make,
+      no ID to upload. Card processing would mean registering a business and filing paperwork nobody
+      here wants to file, and you people were never going to pay for a hoodie any other way.</p>
+    </details>
+    <details>
+      <summary>Can I get my quote on a shirt?</summary>
+      <p class="faq-body">Already happening — the <a href="#drop">Lousy T-Shirt</a> was a concept someone
+      sent in, and it's in this drop. <a href="#submit">Send yours here</a> and let natural
+      selection do its thing.</p>
+    </details>
+  </div>
+</section>
+
+<!-- footer -->
+<footer>
+  <div class="foot-inner">
+    <div class="foot-mark">Duelmerch</div>
+    <div class="foot-row">
+      <span>Est. 2029 — shipped early</span>
+      <span><a href="#receipts">Receipts</a> &nbsp;/&nbsp; <a href="#concepts">Concepts</a>
+    &nbsp;/&nbsp; <a href="#top">Top</a></span>
+      <span>Built by darci</span>
+    </div>
+    <p class="foot-note">
+      Duelmerch is an independent fan project. Not affiliated with, endorsed by, or operated by Duel —
+      they are welcome to change that. Garments are apparel, not financial advice.
+      18+ — gamble responsibly, dress irresponsibly.
+    </p>
+  </div>
+</footer>
+
+
+<div class="backdrop" id="backdrop"></div>
+
+<!-- product modal -->
+<div class="modal" id="modal">
+  <div class="modal-card">
+    <button class="modal-close" id="modalClose">Close ✕</button>
+    <div class="modal-art" id="modalArt"></div>
+    <div class="modal-info">
+      <h3 class="modal-name" id="modalName"></h3>
+      <p class="modal-price" id="modalPrice"></p>
+      <p class="modal-desc" id="modalDesc"></p>
+      <div id="customRow" style="display:none">
+        <p class="size-label" id="customLabel">How much did you lose?</p>
+        <div class="amount-presets" id="amountPresets"></div>
+        <p class="amount-note">Each amount is a separately printed design, so it's these or nothing.</p>
+        <input type="hidden" id="customInput">
+      </div>
+      <div id="colorRowWrap" style="display:none">
+        <p class="size-label">Colour</p>
+        <div class="swatches" id="colorRow"></div>
+      </div>
+      <p class="size-label" id="sizeLabel" style="display:none">Size</p>
+      <div class="sizes" id="sizeRow" style="display:none"></div>
+      <button class="modal-add" id="modalAdd">Want this made</button>
+      <p class="modal-note">Not for sale yet — this tells us to make it.</p>
+      <p class="modal-meta" id="modalMeta"></p>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* =========================================================
+   DUELMERCH
+   Checkout is crypto-only and lives in functions/api/ —
+   prices and shipping are computed server-side, never here.
+   ========================================================= */
+const CONFIG = { storeName: "DUELMERCH" };
+
+/* ---------- garment artwork (inline SVG mockups) ---------- */
+const INK = "#141414";
+const NAVY = "#202a47";
+const COLORWAYS = { Black: INK, Navy: NAVY, White: "#FDFDFB" };
+const MONO_INK = { Black: "#262626", Navy: "#2e3d64" };
+let monoSeq = 0;
+// tileable DM monogram, used as an SVG fill so the whole garment carries it
+function monogramFill(color){
+  const base = COLORWAYS[color] || INK, ink = MONO_INK[color] || "#262626";
+  const id = "mono" + (++monoSeq);
+  const DM = `<text x="0" y="0" text-anchor="middle" dominant-baseline="central" font-family="Tinos,Times New Roman,serif" font-weight="700" font-size="14.5" letter-spacing="-1.5" fill="${ink}">DM</text>`;
+  const dia = `<path d="M0,-5.5 L3.8,0 L0,5.5 L-3.8,0 Z" fill="none" stroke="${ink}" stroke-width="1.3"/>`;
+  const ring = `<circle r="3.2" fill="none" stroke="${ink}" stroke-width="1.3"/><circle r="0.9" fill="${ink}"/>`;
+  const at=(x,y,c)=>`<g transform="translate(${x},${y})">${c}</g>`;
+  return { id, defs:`<defs><pattern id="${id}" width="60" height="60" patternUnits="userSpaceOnUse">`
+    + `<rect width="60" height="60" fill="${base}"/>`
+    + at(15,15,DM)+at(45,45,DM)+at(45,15,dia)+at(15,45,dia)
+    + at(30,30,ring)+at(0,0,ring)+at(60,0,ring)+at(0,60,ring)+at(60,60,ring)
+    + `</pattern></defs>` };
+}
+
+function shadow(y, w){
+  return `<ellipse cx="200" cy="${y}" rx="${w}" ry="14" fill="rgba(4,6,20,.35)"/>`;
+}
+
+// Lighting + fabric depth. This is what separates a product shot from a
+// technical drawing: a light source, falloff at the edges, and soft folds.
+let shadeSeq = 0;
+function garmentShading(body){
+  const id = "sh" + (++shadeSeq);
+  const dark = String(body).startsWith("url(") ? "#0d0d10" : body;
+  return { id, defs: `<defs>
+    <linearGradient id="${id}light" x1="0.15" y1="0" x2="0.9" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity=".085"/>
+      <stop offset="0.35" stop-color="#ffffff" stop-opacity=".015"/>
+      <stop offset="0.72" stop-color="#000000" stop-opacity=".16"/>
+      <stop offset="1" stop-color="#000000" stop-opacity=".42"/>
+    </linearGradient>
+    <radialGradient id="${id}pool" cx="0.5" cy="0.42" r="0.62">
+      <stop offset="0" stop-color="#ffffff" stop-opacity=".055"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="${id}soft" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="3"/>
+    </filter>
+  </defs>` };
+}
+
+function seams(body){
+  if (String(body).startsWith("url(")) body = INK;   // patterned garment: treat as dark
+  // art sits on dark gradient tiles: light outer edges on dark garments,
+  // dark edges on light garments; internal lines follow the body color
+  const isDark = body === INK;
+  return {
+    edge: isDark ? "rgba(255,255,255,.25)" : "rgba(9,12,34,.4)",
+    seam: isDark ? "rgba(255,255,255,.18)" : "rgba(9,12,34,.16)",
+    string: isDark ? "rgba(255,255,255,.4)" : "rgba(9,12,34,.4)",
+    rib: isDark ? "rgba(255,255,255,.1)" : "rgba(9,12,34,.08)",
+  };
+}
+
+function hoodieSVG(body, print, defs=""){
+  const c = seams(body);
+  const sh = garmentShading(body);
+  return `<svg viewBox="0 0 400 460" xmlns="http://www.w3.org/2000/svg">${defs}${sh.defs}
+    ${shadow(432, 130)}
+    <!-- sleeves -->
+    <path d="M128 142 L68 176 L56 328 Q55 344 70 344 L98 344 Q110 344 111 331 L120 214 Z" fill="${body}" stroke="${c.edge}" stroke-width="2" stroke-linejoin="round"/>
+    <path d="M272 142 L332 176 L344 328 Q345 344 330 344 L302 344 Q290 344 289 331 L280 214 Z" fill="${body}" stroke="${c.edge}" stroke-width="2" stroke-linejoin="round"/>
+    <!-- cuff rib lines -->
+    <path d="M58 322 L112 322" stroke="${c.seam}" stroke-width="2" fill="none"/>
+    <path d="M288 322 L342 322" stroke="${c.seam}" stroke-width="2" fill="none"/>
+    <!-- torso -->
+    <path d="M126 138 Q200 116 274 138 L281 392 Q281 410 264 410 L136 410 Q119 410 119 392 Z" fill="${body}" stroke="${c.edge}" stroke-width="2" stroke-linejoin="round"/>
+    <path d="M126 138 Q200 116 274 138 L281 392 Q281 410 264 410 L136 410 Q119 410 119 392 Z" fill="url(#${sh.id}light)"/>
+    <path d="M126 138 Q200 116 274 138 L281 392 Q281 410 264 410 L136 410 Q119 410 119 392 Z" fill="url(#${sh.id}pool)"/>
+    <g opacity=".28" filter="url(#${sh.id}soft)" stroke="#000" fill="none" stroke-width="3">
+      <path d="M152 260 Q160 330 154 398"/>
+      <path d="M250 258 Q244 332 250 398"/>
+    </g>
+    <!-- shoulder seams + hem rib -->
+    <path d="M127 140 L121 212" stroke="${c.seam}" stroke-width="2" fill="none"/>
+    <path d="M273 140 L279 212" stroke="${c.seam}" stroke-width="2" fill="none"/>
+    <path d="M121 392 L279 392" stroke="${c.seam}" stroke-width="2" fill="none"/>
+    <!-- hood -->
+    <path d="M140 136 Q146 66 200 62 Q254 66 260 136 Q228 154 200 155 Q172 154 140 136 Z" fill="${body}" stroke="${c.edge}" stroke-width="2"/>
+    <path d="M156 130 Q162 88 200 84 Q238 88 244 130 Q222 144 200 145 Q178 144 156 130 Z" fill="rgba(0,0,0,.5)" stroke="${c.seam}" stroke-width="2"/>
+    <!-- drawstrings -->
+    <line x1="188" y1="152" x2="183" y2="200" stroke="${c.string}" stroke-width="3" stroke-linecap="round"/>
+    <line x1="212" y1="152" x2="217" y2="200" stroke="${c.string}" stroke-width="3" stroke-linecap="round"/>
+    <!-- kangaroo pocket -->
+    <path d="M150 328 L250 328 L244 390 L156 390 Z" fill="none" stroke="${c.seam}" stroke-width="2" stroke-linejoin="round"/>
+    ${print}
+  </svg>`;
+}
+
+function teeSVG(body, print, defs=""){
+  const c = seams(body);
+  const sh = garmentShading(body);
+  return `<svg viewBox="0 0 400 460" xmlns="http://www.w3.org/2000/svg">${defs}${sh.defs}
+    ${shadow(430, 132)}
+    <!-- one-piece flat lay: shoulders, set-in sleeves, torso -->
+    <path d="M118 128 L58 190 L76 248 L120 228 L120 386 Q120 404 138 404 L262 404 Q280 404 280 386 L280 228 L324 248 L342 190 L282 128 Q252 112 230 110 Q200 136 170 110 Q148 112 118 128 Z"
+      fill="${body}" stroke="${c.edge}" stroke-width="2" stroke-linejoin="round"/>
+    <path d="M118 128 L58 190 L76 248 L120 228 L120 386 Q120 404 138 404 L262 404 Q280 404 280 386 L280 228 L324 248 L342 190 L282 128 Q252 112 230 110 Q200 136 170 110 Q148 112 118 128 Z" fill="url(#${sh.id}light)"/>
+    <path d="M118 128 L58 190 L76 248 L120 228 L120 386 Q120 404 138 404 L262 404 Q280 404 280 386 L280 228 L324 248 L342 190 L282 128 Q252 112 230 110 Q200 136 170 110 Q148 112 118 128 Z" fill="url(#${sh.id}pool)"/>
+    <g opacity=".30" filter="url(#${sh.id}soft)" stroke="#000" fill="none" stroke-width="3">
+      <path d="M150 250 Q158 316 150 392"/>
+      <path d="M250 246 Q244 318 252 392"/>
+      <path d="M168 402 Q200 392 232 402"/>
+    </g>
+    <!-- sleeve seams -->
+    <path d="M120 132 L122 226" stroke="${c.seam}" stroke-width="2" fill="none"/>
+    <path d="M280 132 L278 226" stroke="${c.seam}" stroke-width="2" fill="none"/>
+    <!-- collar rib -->
+    <path d="M170 110 Q200 136 230 110 Q200 152 170 110 Z" fill="${c.rib}" stroke="${c.seam}" stroke-width="2"/>
+    ${print}
+  </svg>`;
+}
+
+function teeBackSVG(body, print, defs=""){
+  const c = seams(body);
+  return `<svg viewBox="0 0 400 460" xmlns="http://www.w3.org/2000/svg">${defs}
+    ${shadow(430, 132)}
+    <path d="M118 128 L58 190 L76 248 L120 228 L120 386 Q120 404 138 404 L262 404 Q280 404 280 386 L280 228 L324 248 L342 190 L282 128 Q252 112 230 110 L170 110 Q148 112 118 128 Z"
+      fill="${body}" stroke="${c.edge}" stroke-width="2" stroke-linejoin="round"/>
+    <path d="M120 132 L122 226" stroke="${c.seam}" stroke-width="2" fill="none"/>
+    <path d="M280 132 L278 226" stroke="${c.seam}" stroke-width="2" fill="none"/>
+    <path d="M170 110 Q200 122 230 110" fill="none" stroke="${c.seam}" stroke-width="2.5"/>
+    ${print}
+  </svg>`;
+}
+
+function longsleeveSVG(body, print, defs=""){
+  const c = seams(body);
+  return `<svg viewBox="0 0 400 460" xmlns="http://www.w3.org/2000/svg">${defs}
+    ${shadow(430, 132)}
+    <!-- sleeves (behind torso, angled out) -->
+    <path d="M124 134 L62 180 L48 336 Q47 352 62 352 L90 352 Q103 352 104 339 L116 214 Z" fill="${body}" stroke="${c.edge}" stroke-width="2" stroke-linejoin="round"/>
+    <path d="M276 134 L338 180 L352 336 Q353 352 338 352 L310 352 Q297 352 296 339 L284 214 Z" fill="${body}" stroke="${c.edge}" stroke-width="2" stroke-linejoin="round"/>
+    <!-- cuff rib lines -->
+    <path d="M50 330 L105 330" stroke="${c.seam}" stroke-width="2" fill="none"/>
+    <path d="M295 330 L350 330" stroke="${c.seam}" stroke-width="2" fill="none"/>
+    <!-- torso with neckline -->
+    <path d="M124 132 Q148 114 170 110 Q200 136 230 110 Q252 114 276 132 L280 386 Q280 404 262 404 L138 404 Q120 404 120 386 Z"
+      fill="${body}" stroke="${c.edge}" stroke-width="2" stroke-linejoin="round"/>
+    <!-- shoulder seams -->
+    <path d="M125 136 L121 214" stroke="${c.seam}" stroke-width="2" fill="none"/>
+    <path d="M275 136 L279 214" stroke="${c.seam}" stroke-width="2" fill="none"/>
+    <!-- collar rib -->
+    <path d="M170 110 Q200 136 230 110 Q200 152 170 110 Z" fill="${c.rib}" stroke="${c.seam}" stroke-width="2"/>
+    <!-- sleeve prints -->
+    <text x="80" y="246" font-family="Inter,Arial,sans-serif" font-size="13" font-weight="800" fill="rgba(255,255,255,.92)" transform="rotate(83 80 246)" letter-spacing="2">ANY DAY NOW</text>
+    <text x="322" y="246" font-family="Inter,Arial,sans-serif" font-size="13" font-weight="800" fill="rgba(255,255,255,.92)" transform="rotate(97 322 246)" letter-spacing="2">ANY DAY NOW</text>
+    ${print}
+  </svg>`;
+}
+
+function capSVG(body, print){
+  const c = seams(body);
+  return `<svg viewBox="0 0 400 340" xmlns="http://www.w3.org/2000/svg">
+    ${shadow(300, 120)}
+    <!-- side-profile dad cap, bill pointing right -->
+    <!-- bill -->
+    <path d="M262 196 L330 198 Q352 202 350 214 Q346 224 324 226 Q290 228 260 222 Z" fill="${body}" stroke="${c.edge}" stroke-width="2" stroke-linejoin="round"/>
+    <!-- crown -->
+    <path d="M86 214 C88 134 148 100 192 100 C250 100 274 152 278 214 Q200 226 86 214 Z" fill="${body}" stroke="${c.edge}" stroke-width="2" stroke-linejoin="round"/>
+    <!-- panel seams -->
+    <path d="M176 102 Q166 160 168 216" stroke="${c.seam}" stroke-width="2" fill="none"/>
+    <path d="M228 110 Q226 160 228 216" stroke="${c.seam}" stroke-width="1.5" fill="none"/>
+    <!-- button + eyelet -->
+    <circle cx="196" cy="100" r="5" fill="${body}" stroke="${c.edge}" stroke-width="2"/>
+    <circle cx="200" cy="136" r="3" fill="none" stroke="${c.seam}" stroke-width="2"/>
+    ${print}
+  </svg>`;
+}
+
+function beanieSVG(body, print){
+  const dark = "rgba(0,0,0,.22)";
+  return `<svg viewBox="0 0 400 340" xmlns="http://www.w3.org/2000/svg">
+    ${shadow(300, 110)}
+    <!-- dome -->
+    <path d="M112 220 Q112 78 200 78 Q288 78 288 220 Z" fill="${body}"/>
+    <path d="M112 220 Q112 78 200 78 Q288 78 288 220 Z" fill="none" stroke="${dark}" stroke-width="2"/>
+    <path d="M168 86 Q152 150 152 200" stroke="${dark}" stroke-width="1.5" fill="none"/>
+    <path d="M232 86 Q248 150 248 200" stroke="${dark}" stroke-width="1.5" fill="none"/>
+    <path d="M200 78 L200 200" stroke="${dark}" stroke-width="1.5" fill="none"/>
+    <!-- cuff -->
+    <rect x="104" y="198" width="192" height="62" rx="10" fill="${body}" stroke="${dark}" stroke-width="2"/>
+    <g stroke="${dark}" stroke-width="1.2">
+      <line x1="120" y1="202" x2="120" y2="256"/><line x1="136" y1="202" x2="136" y2="256"/>
+      <line x1="152" y1="202" x2="152" y2="256"/><line x1="248" y1="202" x2="248" y2="256"/>
+      <line x1="264" y1="202" x2="264" y2="256"/><line x1="280" y1="202" x2="280" y2="256"/>
+    </g>
+    ${print}
+  </svg>`;
+}
+
+/* ---------- prints ---------- */
+const printGamblingEasy = `<g transform="translate(200.0,257.0) scale(0.8344) translate(-199.5,-257.0)">
+  <text x="200" y="238" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-weight="800" font-size="26" fill="#ffffff" letter-spacing="1">GAMBLING</text>
+  <text x="200" y="268" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-weight="800" font-size="26" fill="#ffffff" letter-spacing="1">IS EASY</text>
+  <text x="200" y="292" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-size="12" font-weight="700" fill="#ffc100">(even i can do it)</text></g>`;
+
+const printCow = `
+  <g>
+    <!-- cow head -->
+    <path d="M170 196 Q170 172 200 172 Q230 172 230 196 L228 236 Q228 258 200 258 Q172 258 172 236 Z" fill="#F2EFE9" stroke="#141414" stroke-width="5"/>
+    <!-- ears -->
+    <path d="M168 192 Q146 180 142 196 Q140 210 166 208 Z" fill="#F2EFE9" stroke="#141414" stroke-width="5"/>
+    <path d="M232 192 Q254 180 258 196 Q260 210 234 208 Z" fill="#F2EFE9" stroke="#141414" stroke-width="5"/>
+    <!-- spots -->
+    <path d="M176 184 Q188 176 196 186 Q198 198 186 200 Q174 198 176 184 Z" fill="#141414"/>
+    <path d="M218 210 Q230 206 230 218 Q230 228 220 226 Q212 220 218 210 Z" fill="#141414"/>
+    <!-- eyes -->
+    <circle cx="188" cy="208" r="4.5" fill="#141414"/>
+    <circle cx="212" cy="208" r="4.5" fill="#141414"/>
+    <!-- muzzle -->
+    <rect x="180" y="226" width="40" height="26" rx="13" fill="#E3B8C8" stroke="#141414" stroke-width="5"/>
+    <circle cx="192" cy="239" r="3.4" fill="#141414"/>
+    <circle cx="208" cy="239" r="3.4" fill="#141414"/>
+  </g>
+  <text x="200" y="292" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-weight="800" font-size="19" fill="#141414" letter-spacing="2">DUEL COW</text>`;
+
+const print2029 = `<g transform="translate(200.0,254.5) scale(0.8608) translate(-200.0,-254.5)">
+  <text x="200" y="222" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-size="12" font-weight="800" fill="#ffffff" letter-spacing="2">MERCH STORE</text>
+  <text x="200" y="256" text-anchor="middle" font-family="Tinos,Times New Roman,serif" font-weight="700" font-size="27" fill="#8d97c9">Coming 2029.</text>
+  <line x1="144" y1="248" x2="256" y2="244" stroke="#e8305e" stroke-width="4"/>
+  <text x="200" y="290" text-anchor="middle" font-family="Tinos,Times New Roman,serif" font-weight="700" font-size="24" fill="#20d095">Shipped 2026.</text></g>`;
+
+
+
+const printEV = `
+  <rect x="164" y="212" width="72" height="36" rx="6" fill="#e25c27"/>
+  <text x="200" y="238" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-weight="800" font-size="22" fill="#141414" letter-spacing="1">+EV</text>`;
+
+const LOUSY_DEFAULT = 4000;
+function printLousy(amount){
+  const n = Math.max(0, Math.floor(Number(amount) || LOUSY_DEFAULT));
+  const s = "$" + n.toLocaleString("en-US");
+  const topSize = s.length > 9 ? 11 : (s.length > 7 ? 12 : 13);
+  return `
+  <text x="200" y="204" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-weight="700" font-size="${topSize}" fill="#ffffff">I lost ${s} to</text>
+  <text x="206" y="250" text-anchor="end" font-family="Tinos,Times New Roman,serif" font-weight="700" font-size="42" fill="#ffffff">Duel</text>
+  <text x="214" y="238" font-family="Inter,Arial,sans-serif" font-weight="700" font-size="13" fill="#ffffff">100%</text>
+  <text x="214" y="256" font-family="Inter,Arial,sans-serif" font-weight="700" font-size="13" fill="#ffffff">RTP</text>
+  <text x="200" y="286" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-weight="700" font-size="12" fill="#ffffff">and all I got was</text>
+  <text x="200" y="303" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-weight="700" font-size="12" fill="#ffffff">this lousy t-shirt</text>`;
+}
+
+
+
+const printOnTheTeam = `<g transform="translate(200.0,245.5) scale(0.7771) translate(-200.5,-245.5)">
+  <text x="200" y="215" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-weight="800" font-size="25" fill="#ffffff">BRO THINKS</text>
+  <text x="200" y="243" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-weight="800" font-size="25" fill="#ffffff">HE'S ON</text>
+  <text x="200" y="271" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-weight="800" font-size="25" fill="#ffffff">THE TEAM</text>
+  <text x="200" y="292" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-weight="700" font-size="10" fill="#ffc100">(he is not on the team)</text></g>`;
+
+const printRTP = `<g transform="translate(200.0,247.0) scale(0.9128) translate(-197.5,-247.0)">
+  <text x="197" y="250" text-anchor="middle" font-family="Tinos,Times New Roman,serif" font-weight="700" font-size="32" fill="#ffffff">100% RTP</text>
+  <text x="248" y="232" font-family="Inter,Arial,sans-serif" font-weight="800" font-size="13" fill="#e8305e">*</text>
+  <text x="200" y="270" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-weight="700" font-size="8.5" fill="#8d97c9">*not on my account</text></g>`;
+
+
+
+const printTrademarked = `<g transform="translate(185.0,180.0) scale(0.9317) translate(-188.5,-180.0)">
+  <text x="108" y="186" font-family="Inter,Arial,sans-serif" font-weight="800" font-size="16" fill="#ffc100" letter-spacing="1.2">TRADEMARKED?</text></g>`;
+
+
+/* ---- quieter placements: left chest, back ---- */
+// small left-chest hit (appears on the viewer's right)
+const printChestWordmark = `
+  <text x="243" y="204" text-anchor="middle" font-family="Tinos,Times New Roman,serif" font-weight="700" font-size="15" fill="#ffffff">duelmerch</text>
+  <text x="243" y="216" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-weight="700" font-size="6.5" fill="#8d97c9" letter-spacing="1.6">.ORG</text>`;
+
+const printChestDates = `
+  <text x="222" y="200" font-family="Inter,Arial,sans-serif" font-weight="700" font-size="9" fill="#8d97c9">Q1 2025</text>
+  <line x1="220" y1="197" x2="258" y2="196" stroke="#e8305e" stroke-width="1.5"/>
+  <text x="222" y="214" font-family="Inter,Arial,sans-serif" font-weight="700" font-size="9" fill="#8d97c9">2029</text>
+  <line x1="220" y1="211" x2="248" y2="210" stroke="#e8305e" stroke-width="1.5"/>
+  <text x="222" y="230" font-family="Inter,Arial,sans-serif" font-weight="800" font-size="10.5" fill="#ffffff">2026</text>
+  <path d="M251 225 L255 230 L263 220" fill="none" stroke="#20d095" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>`;
+
+
+
+
+function pillowSVG(){
+  return `<svg viewBox="0 0 400 460" xmlns="http://www.w3.org/2000/svg">
+    <ellipse cx="200" cy="440" rx="96" ry="12" fill="rgba(4,6,20,.35)"/>
+    <rect x="146" y="34" width="108" height="394" rx="24" fill="#fbfbf8" stroke="rgba(9,12,34,.35)" stroke-width="2"/>
+    <text x="200" y="60" text-anchor="middle" font-family="Tinos, Times New Roman, serif" font-weight="700" font-size="13" fill="#141414">Duelmerch</text>
+    <path d="M178 200 Q200 190 222 200 L230 312 Q230 328 214 328 L186 328 Q170 328 170 312 Z" fill="#F2EFE9" stroke="#141414" stroke-width="4"/>
+    <path d="M186 224 Q198 216 206 226 Q208 238 196 240 Q184 238 186 224 Z" fill="#141414"/>
+    <path d="M208 272 Q220 268 220 280 Q220 290 210 288 Q202 282 208 272 Z" fill="#141414"/>
+    <path d="M182 328 L184 368 Q184 378 194 378 Q200 378 200 368 L200 328 Z" fill="#F2EFE9" stroke="#141414" stroke-width="4"/>
+    <path d="M218 328 L216 368 Q216 378 206 378 Q200 378 200 368 L200 328 Z" fill="#F2EFE9" stroke="#141414" stroke-width="4"/>
+    <g transform="translate(200,158) scale(0.85) translate(-200,-215)">
+      <path d="M170 196 Q170 172 200 172 Q230 172 230 196 L228 236 Q228 258 200 258 Q172 258 172 236 Z" fill="#F2EFE9" stroke="#141414" stroke-width="5"/>
+      <path d="M168 192 Q146 180 142 196 Q140 210 166 208 Z" fill="#F2EFE9" stroke="#141414" stroke-width="5"/>
+      <path d="M232 192 Q254 180 258 196 Q260 210 234 208 Z" fill="#F2EFE9" stroke="#141414" stroke-width="5"/>
+      <path d="M176 184 Q188 176 196 186 Q198 198 186 200 Q174 198 176 184 Z" fill="#141414"/>
+      <circle cx="188" cy="208" r="4.5" fill="#141414"/>
+      <circle cx="212" cy="208" r="4.5" fill="#141414"/>
+      <ellipse cx="170" cy="224" rx="8" ry="4.5" fill="#f2a0b5" opacity=".8"/>
+      <ellipse cx="230" cy="224" rx="8" ry="4.5" fill="#f2a0b5" opacity=".8"/>
+      <rect x="180" y="226" width="40" height="26" rx="13" fill="#E3B8C8" stroke="#141414" stroke-width="5"/>
+      <circle cx="192" cy="239" r="3.4" fill="#141414"/>
+      <circle cx="208" cy="239" r="3.4" fill="#141414"/>
+    </g>
+    <text x="200" y="404" text-anchor="middle" font-family="Inter, Arial, Helvetica, sans-serif" font-weight="800" font-size="15" fill="#141414" letter-spacing="2">DUEL COW</text>
+    <text x="200" y="417" text-anchor="middle" font-family="Inter, Arial, Helvetica, sans-serif" font-weight="700" font-size="7.5" fill="#8d97c9">she has never lost a hand</text>
+  </svg>`;
+}
+
+function condomSVG(){
+  // Proper 3-face box (top/front/side on one shared depth vector) instead
+  // of the old single slanted hexagon - front face is now a plain rect, so
+  // the wordmark/copy sits on a flat plane instead of a tilted one.
+  return `<svg viewBox="0 0 400 460" xmlns="http://www.w3.org/2000/svg">
+    ${shadow(408, 118)}
+    <path d="M96 128 L272 128 L316 92 L140 92 Z" fill="#1f2546"/>
+    <path d="M272 128 L316 92 L316 356 L272 392 Z" fill="#0d1226"/>
+    <rect x="96" y="128" width="176" height="264" fill="#121731" stroke="rgba(255,255,255,.14)" stroke-width="1.5"/>
+    <text x="206" y="115" text-anchor="middle" font-family="Inter, Arial, Helvetica, sans-serif" font-weight="800" font-size="14" letter-spacing=".5" fill="#4558ff">XXXL</text>
+    <text x="184" y="157" text-anchor="middle" font-family="Inter, Arial, Helvetica, sans-serif" font-weight="800" font-size="7" fill="#8d97c9" letter-spacing="1.4">#1 CASINO CONDOM</text>
+    <text x="184" y="210" text-anchor="middle" font-family="Tinos, Times New Roman, serif" font-weight="700" font-size="46" fill="#ffffff">Duel</text>
+    <line x1="126" y1="230" x2="242" y2="230" stroke="rgba(255,255,255,.22)" stroke-width="1.4"/>
+    <text x="184" y="250" text-anchor="middle" font-family="Inter, Arial, Helvetica, sans-serif" font-weight="700" font-size="7.5" fill="#ffffff" letter-spacing=".6">PROVABLY FAIR PROTECTION</text>
+    <g transform="translate(184,302)">
+      <circle r="30" fill="#1f2546" stroke="#4558ff" stroke-width="3"/>
+      <circle r="21" fill="none" stroke="rgba(255,255,255,.35)" stroke-width="1.6" stroke-dasharray="4 5"/>
+      <text y="6" text-anchor="middle" font-family="Tinos, Times New Roman, serif" font-weight="700" font-size="20" fill="#ffffff">D</text>
+    </g>
+    <text x="184" y="352" text-anchor="middle" font-family="Inter, Arial, Helvetica, sans-serif" font-weight="800" font-size="9" fill="#4558ff" letter-spacing=".5">100% RTP*</text>
+    <text x="184" y="364" text-anchor="middle" font-family="Inter, Arial, Helvetica, sans-serif" font-weight="700" font-size="6" fill="#8d97c9">*not on my account</text>
+    <text x="184" y="382" text-anchor="middle" font-family="Inter, Arial, Helvetica, sans-serif" font-weight="700" font-size="6" fill="#8d97c9" letter-spacing=".5">12 LATEX  ·  NOVELTY ONLY</text>
+  </svg>`;
+}
+
+function deedSVG(){
+  return `<svg viewBox="0 0 400 460" xmlns="http://www.w3.org/2000/svg">
+    ${shadow(430, 118)}
+    <!-- frame -->
+    <rect x="94" y="84" width="212" height="292" fill="#141414"/>
+    <rect x="112" y="102" width="176" height="256" fill="#FAF8F4" stroke="rgba(0,0,0,.18)" stroke-width="2"/>
+    <!-- paper content -->
+    <text x="200" y="140" text-anchor="middle" font-family="Tinos,Times New Roman,serif" font-size="13" fill="#8B8A85" letter-spacing="3">DEED OF SALE</text>
+    <line x1="136" y1="152" x2="264" y2="152" stroke="rgba(0,0,0,.2)" stroke-width="1.5"/>
+    <text x="200" y="188" text-anchor="middle" font-family="Tinos,Times New Roman,serif" font-weight="700" font-size="25" fill="#141414">The Entire</text>
+    <text x="200" y="216" text-anchor="middle" font-family="Tinos,Times New Roman,serif" font-weight="700" font-size="25" fill="#141414">Merch Store</text>
+    <text x="200" y="244" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-size="8.5" font-weight="700" fill="#8B8A85">1 OF 1 — SERIOUS INQUIRIES ONLY</text>
+    <!-- signature line -->
+    <line x1="140" y1="330" x2="260" y2="330" stroke="rgba(0,0,0,.35)" stroke-width="1.5"/>
+    <text x="200" y="344" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-size="8.5" font-weight="700" fill="#8B8A85" letter-spacing="2">MONARCH SIGNS HERE</text>
+    <!-- seal -->
+    <circle cx="200" cy="288" r="24" fill="#ffc100" stroke="rgba(0,0,0,.2)" stroke-width="2"/>
+    <text x="200" y="296" text-anchor="middle" font-family="Tinos,Times New Roman,serif" font-weight="700" font-size="18" fill="#121731">DM</text>
+  </svg>`;
+}
+
+/* ---------- catalog ---------- */
+const APPAREL_SIZES = ["S","M","L","XL","XXL"];
+const ONE_SIZE = ["ONE SIZE"];
+
+function fmt(n){ return "$" + n.toLocaleString("en-US"); }
+
+/* Oldest "merch store" promise we have a screenshot of: Ventful and
+   DuelPounder, 12/9/2025 — both on the receipts wall. Everything the site
+   claims about how long this took counts from there, so the number stays
+   true on its own and can be checked against the receipts. */
+const DAY_ZERO = Date.parse("2025-12-09T00:00:00Z");
+function daysWaited(){
+  return Math.max(0, Math.floor((Date.now() - DAY_ZERO) / 86400000));
+}
+
+const PRODUCTS = [
+  {
+    id:"gambling-easy-hoodie",
+    colors:["Black","Navy"],
+    tile:"#1b2038",
+    name:"Gambling Is Easy Hoodie",
+    lore:"as spoken by Cuttle",
+    price:72,
+    chip:"HEAVYWEIGHT",
+    sizes:APPAREL_SIZES,
+    desc:`The philosophy, immortalized on heavyweight fleece. Front reads <em>"GAMBLING IS EASY (even i can do it)."</em> That's it. That's the hoodie. Spotted in Dubai before it even existed.`,
+    meta:["Blank — Gildan 18500","Weight — 8oz cotton/poly fleece","Print — front, white ink","Fit — unisex, runs roomy"],
+    art:(a,c)=>hoodieSVG(COLORWAYS[c]||INK, printGamblingEasy),
+  },
+  {
+    id:"duel-cow-tee",
+    colors:["White"],
+    tile:"#1b2038",
+    name:"Duel Cow Tee",
+    lore:"Ivan asked for the cow one — white tee",
+    price:34,
+    chip:"THE COW ONE",
+    sizes:APPAREL_SIZES,
+    desc:`Ivan wanted the cow one. This is the cow one. We don't fully know why there's a cow either — that's what makes it <em>lore.</em>`,
+    meta:["Blank — Bella + Canvas 3001","Fabric — 100% ring-spun cotton","Print — front graphic","Fit — unisex"],
+    art:(a,c)=>teeSVG("#FDFDFB", printCow),
+  },
+  {
+    id:"coming-2029-tee",
+    colors:["Black","Navy"],
+    tile:"#1b2038",
+    name:"Coming 2029 Tee",
+    lore:"the official timeline, amended",
+    price:34,
+    chip:"THE ORIGINAL",
+    sizes:APPAREL_SIZES,
+    desc:`Monarch said 2029. Ventful said 2029. The timeline has been <em>amended.</em> Wear the correction.`,
+    meta:["Blank — Bella + Canvas 3001","Fabric — 100% ring-spun cotton","Print — front type","Fit — unisex"],
+    art:(a,c)=>teeSVG(COLORWAYS[c]||INK, print2029),
+  },
+  {
+    id:"ev-beanie",
+    colors:["Black","Navy"],
+    tile:"#1b2038",
+    name:"+EV Beanie",
+    lore:"plusev colours, Ventful's",
+    price:28,
+    chip:"WOVEN PATCH",
+    sizes:ONE_SIZE,
+    desc:`The only guaranteed positive expected value in this entire community. Keeps your head warm while your bankroll does whatever it's doing.`,
+    meta:["Blank — Yupoong 1501KC","Finish — orange embroidery","Size — one size"],
+    art:(a,c)=>beanieSVG(COLORWAYS[c]||INK, printEV),
+  },
+  {
+    id:"lousy-tee",
+    colors:["Black","Navy"],
+    tile:"#1b2038",
+    name:"Lousy T-Shirt",
+    lore:"you pick the number",
+    price:34,
+    chip:"YOUR NUMBER",
+    sizes:APPAREL_SIZES,
+    custom:{ label:"How much did you lose?", def:LOUSY_DEFAULT, amounts:[69,420,1000,4000,10000,100000], presets:[69,420,1000,4000,10000,100000] },
+    desc:`Sent in by the server, printed without edits. <em>Put your own number on it</em> — the real one, not the one you told your girlfriend. 100% RTP, allegedly.`,
+    meta:["Blank — Bella + Canvas 3001","Print — front, your amount","Fit — unisex"],
+    art:(amount,c)=>teeSVG(COLORWAYS[c]||INK, printLousy(amount)),
+  },
+  {
+    id:"on-the-team-tee",
+    colors:["Black","Navy"],
+    drop:2,
+    tile:"#1b2038",
+    name:"On The Team Tee",
+    lore:"Plank said it. He wasn't wrong.",
+    price:34,
+    chip:"DROP 002",
+    sizes:APPAREL_SIZES,
+    desc:`Plank posted this at me in the server. <em>He's right — I don't work there.</em> Wearing the insult is cheaper than arguing with it.`,
+    meta:["Blank — Bella + Canvas 3001","Fabric — 100% ring-spun cotton","Print — front type","Fit — unisex"],
+    art:(a,c)=>teeSVG(COLORWAYS[c]||INK, printOnTheTeam),
+  },
+  {
+    id:"rtp-hoodie",
+    colors:["Black","Navy"],
+    drop:2,
+    tile:"#1b2038",
+    name:"100% RTP Hoodie",
+    lore:"the asterisk does the work",
+    price:74,
+    chip:"DROP 002",
+    sizes:APPAREL_SIZES,
+    desc:`The number they advertise, with the footnote they don't. <em>*not on my account.</em> The only piece here you could wear somewhere nobody knows what Duel is.`,
+    meta:["Blank — Gildan 18500","Weight — 8oz cotton/poly fleece","Print — front, white ink","Fit — unisex, runs roomy"],
+    art:(a,c)=>hoodieSVG(COLORWAYS[c]||INK, printRTP),
+  },
+  {
+    id:"trademarked-cap",
+    colors:["Black","Navy"],
+    drop:2,
+    tile:"#1b2038",
+    name:"Trademarked? Cap",
+    lore:"reggin asked out loud",
+    price:30,
+    chip:"EMBROIDERED",
+    sizes:ONE_SIZE,
+    desc:`Somebody asked in the server whether Duel is trademarked. Nobody answered. <em>Wear the question.</em>`,
+    meta:["Blank — Yupoong 6245CM dad hat","Finish — gold embroidery","Size — adjustable, one size"],
+    art:(a,c)=>capSVG(COLORWAYS[c]||INK, printTrademarked),
+  },
+  {
+    id:"monogram-hoodie",
+    drop:3,
+    colors:["Black","Navy"],
+    tile:"#1b2038",
+    name:"Monogram Hoodie",
+    lore:"printed edge to edge",
+    price:128,
+    chip:"ALL-OVER",
+    sizes:APPAREL_SIZES,
+    desc:`The DM monogram, tonal, across every panel — body, sleeves, hood, pocket. <em>Printed, not stitched on.</em> The only piece here that says nothing at all.`,
+    meta:["Blank — all-over print cotton hoodie","Print — tonal monogram, every panel","Fit — oversized"],
+    art:(a,c)=>{ const m=monogramFill(c||"Black"); return hoodieSVG(`url(#${m.id})`, "", m.defs); },
+  },
+  {
+    id:"monogram-tee",
+    drop:3,
+    colors:["Black","Navy"],
+    tile:"#1b2038",
+    name:"Monogram Tee",
+    lore:"quieter than everything else",
+    price:68,
+    chip:"ALL-OVER",
+    sizes:APPAREL_SIZES,
+    desc:`Same monogram, lighter weight. <em>Wearable somewhere nobody knows what any of this means.</em>`,
+    meta:["Blank — all-over print cotton tee","Print — tonal monogram, all panels","Fit — oversized"],
+    art:(a,c)=>{ const m=monogramFill(c||"Black"); return teeSVG(`url(#${m.id})`, "", m.defs); },
+  },
+  {
+    id:"chest-wordmark-tee",
+    drop:4,
+    colors:["Black","Navy"],
+    tile:"#1b2038",
+    name:"Wordmark Tee",
+    lore:"small hit, left chest",
+    price:34,
+    chip:"LEFT CHEST",
+    sizes:APPAREL_SIZES,
+    desc:`No slogan, no punchline — just the mark, small, where a brand puts it. <em>The one you can wear to work.</em>`,
+    meta:["Blank — Bella + Canvas 3001","Print — left chest, 4in","Fit — unisex"],
+    art:(a,c)=>teeSVG(COLORWAYS[c]||INK, printChestWordmark),
+  },
+  {
+    id:"dates-tee",
+    drop:4,
+    colors:["Black","Navy"],
+    tile:"#1b2038",
+    name:"The Dates Tee",
+    lore:"every date they promised",
+    price:34,
+    chip:"LEFT CHEST",
+    sizes:APPAREL_SIZES,
+    desc:`Q1 2025, struck out. 2029, struck out. <em>2026, ticked.</em> The whole argument in three lines, small enough to be deniable.`,
+    meta:["Blank — Bella + Canvas 3001","Print — left chest, 4in","Fit — unisex"],
+    art:(a,c)=>teeSVG(COLORWAYS[c]||INK, printChestDates),
+  },
+  {
+    id:"cow-body-pillow",
+    colors:["White"],
+    tile:"#1b2038",
+    name:"Duel Cow Body Pillow",
+    lore:"Ivan asked for the cow one",
+    price:88,
+    chip:"50 × 160CM",
+    sizes:ONE_SIZE,
+    desc:`Shuffle sell a waifu body pillow for $888.88. This is the same idea with a cow on it, for a tenth of the price. <em>She has never lost a hand.</em> Double-sided, because of course it is.`,
+    meta:["Size — 50 × 160cm","Includes — case + inner pillow","Print — double-sided"],
+    art:()=>pillowSVG(),
+  },
+  {
+    id:"duel-condoms",
+    colors:["Navy"],
+    tile:"#1b2038",
+    name:"Duel Dick Condoms",
+    lore:"the box speaks for itself",
+    price:69.69,
+    chip:"NOVELTY",
+    sizes:ONE_SIZE,
+    desc:`Box of 12. Provably fair, 100% RTP*, XXXL only. <em>*not on my account.</em><br><br><em>Novelty item. Not a contraceptive, not for actual use.</em>`,
+    meta:["Count — box of 12","Use — novelty only, not contraception","Fairness — provably, allegedly"],
+    art:()=>condomSVG(),
+  },
+  {
+    id:"the-entire-merch-store",
+    tile:"#1b2038",
+    name:"The Entire Merch Store",
+    lore:"for Monarch. DMs are open.",
+    price:1000000000,
+    chip:"1 OF 1",
+    sizes:ONE_SIZE,
+    desc:`Sean said <em>"a billion dollars and you can't open up a merch store."</em> Correct — it took one guy and a domain. Now it's for sale: the site, the stock, the lore, the receipts. The whole operation. <em>Serious inquiries only.</em>`,
+    meta:["Edition — 1 of 1","Includes — all lore, past and future","Delivery — buyer collects"],
+    art:()=>deedSVG(),
+  },
+];
+
+/* ---------- receipt avatars ----------
+   Vector stand-ins for the server's actual profile pictures. Anyone whose
+   avatar is a photo keeps a coloured initial instead — a bad drawing of a
+   real face is worse than a letter. */
+const AVATARS = {
+  // Monarch — black line-art chess crown on white
+  crown: `<svg viewBox="0 0 40 40" aria-hidden="true">
+    <rect width="40" height="40" fill="#fbfbfb"/>
+    <g fill="#111"><rect x="19" y="2" width="2.4" height="7.5"/><rect x="16.4" y="4.2" width="7.6" height="2.4"/></g>
+    <path d="M8.5 24.5 C3.5 21.5 5 14 10.5 14 C14.5 14 16.5 18 17.5 21.5 C15 17.5 16 11.5 20.2 8.6 C24.4 11.5 25.4 17.5 22.9 21.5 C23.9 18 25.9 14 29.9 14 C35.4 14 36.9 21.5 31.9 24.5 Z"
+      fill="#fbfbfb" stroke="#111" stroke-width="2.1" stroke-linejoin="round"/>
+    <path d="M8.5 24.5 L31.9 24.5 L30.8 32 Q20.2 36 9.6 32 Z" fill="#fbfbfb" stroke="#111" stroke-width="2.1" stroke-linejoin="round"/>
+    <path d="M9.2 28.4 Q20.2 31.2 31.2 28.4" stroke="#111" stroke-width="1.7" fill="none"/>
+  </svg>`,
+
+  // bigbacon — yellow bubble logo on an orange sunburst, bacon strip below
+  bacon: `<svg viewBox="0 0 40 40" aria-hidden="true">
+    <rect width="40" height="40" fill="#f4a72c"/>
+    <g fill="#f9bd54" transform="translate(20 20)">
+      <polygon points="0,0 -34,-13 -34,-4"/><polygon points="0,0 -34,-13 -34,-4" transform="rotate(45)"/>
+      <polygon points="0,0 -34,-13 -34,-4" transform="rotate(90)"/><polygon points="0,0 -34,-13 -34,-4" transform="rotate(135)"/>
+      <polygon points="0,0 -34,-13 -34,-4" transform="rotate(180)"/><polygon points="0,0 -34,-13 -34,-4" transform="rotate(225)"/>
+      <polygon points="0,0 -34,-13 -34,-4" transform="rotate(270)"/><polygon points="0,0 -34,-13 -34,-4" transform="rotate(315)"/>
+    </g>
+    <g fill="#ffd83d" stroke="#4a2f12" stroke-width="1.5" stroke-linejoin="round">
+      <rect x="10" y="6.5" width="20" height="8" rx="4" transform="rotate(-4 20 10.5)"/>
+      <rect x="6" y="15" width="28" height="8.5" rx="4.2" transform="rotate(-4 20 19)"/>
+    </g>
+    <g transform="rotate(-7 20 29)">
+      <path d="M5 26.5 Q12.5 23.2 20 26.5 Q27.5 29.8 35 26.5 L35 31.5 Q27.5 34.8 20 31.5 Q12.5 28.2 5 31.5 Z"
+        fill="#dd4f68" stroke="#4a2f12" stroke-width="1.5" stroke-linejoin="round"/>
+      <path d="M5 28.6 Q12.5 25.3 20 28.6 Q27.5 31.9 35 28.6" stroke="#f7cdbe" stroke-width="1.9" fill="none"/>
+    </g>
+  </svg>`,
+
+  // Ventful — BAPE shark on blue camo
+  shark: `<svg viewBox="0 0 40 40" aria-hidden="true">
+    <rect width="40" height="40" fill="#1d4f9e"/>
+    <g opacity=".95">
+      <path d="M-2 4 Q6 0 11 5 Q9 11 3 11 Q-2 9 -2 4 Z" fill="#3b7fd6"/>
+      <path d="M24 -2 Q33 -1 35 6 Q30 11 25 7 Q22 3 24 -2 Z" fill="#3b7fd6"/>
+      <path d="M30 26 Q39 25 41 32 Q36 39 30 35 Q27 30 30 26 Z" fill="#3b7fd6"/>
+      <path d="M-1 24 Q6 22 8 28 Q5 34 0 33 Q-3 29 -1 24 Z" fill="#12377a"/>
+      <path d="M14 -1 Q20 -3 23 2 Q20 6 15 5 Q12 2 14 -1 Z" fill="#12377a"/>
+      <path d="M33 12 Q40 11 41 17 Q37 21 33 18 Z" fill="#6fa2e2"/>
+      <path d="M2 14 Q7 13 8 17 Q5 21 2 19 Z" fill="#6fa2e2"/>
+    </g>
+    <g fill="#fff" stroke="#0d2b5e" stroke-width="1.1">
+      <path d="M6 9 Q13 6 16.5 12.5 Q12 17 7.5 15 Q5 12.5 6 9 Z"/>
+      <path d="M34 9 Q27 6 23.5 12.5 Q28 17 32.5 15 Q35 12.5 34 9 Z"/>
+    </g>
+    <circle cx="11" cy="11.6" r="2.1" fill="#e2263a"/><circle cx="29" cy="11.6" r="2.1" fill="#e2263a"/>
+    <path d="M3 20.5 Q20 16.5 37 20.5 Q35.5 33 20 37.5 Q4.5 33 3 20.5 Z" fill="#0f0f12"/>
+    <path d="M5 21.2 L8.6 26.4 L12.2 21.2 L15.8 26.4 L19.4 21.2 L23 26.4 L26.6 21.2 L30.2 26.4 L33.8 21.2 Q35 21 35.3 21.6 L34.6 25 Q20 22.6 5.4 25 L4.7 21.6 Q5 21 5 21.2 Z" fill="#fff"/>
+    <path d="M7.5 33.6 L10.5 29.6 L13.5 33.6 L16.5 29.6 L19.5 33.6 L22.5 29.6 L25.5 33.6 L28.5 29.6 L31.5 33.6 Q26 36.6 20 37.4 Q13 36.6 7.5 33.6 Z" fill="#fff"/>
+    <path d="M6 26.6 Q20 24.4 34 26.6 Q33.6 28.6 33 30 Q20 27.8 7 30 Q6.4 28.6 6 26.6 Z" fill="#c0202f"/>
+  </svg>`,
+
+  // dollartree1 — hand-drawn cactus with gold hair
+  cactus: `<svg viewBox="0 0 40 40" aria-hidden="true">
+    <rect width="40" height="40" fill="#fbfbf8"/>
+    <g stroke="#1b1b1b" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round">
+      <path d="M13 33 L13 37" stroke-width="3.4" stroke="#3f9b46"/>
+      <path d="M24 33 L26 37" stroke-width="3.4" stroke="#3f9b46"/>
+      <rect x="12" y="12" width="15" height="22" rx="3.5" fill="#4cb154"/>
+      <path d="M12 21 L6 19 L5 24" fill="none" stroke="#4cb154" stroke-width="4.6"/>
+      <path d="M27 17 L33 15 L34 21" fill="none" stroke="#4cb154" stroke-width="4.6"/>
+    </g>
+    <g stroke="#2f7a36" stroke-width="1" opacity=".8">
+      <path d="M16 14 L16 32"/><path d="M19.5 14 L19.5 32"/><path d="M23 14 L23 32"/>
+    </g>
+    <path d="M11 13 Q10 5 19 4 Q28 4 27.5 12 Q20 9 11 13 Z" fill="#e0a92b" stroke="#1b1b1b" stroke-width="1.6" stroke-linejoin="round"/>
+    <g fill="#1b1b1b"><circle cx="17" cy="19" r="1.7"/><circle cx="23" cy="17.5" r="1.7"/><ellipse cx="20" cy="24.5" rx="2.4" ry="2.9"/></g>
+  </svg>`,
+
+  // Tasku — detective emoji
+  spy: `<svg viewBox="0 0 40 40" aria-hidden="true">
+    <rect width="40" height="40" fill="#fbfbfb"/>
+    <path d="M11 20 Q11 12 20 12 Q29 12 29 20 L29 25 Q20 29 11 25 Z" fill="#ffd23f"/>
+    <path d="M6 32 Q9 25 15 23 L25 23 Q31 25 34 32 L34 40 L6 40 Z" fill="#67757f"/>
+    <path d="M20 24 L16 31 L20 40 L24 31 Z" fill="#4d5a63"/>
+    <ellipse cx="20" cy="14.5" rx="15" ry="3.2" fill="#67757f"/>
+    <path d="M11.5 14.5 Q11.5 4.5 20 4.5 Q28.5 4.5 28.5 14.5 Z" fill="#7d8b95"/>
+    <rect x="11.5" y="10.5" width="17" height="4" fill="#2b3238"/>
+    <g fill="#17191c"><rect x="8.5" y="17" width="23" height="2.4" rx="1.2"/>
+      <rect x="9" y="17.4" width="9.6" height="6.2" rx="2.6"/><rect x="21.4" y="17.4" width="9.6" height="6.2" rx="2.6"/></g>
+    <ellipse cx="20" cy="26.4" rx="1.9" ry="1.2" fill="#c26a3d"/>
+  </svg>`,
+
+  // Plank — Sokka, mid-grimace
+  plank: `<svg viewBox="0 0 40 40" aria-hidden="true">
+    <rect width="40" height="40" fill="#cbb894"/>
+    <path d="M8 40 Q8 24 20 24 Q32 24 32 40 Z" fill="#4a6b8a"/>
+    <path d="M9 19 Q9 6 20 6 Q31 6 31 19 Q31 30 20 31 Q9 30 9 19 Z" fill="#d8a271"/>
+    <path d="M8.5 13 Q9 4 20 3.4 Q31 4 31.5 13 Q26 8.5 20 9 Q14 8.5 8.5 13 Z" fill="#2f2117"/>
+    <path d="M17 3.6 Q20 -1 23 3.6 Q20 2.6 17 3.6 Z" fill="#2f2117"/>
+    <g fill="#fff"><ellipse cx="15" cy="17" rx="4.2" ry="4.6"/><ellipse cx="25.6" cy="17" rx="4.2" ry="4.6"/></g>
+    <g fill="#1c3f66"><circle cx="15.4" cy="17.4" r="2"/><circle cx="25.2" cy="17.4" r="2"/></g>
+    <g stroke="#2f2117" stroke-width="2" stroke-linecap="round" fill="none">
+      <path d="M11 11.6 Q15 9.6 19 12"/><path d="M29 11.6 Q25 9.6 21.4 12"/>
+    </g>
+    <path d="M15 25 Q20 22.6 25 25 Q23 29.4 20 29.6 Q17 29.4 15 25 Z" fill="#5e2d24"/>
+    <path d="M15.8 25.4 Q20 24 24.2 25.4 Z" fill="#fff"/>
+  </svg>`,
+
+  // jan — the man with no name: brim, stubble, cigarillo
+  cowboy: `<svg viewBox="0 0 40 40" aria-hidden="true">
+    <rect width="40" height="40" fill="#c8b48f"/>
+    <rect y="26" width="40" height="14" fill="#a08a66"/>
+    <path d="M6 40 Q8 29 15 26 L25 26 Q32 29 34 40 Z" fill="#e6dcc6"/>
+    <path d="M13 27 Q20 33 27 27 L29 40 L11 40 Z" fill="#6f5636"/>
+    <path d="M11 17 Q11 7.5 20 7.5 Q29 7.5 29 17 Q29 26 20 28 Q11 26 11 17 Z" fill="#d9a87e"/>
+    <path d="M11.5 21 Q11 27 20 28.4 Q29 27 28.5 21 Q20 24.6 11.5 21 Z" fill="#8a6a4a" opacity=".55"/>
+    <ellipse cx="20" cy="12" rx="16" ry="4" fill="#5b452a"/>
+    <path d="M11 12 Q11.5 2.5 20 2.5 Q28.5 2.5 29 12 Q20 9 11 12 Z" fill="#6d5433"/>
+    <path d="M11.4 10.6 Q20 8 28.6 10.6" stroke="#4a3722" stroke-width="1.6" fill="none"/>
+    <g fill="#3a2a1c"><ellipse cx="15.6" cy="16.4" rx="1.7" ry="1.3"/><ellipse cx="24.6" cy="16.4" rx="1.7" ry="1.3"/></g>
+    <g stroke="#4a3722" stroke-width="1.6" fill="none" stroke-linecap="round">
+      <path d="M12.6 14 Q15.4 12.8 18 14"/><path d="M27.4 14 Q24.6 12.8 22 14"/>
+    </g>
+    <path d="M22 23.6 L31 26.6" stroke="#2b2118" stroke-width="2.4" stroke-linecap="round"/>
+    <circle cx="31.6" cy="26.8" r="1.5" fill="#e6633a"/>
+    <path d="M32.6 25 Q35 22 34 19.4" stroke="#f2ede2" stroke-width="1.2" fill="none" opacity=".6"/>
+  </svg>`,
+
+  // Duzd — the goat in a suit
+  goat: `<svg viewBox="0 0 40 40" aria-hidden="true">
+    <rect width="40" height="40" fill="#fbfbfb"/>
+    <path d="M4 40 Q6 28 14 25 L26 25 Q34 28 36 40 Z" fill="#141414"/>
+    <path d="M20 25 L16.5 29 L20 40 L23.5 29 Z" fill="#fdfdfd"/>
+    <path d="M20 27.5 L17.6 30 L20 39 L22.4 30 Z" fill="#d81f2a"/>
+    <g fill="#8fd8cf"><path d="M11 8 Q10 1 15 3 Q16 6 15 9 Z"/><path d="M29 8 Q30 1 25 3 Q24 6 25 9 Z"/></g>
+    <g fill="#b0654a"><path d="M8 13 Q3 10 3.5 15 Q5 18 9 17.5 Z"/><path d="M32 13 Q37 10 36.5 15 Q35 18 31 17.5 Z"/></g>
+    <path d="M9 16 Q9 5 20 5 Q31 5 31 16 Q31 25 20 27 Q9 25 9 16 Z" fill="#b0654a"/>
+    <path d="M13 20 Q13 26.5 20 27.4 Q27 26.5 27 20 Q20 17.6 13 20 Z" fill="#f2c6b4"/>
+    <path d="M9.6 12 Q9 4.6 20 4.6 Q31 4.6 30.4 12 Q25 8 20 8.6 Q15 8 9.6 12 Z" fill="#6e1414"/>
+    <g stroke="#6e1414" stroke-width="1.8" fill="none" stroke-linecap="round">
+      <path d="M13.5 9 Q12.4 15 13.6 20"/><path d="M17 9.6 Q16.4 15 17.2 19"/>
+    </g>
+    <ellipse cx="25.4" cy="16.4" rx="4.6" ry="4.2" fill="#7b3f8f" opacity=".55"/>
+    <g fill="#e8b53c" stroke="#3a2410" stroke-width="1"><ellipse cx="15" cy="16" rx="3" ry="3.6"/><ellipse cx="25.4" cy="16" rx="3" ry="3.6"/></g>
+    <g fill="#3a2410"><ellipse cx="15" cy="16.2" rx="1.2" ry="2"/><ellipse cx="25.4" cy="16.2" rx="1.2" ry="2"/></g>
+    <path d="M20 21 L20 24" stroke="#7a2a20" stroke-width="1.2"/>
+    <g fill="#8a3b2e" opacity=".85"><ellipse cx="27.6" cy="22" rx="2.2" ry="1.5"/></g>
+  </svg>`,
+};
+
+/* ---------- receipts ---------- */
+// role badges + name colors matching the server
+const ROLES = {
+  lore:  {label:"🏵 LORE",  bg:"#ffc100"},
+  wbet:  {label:"💰 WBET",  bg:"#ffc100"},
+  duel:  {label:"⚔ Duel",  bg:"#8d97c9"},
+  ev:    {label:"🔥 +EV",   bg:"#ff8a3d"},
+  skin:  {label:"SKIN",     bg:"#20d095"},
+};
+const RECEIPTS = [
+  {name:"Monarch",     color:"#e8305e", av:"#533b9d", pfp:"crown",  img:"monarch.webp", role:null,   date:"5/24/2026",  msg:"merch store coming 2029",                                              stamp:"WRONG."},
+  {name:"DuelPounder", color:"#5e6eff", av:"#2133dc", img:"duelpounder.webp", role:"duel", date:"12/9/2025",  msg:"That merch store is never opening",                                    stamp:"WRONG."},
+  {name:"Ventful",     color:"#fff",    av:"#a11236", pfp:"shark",  img:"ventful.webp", role:"ev",   date:"12/9/2025",  msg:"merch store coming 2029",                                              stamp:null},
+  {name:"Duzd",        color:"#fff",    av:"#0f6146", pfp:"goat",   img:"duzd.webp", role:"skin", date:"4/28/2026",  msg:"merch store Q1 2025",                                                  stamp:null},
+  {name:"Sean",        color:"#fff",    av:"#1f2546", img:"wisdomjester.webp", role:null,   date:"4/28/2026",  msg:"A billion dollars and you can't open up a merch store",                stamp:null},
+  {name:"dollartree1", color:"#20d095", av:"#0f6146", pfp:"cactus", img:"dollartree1.webp", role:"wbet", date:"5/2/2026",   msg:"once the merch store launches in 2029 you'll be able to purchase anything you want", stamp:null},
+  {name:"jan",         color:"#fff",    av:"#47507c", pfp:"cowboy", img:"jan.webp", role:null,   date:"6/4/2026",   msg:"when is the duel merch store dropping",                                stamp:null},
+  {name:"dollartree1", color:"#20d095", av:"#0f6146", pfp:"cactus", img:"dollartree1.webp", role:"wbet", date:"6/17/2026",  msg:"darci was supposed to build the merch store but got lazy",             stamp:"WRONG."},
+  {name:"Plank",       color:"#fff",    av:"#765dc5", pfp:"plank",  img:"plank.webp", role:null,   date:"8/11/2026",  msg:"they still didn't release the fucking merch store?",                   stamp:null},
+  {name:"Tasku",       color:"#fff",    av:"#47507c", pfp:"spy",    img:"tasku.webp", role:null,   date:"8/13/2026",  msg:"still waiting for the duel merch store…",                              stamp:null},
+  {name:"bigbacon",    color:"#ffc100", av:"#b07800", pfp:"bacon",  img:"bigbacon.webp", role:"lore", date:"8/13/2026",  msg:"its so hard to get that merch store up",                               stamp:"WRONG."},
+  {name:"Monarch",     color:"#e8305e", av:"#533b9d", pfp:"crown",  img:"monarch.webp", role:null,   date:"8/19/2026",  msg:"someone go make merch store",                                          stamp:"DONE.", kicker:true},
+];
+
+/* ---------- live "days waited" counter ---------- */
+(function(){
+  const d = daysWaited();
+  const plural = d === 1 ? "day" : "days";
+  const set = (id, text) => { const el = document.getElementById(id); if (el) el.textContent = text; };
+  set("heroDays", `${d.toLocaleString("en-US")} ${plural}`);
+  set("dayStat",  `${d.toLocaleString("en-US")} ${plural}`);
+  set("faqDays",  d.toLocaleString("en-US"));
+  set("conceptCount", String(PRODUCTS.filter(p => p.id !== "the-entire-merch-store").length));
+})();
+
+/* ---------- render receipts ---------- */
+(function(){
+  const grid = document.getElementById("receiptsGrid");
+  grid.innerHTML = RECEIPTS.map(r=>{
+    const role = r.role ? ROLES[r.role] : null;
+    return `
+    <div class="receipt${r.kicker ? " kicker" : ""}${r.stamp ? " stamped" : ""}">
+      <div class="receipt-head">
+        <span class="avatar" style="background:${r.av}">${r.img ? `<img src="pfp/${r.img}" alt="" loading="lazy">` : (r.pfp ? AVATARS[r.pfp] : r.name[0].toUpperCase())}</span>
+        <div>
+          <div class="receipt-namerow">
+            <span class="receipt-name" style="color:${r.color}">${r.name}</span>
+            ${role ? `<span class="rbadge" style="background:${role.bg}">${role.label}</span>` : ""}
+            <span class="receipt-date">${r.date}</span>
+          </div>
+          <p class="receipt-msg">${r.msg}</p>
+        </div>
+      </div>
+      ${r.stamp ? `<span class="stamp${r.stamp==="DONE." ? " ok" : ""}">${r.stamp}</span>` : ""}
+    </div>`;
+  }).join("");
+
+  // only the first row until asked — the lore shouldn't bury the designs
+  const cards = [...document.querySelectorAll("#receiptsGrid .receipt")];
+  const FOLD = 4;
+  cards.forEach((c,i)=>{ if(i>=FOLD) c.classList.add("hidden"); });
+  const more = document.getElementById("showMoreReceipts");
+  if(cards.length <= FOLD){ more.style.display="none"; }
+  more.addEventListener("click", ()=>{
+    const hidden = document.querySelector("#receiptsGrid .receipt.hidden");
+    if(hidden){
+      cards.forEach(c=>c.classList.remove("hidden"));
+      more.textContent = "Show fewer";
+    } else {
+      cards.forEach((c,i)=>{ if(i>=FOLD) c.classList.add("hidden"); });
+      more.textContent = `Show all ${cards.length} receipts`;
+      document.getElementById("receipts").scrollIntoView({behavior:"smooth"});
+    }
+  });
+})();
+
+/* ---------- render products ---------- */
+(function(){
+  const card = (p,i)=>`
+    <div class="card" data-id="${p.id}">
+      <div class="card-art" style="background:${p.tile}">
+        <span class="card-no">${String(i+1).padStart(2,"0")}</span>
+        <span class="card-tagchip">${p.chip}</span>
+        ${p.art(p.custom?p.custom.def:null, p.colors?p.colors[0]:null)}
+      </div>
+      <div class="card-body">
+        <div class="card-head">
+          <div>
+            <div class="card-name">${p.name}</div>
+            <div class="card-lore">${p.lore}</div>
+          </div>
+          <div class="card-price">${fmt(p.price)}</div>
+        </div>
+        <div class="card-spec">
+          <span>${p.colors ? p.colors.join(" / ") : "One colour"}</span>
+          <span>${p.sizes.length>1 ? p.sizes[0]+"–"+p.sizes[p.sizes.length-1] : "One size"}</span>
+          <span class="want-count" data-count="${p.id}"></span>
+        </div>
+        <div class="card-actions">
+          <button class="card-want" data-want="${p.id}">Want this made</button>
+          <button class="card-view" data-add="${p.id}">Details</button>
+        </div>
+      </div>
+    </div>`;
+  document.getElementById("productGrid").innerHTML = PRODUCTS.map((p,i)=>card(p,i)).join("");
+})();
+
+/* ---------- cart state ---------- */
+/* ---------- concept detail ---------- */
+const backdrop = document.getElementById("backdrop");
+const modal = document.getElementById("modal");
+let modalProduct = null;
+let modalSize = null;
+let modalAmount = null;
+let modalColor = null;
+
+function openModal(id){
+  const p = PRODUCTS.find(x=>x.id===id);
+  if(!p) return;
+  modalProduct = p;
+  modalSize = p.sizes[0];
+  modalAmount = p.custom ? p.custom.def : null;
+  modalColor = (p.colors && p.colors[0]) || null;
+  const artEl = document.getElementById("modalArt");
+  artEl.innerHTML = p.art(modalAmount, modalColor);
+  artEl.style.background = p.tile;
+  // custom amount controls
+  const customRow = document.getElementById("customRow");
+  if(p.custom){
+    customRow.style.display = "";
+    document.getElementById("customLabel").textContent = p.custom.label;
+    document.getElementById("customInput").value = String(modalAmount);
+    document.getElementById("amountPresets").innerHTML = p.custom.presets
+      .map(v=>`<button type="button" data-amt="${v}" class="${v===p.custom.def?"sel":""}">$${v.toLocaleString("en-US")}</button>`).join("");
+  } else {
+    customRow.style.display = "none";
+  }
+  document.getElementById("modalName").textContent = p.name;
+  document.getElementById("modalPrice").textContent = fmt(p.price) + " USD";
+  document.getElementById("modalDesc").innerHTML = p.desc;
+  document.getElementById("modalMeta").innerHTML = p.meta.map(m=>{
+    const i = m.indexOf(" — ");
+    const [k,v] = i > -1 ? [m.slice(0,i), m.slice(i+3)] : [m, ""];
+    return `<div class="spec-row"><span>${k}</span><b>${v || "✓"}</b></div>`;
+  }).join("");
+  document.getElementById("sizeLabel").textContent = p.sizes.length===1 ? "Size" : "Select size";
+  const cw = document.getElementById("colorRowWrap");
+  if(p.colors && p.colors.length > 1){
+    cw.style.display = "";
+    document.getElementById("colorRow").innerHTML = p.colors.map(c=>
+      `<button type="button" class="swatch${c===modalColor?" sel":""}" data-color="${c}"><i style="background:${COLORWAYS[c]||"#141414"}"></i>${c}</button>`).join("");
+  } else { cw.style.display = "none"; }
+  const row = document.getElementById("sizeRow");
+  row.innerHTML = p.sizes.map(s=>
+    `<button class="size-btn${p.sizes.length===1 ? " sel" : ""}" data-size="${s}">${s}</button>`).join("");
+  updateModalAdd();
+  modal.classList.add("show");
+  backdrop.classList.add("show");
+}
+function closeModal(){
+  modal.classList.remove("show");
+  backdrop.classList.remove("show");
+}
+function updateModalAdd(){
+  const btn = document.getElementById("modalAdd");
+  const done = wantedAlready(modalProduct && modalProduct.id);
+  btn.disabled = done;
+  btn.textContent = done ? "Noted ✓" : "Want this made";
+}
+
+const WANT_KEY = "duelmerch_wanted_v1";
+function wantedList(){ try { return JSON.parse(localStorage.getItem(WANT_KEY)) || []; } catch(e){ return []; } }
+function wantedAlready(id){ return id ? wantedList().includes(id) : false; }
+
+document.getElementById("modalAdd").addEventListener("click", async ()=>{
+  if(!modalProduct) return;
+  await registerWant(modalProduct.id, document.getElementById("modalAdd"));
+});
+
+document.getElementById("modalClose").addEventListener("click", closeModal);
+document.addEventListener("keydown", e=>{ if(e.key==="Escape") closeModal(); });
+backdrop.addEventListener("click", closeModal);
+
+async function registerWant(id, btn){
+  if(wantedAlready(id)) return;
+  const label = btn.textContent;
+  btn.disabled = true; btn.textContent = "Sending…";
+  try{
+    const res = await fetch("/api/want", { method:"POST", headers:{"content-type":"application/json"}, body: JSON.stringify({ id }) });
+    const d = await res.json();
+    if(d.ok){
+      const l = wantedList(); l.push(id); localStorage.setItem(WANT_KEY, JSON.stringify(l));
+      markWanted();
+
+
+      const p = PRODUCTS.find(x=>x.id===id);
+      toast(`Noted — ${p ? p.name : "got it"}`);
+      return;
+    }
+  }catch(e){}
+  btn.disabled = false; btn.textContent = label;
+}
+
+function markWanted(){
+  const list = wantedList();
+  document.querySelectorAll("[data-want]").forEach(b=>{
+    const done = list.includes(b.getAttribute("data-want"));
+    b.classList.toggle("done", done);
+    b.disabled = done;
+    b.textContent = done ? "Noted ✓" : "Want this made";
+  });
+  if(typeof updateModalAdd === "function" && modalProduct) updateModalAdd();
+}
+
+["productGrid"].forEach(gid=>document.getElementById(gid).addEventListener("click", e=>{
+  const wantId = e.target.getAttribute("data-want");
+  if(wantId){ registerWant(wantId, e.target); return; }
+  const addId = e.target.getAttribute("data-add");
+  if(addId){ openModal(addId); return; }
+  const card = e.target.closest(".card");
+  if(card) openModal(card.getAttribute("data-id"));
+}));
+markWanted();
+
+/* ---------- waitlist ---------- */
+
+document.getElementById("notifyForm").addEventListener("submit", async e=>{
+  e.preventDefault();
+  const input = document.getElementById("notifyInput");
+  const msg = document.getElementById("notifyMsg");
+  const btn = document.getElementById("notifyBtn");
+  const contact = input.value.trim();
+  msg.className = "notify-msg";
+  if(contact.length < 3){
+    msg.textContent = "Enter an email or Discord handle.";
+    msg.classList.add("err","show");
+    return;
+  }
+  btn.disabled = true;
+  const prev = btn.textContent;
+  btn.textContent = "Sending…";
+  try{
+    const res = await fetch("/api/notify", {
+      method:"POST",
+      headers:{"content-type":"application/json"},
+      body: JSON.stringify({ contact, website: document.getElementById("notifyHp").value })
+    });
+    const data = await res.json();
+    if(data.ok){
+      msg.textContent = "On the list. You'll hear about it before the haters do.";
+      msg.classList.add("ok","show");
+      e.target.reset();
+    } else {
+      msg.textContent = data.error || "Try again.";
+      msg.classList.add("err","show");
+    }
+  } catch(err){
+    msg.textContent = "Couldn't reach the list — try again in a bit.";
+    msg.classList.add("err","show");
+  }
+  btn.disabled = false;
+  btn.textContent = prev;
+});
+
+/* ---------- drop 002 submissions ---------- */
+(function(){
+  const form = document.getElementById("submitForm");
+  const idea = document.getElementById("ideaInput");
+  const handle = document.getElementById("handleInput");
+  const btn = document.getElementById("submitBtn");
+  const msg = document.getElementById("submitMsg");
+  const count = document.getElementById("charCount");
+  const MAX = 280;
+
+  function updateCount(){
+    const left = MAX - idea.value.length;
+    count.textContent = `${left} left`;
+    count.classList.toggle("low", left <= 40);
+  }
+  idea.addEventListener("input", updateCount);
+  updateCount();
+
+  form.addEventListener("submit", async e=>{
+    e.preventDefault();
+    msg.className = "submit-msg";
+    const text = idea.value.trim();
+    if(text.length < 4){
+      msg.textContent = "Give us more than that.";
+      msg.classList.add("err");
+      return;
+    }
+    btn.disabled = true;
+    const prev = btn.textContent;
+    btn.textContent = "Sending…";
+    try{
+      const res = await fetch("/api/submit", {
+        method:"POST",
+        headers:{"content-type":"application/json"},
+        body: JSON.stringify({ idea:text, handle:handle.value.trim(), website:document.getElementById("submitHp").value })
+      });
+      const data = await res.json();
+      if(data.ok){
+        msg.textContent = "Got it. If it's good, you'll see it on a shirt.";
+        msg.classList.add("ok");
+        form.reset();
+        updateCount();
+      } else {
+        msg.textContent = data.error || "Try again.";
+        msg.classList.add("err");
+      }
+    } catch(err){
+      msg.textContent = "Couldn't send that — try again in a bit.";
+      msg.classList.add("err");
+    }
+    btn.disabled = false;
+    btn.textContent = prev;
+  });
+})();
+
+/* live interest tally — what people actually want made */
+(async function paintWantCounts(){
+  try{
+    const res = await fetch("/api/want");
+    const d = await res.json();
+    if(!d.ok || !d.counts) return;
+    let top = null;
+    document.querySelectorAll("[data-count]").forEach(el=>{
+      const n = d.counts[el.getAttribute("data-count")] || 0;
+      el.textContent = n > 0 ? `${n} want${n===1?"s":""} this` : "";
+      if(n > 0 && (!top || n > top.n)) top = {id: el.getAttribute("data-count"), n};
+    });
+    if(top){
+      const card = document.querySelector(`.card[data-id="${top.id}"] .card-art`);
+      if(card && !card.querySelector(".card-top")){
+        const b = document.createElement("span");
+        b.className = "card-top";
+        b.textContent = "MOST WANTED";
+        card.appendChild(b);
+      }
+    }
+  }catch(e){ /* tally is a nice-to-have, never block the page */ }
+})();
+
+/* ---------- toast ---------- */
+let toastTimer = null;
+function toast(msg){
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>t.classList.remove("show"), 2400);
+}
+
+</script>
+</body>
+</html>

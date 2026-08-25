@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="3600" height="4800" viewBox="0 0 3600 4800">
+  <rect x="180" y="1120" width="3240" height="1760" rx="90" fill="#121731" stroke="rgba(255,255,255,.16)" stroke-width="10"/>
+  <circle cx="520" cy="1520" r="185" fill="#0d0d10"/>
+  <g transform="translate(520,1520) scale(7.4) translate(-20,-20)">
+    <path d="M8.5 24.5 C3.5 21.5 5 14 10.5 14 C14.5 14 16.5 18 17.5 21.5 C15 17.5 16 11.5 20.2 8.6 C24.4 11.5 25.4 17.5 22.9 21.5 C23.9 18 25.9 14 29.9 14 C35.4 14 36.9 21.5 31.9 24.5 Z" fill="none" stroke="#f5f5f5" stroke-width="2.4" stroke-linejoin="round"/>
+    <path d="M8.5 24.5 L31.9 24.5 L30.8 32 Q20.2 36 9.6 32 Z" fill="none" stroke="#f5f5f5" stroke-width="2.4" stroke-linejoin="round"/>
+    <rect x="19" y="3" width="2.4" height="7.5" fill="#f5f5f5"/><rect x="16.4" y="5" width="7.6" height="2.4" fill="#f5f5f5"/>
+  </g>
+  <text x="800" y="1450" font-family="Inter, Arial, Helvetica, sans-serif" font-weight="700" font-size="205" fill="#e8305e">Monarch</text>
+  <text x="1930" y="1445" font-family="Inter, Arial, Helvetica, sans-serif" font-weight="500" font-size="135" fill="#8d97c9">24/05/2026</text>
+  <text x="800" y="1730" font-family="Inter, Arial, Helvetica, sans-serif" font-weight="500" font-size="215" fill="#d7ddf5">merch store coming 2029</text>
+  <g transform="rotate(-6 2560 2480)">
+    <rect x="1990" y="2270" width="1140" height="400" rx="34" fill="none" stroke="#e8305e" stroke-width="26"/>
+    <text x="2560" y="2565" text-anchor="middle" font-family="Tinos, Times New Roman, serif" font-weight="700" font-size="295" fill="#e8305e">WRONG.</text>
+  </g>
+  <text x="1800" y="3320" text-anchor="middle" font-family="Inter, Arial, Helvetica, sans-serif" font-weight="800" font-size="185" fill="#ffffff" letter-spacing="22">DUELMERCH.ORG</text></svg>

@@ -59,6 +59,14 @@ interface DurableObjectStorage {
   get<T = unknown>(key: string): Promise<T | undefined>;
   put<T = unknown>(key: string, value: T): Promise<void>;
   delete(key: string): Promise<boolean>;
+  // Alarms are platform-guaranteed to fire at-least-once, even across
+  // hibernation - used by worker/poker-table.ts for the fixed-window
+  // fair-start delay and the per-action time bank. A class using these
+  // just needs a plain `alarm(): Promise<void>` method; the runtime calls
+  // it automatically, no interface implementation required here.
+  setAlarm(scheduledTime: number | Date): Promise<void>;
+  getAlarm(): Promise<number | null>;
+  deleteAlarm(): Promise<void>;
 }
 
 interface DurableObjectState {
@@ -90,6 +98,10 @@ declare module "cloudflare:workers" {
     // .dev.vars file (see .dev.vars.example); a real deploy needs its own
     // secret-store equivalent, not yet wired (see worker/chain-config.ts).
     OPERATOR_PRIVATE_KEY?: string;
+    // Operator signing key for fairness attestations (base64 JWK). Absent
+    // means seed acknowledgements simply aren't issued - see
+    // worker/fairness-attestation.ts.
+    FAIRNESS_SIGNING_KEY?: string;
     [key: string]: unknown;
   };
 }

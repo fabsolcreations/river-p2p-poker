@@ -1,6 +1,7 @@
 import { randomHex } from "./proof";
 import type { TranscriptEntry } from "./proof";
 import type { TableProofBundle } from "../../worker/table-engine";
+import type { SeedAck } from "../../worker/fairness-attestation";
 
 /**
  * Client-side WebSocket wrapper for /api/table/<roomCode> - a plain
@@ -28,7 +29,7 @@ export type ClientMessage =
   | { type: "voice-join" }
   | { type: "voice-leave" }
   | { type: "voice-signal"; toSeat: Seat; signal: unknown }
-  | { type: "update-settings"; smallBlind: number; bigBlind: number; minBuyIn: number; maxBuyIn: number }
+  | { type: "update-settings"; smallBlind: number; bigBlind: number; minBuyIn: number; maxBuyIn: number; actionClockSeconds: number }
   | { type: "rabbit-hunt" }
   | { type: "provide-seed"; seed: string };
 
@@ -42,6 +43,20 @@ export type PublicHandState = {
   bigBlind: number;
   minBuyIn: number;
   maxBuyIn: number;
+  // 0 means no clock. actionDeadline is the epoch ms the acting seat gets
+  // auto-folded/checked at, when a hand is in progress and the clock is on.
+  actionClockSeconds: number;
+  actionDeadline: number | null;
+  // True for a room opened via the lounge "Join <tier>" matchmaker - stakes
+  // stay house-managed (worker/poker-table.ts rejects host settings changes
+  // on these), so the client hides the settings gear entirely.
+  isLounge: boolean;
+  // The NEXT hand's server-entropy commitment and hand id, both published
+  // before that hand's client seeds are collected - record these before you
+  // play and check them against the bundle afterwards (see
+  // table-engine.ts's serverSeedCommitment).
+  nextServerSeedCommitment: string;
+  nextHandId: string;
   rabbitHuntRevealed: boolean;
   buttonSeat: Seat | null;
   smallBlindSeat: Seat | null;
@@ -68,6 +83,10 @@ export type SidePot = { amount: number; eligibleSeats: Seat[]; winners: Seat[] }
 
 export type ServerMessage =
   | { type: "seat-assigned"; seat: Seat }
+  // Operator-signed proof that this seat's seed was received for the named
+  // hand. Kept locally (see SEED_ACK_STORAGE_KEY) so a later substitution
+  // can be proven, not just suspected.
+  | { type: "seed-ack"; ack: SeedAck }
   | { type: "hole-cards"; handId: string; cards: [string, string] }
   | { type: "state"; state: PublicHandState }
   | { type: "hand-complete"; sidePots: SidePot[]; payouts: number[]; bundle: TableProofBundle }
@@ -92,9 +111,53 @@ export interface TableConnection {
 
 const RECONNECT_DELAY_MS = 1500;
 
-export type InitialTableSettings = { smallBlind: number; bigBlind: number; minBuyIn: number; maxBuyIn: number };
+// Signed seed acknowledgements are only worth anything if they outlive the
+// hand, so they go in localStorage rather than sessionStorage - the point is
+// to still have them days later when a receipt looks wrong.
+export const SEED_ACK_STORAGE_KEY = "river-seed-acks";
+const SEED_ACK_LIMIT = 200;
 
-export function connectTable(roomCode: string, seatCount = 6, initialSettings?: InitialTableSettings): TableConnection {
+export function storeSeedAck(ack: SeedAck): void {
+  try {
+    const acks = readSeedAcks().filter((existing) => !(existing.handId === ack.handId && existing.seat === ack.seat));
+    acks.push(ack);
+    // Bounded so a long session can't fill the origin's storage quota; the
+    // oldest go first, since a dispute is almost always about a recent hand.
+    window.localStorage.setItem(SEED_ACK_STORAGE_KEY, JSON.stringify(acks.slice(-SEED_ACK_LIMIT)));
+  } catch {
+    // Storage disabled or full - the hand is unaffected, only the ability to
+    // prove a substitution afterwards is lost.
+  }
+}
+
+export function readSeedAcks(): SeedAck[] {
+  try {
+    const raw = window.localStorage.getItem(SEED_ACK_STORAGE_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? (parsed as SeedAck[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function findSeedAck(handId: string, seat: number): SeedAck | undefined {
+  return readSeedAcks().find((ack) => ack.handId === handId && ack.seat === seat);
+}
+
+export type InitialTableSettings = { smallBlind: number; bigBlind: number; minBuyIn: number; maxBuyIn: number; isLounge?: boolean };
+
+export function randomRoomCode() {
+  const bytes = new Uint8Array(3);
+  window.crypto.getRandomValues(bytes);
+  return `TABLE-${Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("").toUpperCase()}`;
+}
+
+export function connectTable(
+  roomCode: string,
+  seatCount = 6,
+  initialSettings?: InitialTableSettings,
+  autoSit = false,
+): TableConnection {
   const messageListeners = new Set<(message: ServerMessage) => void>();
   const statusListeners = new Set<(status: TransportStatus) => void>();
   let ws: WebSocket | null = null;
@@ -118,6 +181,7 @@ export function connectTable(roomCode: string, seatCount = 6, initialSettings?: 
       params.set("bigBlind", String(initialSettings.bigBlind));
       params.set("minBuyIn", String(initialSettings.minBuyIn));
       params.set("maxBuyIn", String(initialSettings.maxBuyIn));
+      if (initialSettings.isLounge) params.set("lounge", "1");
     }
     return `${protocol}//${window.location.host}/api/table/${encodeURIComponent(roomCode)}?${params.toString()}`;
   }
@@ -136,6 +200,11 @@ export function connectTable(roomCode: string, seatCount = 6, initialSettings?: 
       const storedSeat = window.sessionStorage.getItem(seatKey);
       const parsedSeat = storedSeat === null ? NaN : Number(storedSeat);
       if (Number.isInteger(parsedSeat) && parsedSeat >= 0) send({ type: "sit", seatHint: parsedSeat as Seat });
+      // Lounge "Join <tier>" arrivals (app/lobby/page.tsx) skip the normal
+      // spectate-first flow - but only for a genuinely fresh visitor. A
+      // real reconnect (storedSeat above) always takes priority so this
+      // never double-sits the same tab into two seats.
+      else if (autoSit) send({ type: "sit" });
     };
 
     ws.onmessage = (event) => {
@@ -148,6 +217,8 @@ export function connectTable(roomCode: string, seatCount = 6, initialSettings?: 
       }
       if (message.type === "seat-assigned") {
         window.sessionStorage.setItem(seatKey, String(message.seat));
+      } else if (message.type === "seed-ack") {
+        storeSeedAck(message.ack);
       }
       for (const listener of messageListeners) listener(message);
     };
@@ -177,10 +248,10 @@ export function connectTable(roomCode: string, seatCount = 6, initialSettings?: 
     // generated right here rather than the server generating it alone -
     // see worker/table-engine.ts's EngineState.seedSources. Attached here
     // (not left to each call site) so both a deliberate sit-down and the
-    // automatic reconnect-resume above always include one - the seed must
-    // arrive in the SAME message as the sit, not a later follow-up, since
-    // the server may start a hand synchronously the instant this seat
-    // fills the table.
+    // automatic reconnect-resume above always include one - simplest to
+    // just always send it, even though the server's fixed-window fair-start
+    // delay (poker-table.ts's armHandStart) now gives a follow-up message
+    // real margin too.
     const outgoing = message.type === "sit" && !message.seed ? { ...message, seed: randomHex() } : message;
     if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify(outgoing));
   }

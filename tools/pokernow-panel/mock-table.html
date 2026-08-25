@@ -1,0 +1,103 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Mock PokerNow table</title>
+<style>
+  body{margin:0;background:#1b1e24;color:#eee;font:13px/1.3 system-ui;height:100vh}
+  .table-felt{position:absolute;left:120px;top:90px;width:900px;height:440px;border-radius:220px;
+    background:radial-gradient(ellipse at center,#2f9e5e,#1f7a46)}
+  .table-player{position:absolute;background:#2b3038;border-radius:8px;padding:6px 10px;min-width:150px}
+  .table-player-name{font-weight:600}
+  .table-player-stack{font-size:16px}
+  .table-player-cards{display:flex;gap:3px;margin-bottom:4px}
+  .card{width:34px;height:46px;background:#fff;color:#111;border-radius:4px;display:flex;
+    flex-direction:column;align-items:center;justify-content:center;font-weight:700}
+  .card.back{background:#e46a6a}
+  .card .suit{font-size:15px}
+  .card.red{color:#d33}
+  .table-cards{position:absolute;left:420px;top:270px;display:flex;gap:8px}
+  .table-cards .card{width:56px;height:76px;font-size:22px}
+  .table-pot-size{position:absolute;left:520px;top:200px;background:#0006;padding:4px 18px;border-radius:14px;font-size:18px}
+  .game-decisions-ctn{position:absolute;left:420px;bottom:20px;display:flex;gap:8px}
+  .game-decisions-ctn button{padding:10px 22px;font-size:14px}
+  .dealer-button-ctn{position:absolute;left:600px;top:420px;width:22px;height:22px;border-radius:50%;
+    background:#fff;color:#225;display:flex;align-items:center;justify-content:center;font-weight:800}
+  .table-player-bet-value{color:#ffd479;font-size:12px}
+</style>
+</head>
+<body>
+<div class="table-felt"></div>
+
+<!-- seat 1: folded -->
+<div class="table-player table-player-1 fold" style="left:60px;top:200px">
+  <div class="table-player-name">Luckyhold'em</div><div class="table-player-stack">179</div>
+  <div>FOLD</div>
+</div>
+
+<!-- seat 2 -->
+<div class="table-player table-player-2" style="left:100px;top:430px">
+  <div class="table-player-cards">
+    <div class="card-container"><div class="card back">&nbsp;</div></div>
+    <div class="card-container"><div class="card back">&nbsp;</div></div>
+  </div>
+  <div class="table-player-name">Bade N Ji</div><div class="table-player-stack">64</div>
+</div>
+
+<!-- seat 3 -->
+<div class="table-player table-player-3" style="left:470px;top:560px">
+  <div class="table-player-cards">
+    <div class="card-container"><div class="card back">&nbsp;</div></div>
+    <div class="card-container"><div class="card back">&nbsp;</div></div>
+  </div>
+  <div class="table-player-name">doggy</div><div class="table-player-stack">234</div>
+  <div class="table-player-bet-value">4</div>
+</div>
+
+<!-- hero -->
+<div class="table-player table-player-4 you-player" style="left:700px;top:560px">
+  <div class="table-player-cards">
+    <div class="card-container"><div class="card"><div class="value">3</div><div class="suit">♣</div></div></div>
+    <div class="card-container"><div class="card red"><div class="value">8</div><div class="suit">♥</div></div></div>
+  </div>
+  <div class="table-player-name">IBluffOnlyOk</div><div class="table-player-stack">400</div>
+  <div class="table-player-bet-value">4</div>
+</div>
+
+<!-- seat 5 -->
+<div class="table-player table-player-5" style="left:1000px;top:150px">
+  <div class="table-player-cards">
+    <div class="card-container"><div class="card back">&nbsp;</div></div>
+    <div class="card-container"><div class="card back">&nbsp;</div></div>
+  </div>
+  <div class="table-player-name">bangsix</div><div class="table-player-stack">812</div>
+</div>
+
+<!-- seat 6 -->
+<div class="table-player table-player-6" style="left:1000px;top:400px">
+  <div class="table-player-cards">
+    <div class="card-container"><div class="card back">&nbsp;</div></div>
+    <div class="card-container"><div class="card back">&nbsp;</div></div>
+  </div>
+  <div class="table-player-name">JayRazor</div><div class="table-player-stack">190</div>
+</div>
+
+<div class="table-pot-size">12</div>
+
+<div class="table-cards">
+  <div class="card-container"><div class="card"><div class="value">K</div><div class="suit">♣</div></div></div>
+  <div class="card-container"><div class="card red"><div class="value">K</div><div class="suit">♦</div></div></div>
+  <div class="card-container"><div class="card red"><div class="value">K</div><div class="suit">♥</div></div></div>
+</div>
+
+<div class="dealer-button-ctn dealer-position-3">D</div>
+
+<div class="game-decisions-ctn">
+  <button class="button-1">Fold</button>
+  <button class="button-2">Call 8</button>
+  <button class="button-3">Raise</button>
+</div>
+
+<script src="pokernow-panel.user.js"></script>
+</body>
+</html>

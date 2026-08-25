@@ -306,6 +306,18 @@ button, a, input, select { -webkit-tap-highlight-color: transparent; }
 .receipts-page .modal > p { color: #69706b; font-size: 12px; }
 .receipt-history-empty { color: #777; font-size: 12px; padding: 40px 20px; text-align: center; }
 .receipt-history-empty a { color: var(--rv-felt-deep); font-weight: 700; }
+.replay-board { display: flex; gap: 6px; margin: 18px 0 12px; }
+.replay-board .empty-board-card { border-color: #ccc; color: #aaa; }
+.replay-pot { align-items: center; color: #444; display: flex; font-size: 13px; font-weight: 700; margin: 0 0 16px; }
+.replay-seats { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); margin-bottom: 16px; }
+.replay-seat { background: #fff; border: 1px solid #ddd; padding: 10px; }
+.replay-seat.folded { opacity: .55; }
+.replay-seat b { display: block; font-size: 12px; margin-bottom: 6px; }
+.replay-seat-cards { display: flex; gap: 4px; margin-bottom: 6px; }
+.replay-seat small { color: #777; font-size: 11px; }
+.replay-step-label { color: #69706b; font-family: var(--font-geist-mono), monospace; font-size: 11px; letter-spacing: .04em; margin: 4px 0 0; }
+.replay-controls { align-items: center; }
+.replay-controls .replay-play-toggle { background: var(--rv-felt); border-color: var(--rv-felt); color: white; }
 .receipts-hero { background: #202220; color: white; display: grid; gap: 70px; grid-template-columns: 1.1fr .9fr; min-height: 580px; padding: 90px clamp(20px,7vw,110px); }
 .receipts-hero > div:first-child { align-self: center; }
 .receipts-hero > div:first-child > span { align-items: center; color: #87d5aa; display: flex; font-size: 11px; font-weight: 800; gap: 8px; letter-spacing: .09em; }

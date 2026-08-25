@@ -29,6 +29,22 @@ contract EscrowVault is Ownable, Pausable, ReentrancyGuard {
     IERC20 public immutable token;
     address public operator;
 
+    /// @notice Every `refId` this vault has already paid out against.
+    ///
+    /// This is what makes a withdrawal safely *retryable*. The backend
+    /// broadcasts a payout and then waits for a receipt, and that wait can
+    /// fail for reasons that say nothing about whether the transaction
+    /// landed (RPC timeout, dropped response, worker eviction). Without an
+    /// on-chain record the backend has to guess, and both guesses are
+    /// wrong in a costly direction: refund a payout that actually went
+    /// through, or strand a user's balance that never did.
+    ///
+    /// With this mapping the answer is authoritative and public - the
+    /// backend reads `usedRefIds(refId)` to find out what really happened,
+    /// and a retry of the same logical withdrawal reverts instead of
+    /// paying twice.
+    mapping(bytes32 => bool) public usedRefIds;
+
     event Deposited(address indexed depositor, uint256 amount);
     event Withdrawn(address indexed to, uint256 amount, bytes32 indexed refId, address indexed operator);
     event OperatorUpdated(address indexed previousOperator, address indexed newOperator);
@@ -36,6 +52,8 @@ contract EscrowVault is Ownable, Pausable, ReentrancyGuard {
     error ZeroAddress();
     error ZeroAmount();
     error NotOperator(address caller);
+    error ZeroRefId();
+    error RefIdAlreadyUsed(bytes32 refId);
 
     modifier onlyOperator() {
         if (msg.sender != operator) revert NotOperator(msg.sender);
@@ -64,9 +82,14 @@ contract EscrowVault is Ownable, Pausable, ReentrancyGuard {
     /// ledger entry (e.g. a UUID packed into bytes32) that authorized this
     /// withdrawal, so the payout is independently auditable on-chain
     /// without needing database access.
+    /// Reverts on a `refId` that has already been paid, so retrying an
+    /// ambiguous withdrawal is always safe - see `usedRefIds`.
     function withdraw(address to, uint256 amount, bytes32 refId) external onlyOperator whenNotPaused nonReentrant {
         if (to == address(0)) revert ZeroAddress();
         if (amount == 0) revert ZeroAmount();
+        if (refId == bytes32(0)) revert ZeroRefId();
+        if (usedRefIds[refId]) revert RefIdAlreadyUsed(refId);
+        usedRefIds[refId] = true;
         token.safeTransfer(to, amount);
         emit Withdrawn(to, amount, refId, msg.sender);
     }

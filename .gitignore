@@ -32,6 +32,8 @@ yarn-error.log*
 .env*
 !.env.example
 !**/.env.example
+# Deploy config: the real one holds account-specific ids, the example doesn't.
+!.env.deploy.example
 
 # Wrangler local secrets (@cloudflare/vite-plugin reads this for local dev -
 # see .dev.vars.example). Never commit a real value.
@@ -52,3 +54,4 @@ next-env.d.ts
 
 # Claude Code local (machine-specific) settings - not meant to be shared
 .claude/settings.local.json
+tools/duel-live-verifier/.vendor/
