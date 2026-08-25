@@ -2,6 +2,8 @@ import { randomHex } from "./proof";
 import type { TranscriptEntry } from "./proof";
 import type { TableProofBundle } from "../../worker/table-engine";
 import type { SeedAck } from "../../worker/fairness-attestation";
+import type { MpPhase } from "../../worker/mental-poker-protocol";
+import type { ProofBundleV3 } from "./mental-poker";
 
 /**
  * Client-side WebSocket wrapper for /api/table/<roomCode> - a plain
@@ -31,7 +33,14 @@ export type ClientMessage =
   | { type: "voice-signal"; toSeat: Seat; signal: unknown }
   | { type: "update-settings"; smallBlind: number; bigBlind: number; minBuyIn: number; maxBuyIn: number; actionClockSeconds: number }
   | { type: "rabbit-hunt" }
-  | { type: "provide-seed"; seed: string };
+  | { type: "provide-seed"; seed: string }
+  // Trustless dealing protocol - see app/play/mental-poker-client.ts.
+  | { type: "mp-commit"; commitment: string; publicKey: string }
+  | { type: "mp-mask"; deck: string[] }
+  | { type: "mp-hole-partial"; position: number; partial: string }
+  | { type: "mp-board-partial"; position: number; partial: string }
+  | { type: "mp-showdown-reveal"; cards: [string, string]; partials: [string, string] }
+  | { type: "mp-seed-reveal"; seed: string };
 
 export type PublicHandState = {
   handId: string | null;
@@ -51,6 +60,9 @@ export type PublicHandState = {
   // stay house-managed (worker/poker-table.ts rejects host settings changes
   // on these), so the client hides the settings gear entirely.
   isLounge: boolean;
+  // True on a mental-poker table - the server relays the deal instead of
+  // performing it, so this browser must run the protocol driver.
+  isTrustless: boolean;
   // The NEXT hand's server-entropy commitment and hand id, both published
   // before that hand's client seeds are collected - record these before you
   // play and check them against the bundle afterwards (see
@@ -89,7 +101,23 @@ export type ServerMessage =
   | { type: "seed-ack"; ack: SeedAck }
   | { type: "hole-cards"; handId: string; cards: [string, string] }
   | { type: "state"; state: PublicHandState }
-  | { type: "hand-complete"; sidePots: SidePot[]; payouts: number[]; bundle: TableProofBundle }
+  // bundle is null on trustless tables; the real receipt is mp-receipt.
+  | { type: "hand-complete"; sidePots: SidePot[]; payouts: number[]; bundle: TableProofBundle | null }
+  | {
+      type: "mp-progress";
+      phase: MpPhase;
+      waitingOn: number[];
+      handId: string;
+      deckToMask: string[] | null;
+      maskedDeck: string[] | null;
+      openBoardPositions: number[];
+      board: string[];
+      publicKeys: (string | null)[];
+      abortReason: string | null;
+    }
+  | { type: "mp-hole-partial"; position: number; partial: string }
+  | { type: "mp-aborted"; reason: string }
+  | { type: "mp-receipt"; bundle: ProofBundleV3 }
   | { type: "opponent-left"; seat: Seat }
   | { type: "chat"; message: ChatMessage }
   | { type: "chat-history"; messages: ChatMessage[] }
@@ -144,7 +172,14 @@ export function findSeedAck(handId: string, seat: number): SeedAck | undefined {
   return readSeedAcks().find((ack) => ack.handId === handId && ack.seat === seat);
 }
 
-export type InitialTableSettings = { smallBlind: number; bigBlind: number; minBuyIn: number; maxBuyIn: number; isLounge?: boolean };
+export type InitialTableSettings = {
+  smallBlind: number;
+  bigBlind: number;
+  minBuyIn: number;
+  maxBuyIn: number;
+  isLounge?: boolean;
+  isTrustless?: boolean;
+};
 
 export function randomRoomCode() {
   const bytes = new Uint8Array(3);
@@ -182,6 +217,7 @@ export function connectTable(
       params.set("minBuyIn", String(initialSettings.minBuyIn));
       params.set("maxBuyIn", String(initialSettings.maxBuyIn));
       if (initialSettings.isLounge) params.set("lounge", "1");
+      if (initialSettings.isTrustless) params.set("trustless", "1");
     }
     return `${protocol}//${window.location.host}/api/table/${encodeURIComponent(roomCode)}?${params.toString()}`;
   }

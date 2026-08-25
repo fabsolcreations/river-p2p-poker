@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRight, Plus, RefreshCcw, Search, Users, X, Zap } from "lucide-react";
+import { ArrowRight, Plus, RefreshCcw, Search, ShieldCheck, Users, X, Zap } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { RiverShell } from "../components/river-shell";
 import { randomRoomCode } from "../play/table-transport";
@@ -54,6 +54,15 @@ export default function LobbyPage() {
     }
   }
 
+  // Room code is minted on click, never during render: a Math.random() in
+  // JSX produces a different value on the server than on the client and
+  // trips React's hydration check (this project has hit that before).
+  function openTrustlessTable() {
+    const code = randomRoomCode();
+    window.location.href =
+      `/play/table-lab?room=${code}&seats=2&trustless=1&smallBlind=1&bigBlind=2&minBuyIn=40&maxBuyIn=200`;
+  }
+
   async function loadTables() {
     const response = await fetch("/api/lobby/tables");
     if (!response.ok) {
@@ -97,6 +106,20 @@ export default function LobbyPage() {
                 <span>{loungeBusy === preset.tier ? "Joining..." : "Join"}</span>
               </button>
             ))}
+          </div>
+        </section>
+
+        <section className="lounge-tiles trustless-tile">
+          <div className="lounge-tiles-head">
+            <ShieldCheck size={15} /><span>TRUSTLESS</span>
+            <p>Heads-up only. Both browsers deal the hand together, so no dealer - not even us - can see your cards. Slower than a normal table: that&apos;s real cryptography running, not lag.</p>
+          </div>
+          <div className="lounge-tiles-grid">
+            <button type="button" className="trustless-open" onClick={openTrustlessTable}>
+              <b>Open a trustless table</b>
+              <small>1/2 · heads-up</small>
+              <span>Deal it yourselves</span>
+            </button>
           </div>
         </section>
 

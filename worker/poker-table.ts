@@ -111,6 +111,9 @@ export type PublicHandState = {
   // True for a room opened via the lounge matchmaker (app/api/lounge/join)
   // - stakes stay house-managed, so the client hides the settings gear.
   isLounge: boolean;
+  // True on a mental-poker table: this object relays the deal rather than
+  // performing it, and holds no key. Drives the client's protocol driver.
+  isTrustless: boolean;
   // The NEXT hand's server-entropy commitment and hand id, both published
   // before that hand's client seeds are collected - record these before you
   // play and check them against the bundle afterwards (see
@@ -637,6 +640,7 @@ export class PokerTable {
         actionClockSeconds: this.actionClockSeconds,
         actionDeadline: null,
         isLounge: this.isLounge,
+        isTrustless: this.isTrustless,
         nextServerSeedCommitment: this.nextServerSeedCommitment,
         nextHandId: this.nextHandId,
         rabbitHuntRevealed: false,
@@ -678,6 +682,7 @@ export class PokerTable {
       actionClockSeconds: this.actionClockSeconds,
       actionDeadline: this.actionDeadline,
       isLounge: this.isLounge,
+      isTrustless: this.isTrustless,
       nextServerSeedCommitment: this.nextServerSeedCommitment,
       nextHandId: this.nextHandId,
       rabbitHuntRevealed: this.rabbitHuntRevealed,

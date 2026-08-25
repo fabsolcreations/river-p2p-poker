@@ -39,6 +39,15 @@ import {
 } from "../table-transport";
 import { verifyTableBundle, type TableProofBundle, type TableVerificationResult } from "../../../worker/table-engine";
 import { createVoiceChat, type VoiceChat, type VoiceStatus } from "../voice-chat";
+import {
+  createMpSession,
+  initialCommitment,
+  receiveHolePartial,
+  stepsFor,
+  type MpProgress,
+  type MpSession,
+} from "../mental-poker-client";
+import { verifyMentalPokerBundle, type MentalPokerVerificationResult } from "../mental-poker";
 
 const MIN_SEATS = 2;
 const MAX_SEATS = 10;
@@ -161,9 +170,10 @@ export default function TableLab() {
     const minBuyIn = Number(params.get("minBuyIn"));
     const maxBuyIn = Number(params.get("maxBuyIn"));
     const isLounge = params.get("lounge") === "1";
+    const isTrustless = params.get("trustless") === "1";
     const initialSettings =
       Number.isInteger(smallBlind) && Number.isInteger(bigBlind) && Number.isInteger(minBuyIn) && Number.isInteger(maxBuyIn)
-        ? { smallBlind, bigBlind, minBuyIn, maxBuyIn, isLounge }
+        ? { smallBlind, bigBlind, minBuyIn, maxBuyIn, isLounge, isTrustless }
         : undefined;
     const autoSit = params.get("autosit") === "1";
     if (!code) {
@@ -200,6 +210,14 @@ export default function TableLab() {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState("");
   const [unreadChat, setUnreadChat] = useState(0);
+  // Trustless dealing: the session holds this browser's masking key, which
+  // is the reason the server can't read our cards. Kept in a ref because it
+  // is mutable protocol state, not render state.
+  const mpSessionRef = useRef<MpSession | null>(null);
+  const [mpPhase, setMpPhase] = useState<string | null>(null);
+  const [mpWaitingOnMe, setMpWaitingOnMe] = useState(false);
+  const [mpAbort, setMpAbort] = useState<string | null>(null);
+  const [mpVerification, setMpVerification] = useState<MentalPokerVerificationResult | null>(null);
   const [voiceStatus, setVoiceStatus] = useState<VoiceStatus>("off");
   const [voicePeerSeats, setVoicePeerSeats] = useState<Seat[]>([]);
   const connectionRef = useRef<TableConnection | null>(null);
@@ -210,6 +228,13 @@ export default function TableLab() {
   // reopened on every tab switch) - it reads the live tab via this ref
   // instead of closing over a stale `railTab` to decide whether an
   // incoming chat message should bump the unread badge.
+  // The protocol driver runs inside a subscription registered once, so it
+  // reads the live seat through a ref rather than a stale closure - the same
+  // pattern railTabRef already uses for chat.
+  const mySeatRef = useRef<Seat | null>(null);
+  useEffect(() => {
+    mySeatRef.current = mySeat;
+  }, [mySeat]);
   const railTabRef = useRef(railTab);
   useEffect(() => {
     railTabRef.current = railTab;
@@ -245,6 +270,31 @@ export default function TableLab() {
     window.setTimeout(() => setToast(""), 2200);
   }
 
+  // The masked deck the relay last published - needed to resolve a hole
+  // card the moment its partial arrives, without waiting for a re-render.
+  const lastMaskedDeckRef = useRef<string[] | null>(null);
+
+  async function handleMpProgress(progress: MpProgress & { handId: string }, connection: TableConnection) {
+    lastMaskedDeckRef.current = progress.maskedDeck;
+    setMpPhase(progress.phase);
+    setMpWaitingOnMe(mySeatRef.current !== null && progress.waitingOn.includes(mySeatRef.current));
+
+    const seat = mySeatRef.current;
+    if (seat === null) return;
+
+    // A new hand id means a fresh masking key - never reuse one across hands.
+    let session = mpSessionRef.current;
+    if (!session || session.handId !== progress.handId) {
+      session = await createMpSession(progress.handId, seat);
+      mpSessionRef.current = session;
+      setMpAbort(null);
+      setMpVerification(null);
+      connection.send(await initialCommitment(session));
+      return;
+    }
+    for (const outbound of await stepsFor(session, progress)) connection.send(outbound);
+  }
+
   useEffect(() => {
     if (!roomCode) return;
     const connection = connectTable(roomCode, seatCount, initialSettings, autoSit);
@@ -270,6 +320,26 @@ export default function TableLab() {
           next.delete(message.seat);
           return next;
         });
+      } else if (message.type === "mp-progress") {
+        // Drive this browser's half of the deal. All the curve work happens
+        // here, with a key the server never sees.
+        void handleMpProgress(message, connection);
+      } else if (message.type === "mp-hole-partial") {
+        // Only we can finish this card - it needs our secret key.
+        void (async () => {
+          const session = mpSessionRef.current;
+          if (!session) return;
+          await receiveHolePartial(session, message.position, message.partial, lastMaskedDeckRef.current);
+          if (session.holeCards.length === 2) {
+            setHoleCards([session.holeCards[0], session.holeCards[1]]);
+          }
+        })();
+      } else if (message.type === "mp-aborted") {
+        setMpAbort(message.reason);
+        setHoleCards(null);
+        notify(`Hand abandoned - ${message.reason}. All chips returned.`);
+      } else if (message.type === "mp-receipt") {
+        verifyMentalPokerBundle(message.bundle).then(setMpVerification);
       } else if (message.type === "hole-cards") {
         setHoleCards(message.cards);
         setHandComplete(null);
@@ -405,6 +475,36 @@ export default function TableLab() {
     URL.revokeObjectURL(url);
   }
 
+  // Plain-language read of where the two browsers are in the deal. Worth
+  // being explicit that the wait is real cryptography, not lag - masking 52
+  // curve points twice is genuinely slower than a server-side shuffle.
+  const mpStatusLine = (() => {
+    if (mpAbort) return `Hand abandoned - ${mpAbort}. Every chip was returned.`;
+    switch (mpPhase) {
+      case "commit":
+        return "Exchanging sealed commitments - neither browser can see a card yet.";
+      case "mask-seat-0":
+      case "mask-seat-1":
+        return mpWaitingOnMe ? "Encrypting and shuffling the deck in your browser..." : "Waiting for your opponent to shuffle.";
+      case "hole-partials":
+        return "Unlocking each other's hole cards - you only ever unlock theirs, never your own.";
+      case "board-partials":
+        return "Both players are unsealing the next community card.";
+      case "showdown":
+        return "Revealing hole cards, checked against the deck committed before the hand.";
+      case "settle":
+        return "Publishing shuffle keys so anyone can replay this hand.";
+      case "complete":
+        return mpVerification
+          ? mpVerification.valid
+            ? "Receipt verified - the deal was provably fair and nobody could see your cards."
+            : "Receipt FAILED verification. Do not keep playing at this table."
+          : "Hand complete - building the receipt.";
+      default:
+        return "No dealer holds your cards here - both browsers deal together.";
+    }
+  })();
+
   const street = publicState?.street ?? "waiting";
   const myStack = mySeat !== null ? publicState?.stacks[mySeat] : undefined;
   const owed = myFacingBet(publicState, mySeat);
@@ -480,7 +580,17 @@ export default function TableLab() {
         <div className="game-room">
           <section className="game-room-main">
             <div className="table-status-ribbon">
-              <span>LIVE MULTIPLAYER</span><p>Real hands, dealt by a Durable Object. Test chips only - no real-money custody.</p>
+              {publicState?.isTrustless ? (
+                <>
+                  <span>TRUSTLESS TABLE</span>
+                  <p>{mpStatusLine}</p>
+                </>
+              ) : (
+                <>
+                  <span>LIVE MULTIPLAYER</span>
+                  <p>Real hands, dealt by a Durable Object. Test chips only - no real-money custody.</p>
+                </>
+              )}
             </div>
 
             <div className="room-felt-wrap">
