@@ -982,6 +982,12 @@ export class PokerTable {
     this.broadcastMpProgress();
     await this.armMpDeadline();
     await this.maybeStartTrustlessBetting();
+    // Board cards just landed: whoever is to act is now genuinely able to,
+    // so put them back on the clock.
+    if (this.mpState?.phase === "betting" && this.hand && this.hand.street !== "complete") {
+      await this.armActionDeadline();
+      this.broadcastState();
+    }
   }
 
   private async routeMpMessage(seat: Seat, message: ClientMessage): Promise<void> {
@@ -1240,6 +1246,14 @@ export class PokerTable {
       this.send(ws, { type: "error", message: "No hand in progress." });
       return;
     }
+    // On a trustless table the engine reaches a street before that street's
+    // cards exist - they only appear once both parties publish partials.
+    // Accepting a bet in that window would mean betting a board nobody can
+    // see yet, so actions are refused until the deal catches up.
+    if (this.isTrustless && this.mpState && this.mpState.phase !== "betting") {
+      this.send(ws, { type: "error", message: "Waiting for both players to unseal the next card." });
+      return;
+    }
     try {
       await this.applyEngineAction(seat, action, amount);
     } catch (error) {
@@ -1263,18 +1277,22 @@ export class PokerTable {
     this.hand = next;
     this.stacks = this.mergedStacks(next);
     await this.persist(["hand", "stacks"]);
-    await this.armActionDeadline();
-    this.broadcastState();
 
     // Trustless tables unseal board cards only after the street that
     // precedes them has finished betting - the cards physically cannot be
-    // read before both parties publish partials for them.
+    // read before both parties publish partials for them. This runs BEFORE
+    // arming the action clock: otherwise the clock is armed against a street
+    // whose cards don't exist yet, and its alarm auto-acts on a sealed board.
     if (this.isTrustless && this.hand.street !== previousStreet) {
       if (this.hand.street === "showdown") this.mpState = mp.beginShowdown(this.mpState!);
       else await this.openTrustlessBoardStreet(this.hand.street);
       await this.persist(["mpState"]);
       this.broadcastMpProgress();
+      await this.armMpDeadline();
     }
+
+    await this.armActionDeadline();
+    this.broadcastState();
 
     if (this.hand.street === "complete" && this.hand.sidePots) {
       const bundle = buildProofBundle(this.hand);
@@ -1293,7 +1311,14 @@ export class PokerTable {
   // clock (actionClockSeconds === 0) or no one currently to act just clears
   // any stale deadline instead of arming one.
   private async armActionDeadline(): Promise<void> {
-    if (!this.hand || this.hand.street === "complete" || this.hand.toAct === null || this.actionClockSeconds <= 0) {
+    // On a trustless table the engine advances to the next street before its
+    // cards exist - they only appear once both parties publish partials.
+    // Running the action clock through that window would auto-fold someone
+    // for failing to act on a board they physically cannot see yet, so the
+    // clock stays parked until the deal catches up. The protocol's own
+    // stall timeout (armMpDeadline) covers that window instead.
+    const awaitingDeal = this.isTrustless && this.mpState !== null && this.mpState.phase !== "betting";
+    if (awaitingDeal || !this.hand || this.hand.street === "complete" || this.hand.toAct === null || this.actionClockSeconds <= 0) {
       if (this.actionDeadline !== null) {
         this.actionDeadline = null;
         await this.persist(["actionDeadline"]);
@@ -1385,7 +1410,8 @@ export class PokerTable {
       await this.startHandIfReady();
       return;
     }
-    if (this.actionDeadline !== null && this.hand && this.hand.toAct !== null && this.hand.street !== "complete") {
+    const dealPending = this.isTrustless && this.mpState !== null && this.mpState.phase !== "betting";
+    if (!dealPending && this.actionDeadline !== null && this.hand && this.hand.toAct !== null && this.hand.street !== "complete") {
       const seat = this.hand.toAct;
       const auto: ActionType = legalActions(this.hand, seat).includes("check" as ActionType) ? "check" : "fold";
       this.actionDeadline = null;
@@ -1396,6 +1422,12 @@ export class PokerTable {
     // on a masking round, a partial, or a showdown reveal. There is no
     // auto-play substitute for those (they need a key only that browser
     // has), so the hand is abandoned and every chip goes back.
+    if (this.isTrustless && this.mpDeadline !== null && Date.now() < this.mpDeadline) {
+      // Woken early (a single DO holds one alarm, so these can overwrite each
+      // other) - put the stall deadline back rather than losing it.
+      await this.ctx.storage.setAlarm(this.mpDeadline);
+      return;
+    }
     if (this.isTrustless && this.mpDeadline !== null && Date.now() >= this.mpDeadline) {
       const stalled = this.mpState ? mp.waitingOn(this.mpState, this.contestingSeatsForMp()) : [];
       this.mpDeadline = null;
