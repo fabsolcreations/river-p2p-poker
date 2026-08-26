@@ -13,6 +13,8 @@ export interface ChainNetworkConfig {
   rpcUrl: string;
   escrowAddress: `0x${string}`;
   tokenAddress: `0x${string}`;
+  /** Confirmations required before a deposit is credited off-chain. */
+  minConfirmations: number;
 }
 
 // Deterministic addresses from deploying contracts/scripts/deploy.ts
@@ -25,6 +27,9 @@ const LOCAL: ChainNetworkConfig = {
   rpcUrl: "http://127.0.0.1:8545",
   tokenAddress: "0x5fbdb2315678afecb367f032d93f642f64180aa3",
   escrowAddress: "0xe7f1725e7734ce288f8367e1bb143e90bb3f0512",
+  // A local dev chain has no reorgs and mines instantly, so waiting would
+  // just make testing slower for no safety gain.
+  minConfirmations: 0,
 };
 
 // Real Base mainnet. Left as placeholders on purpose - fill these in
@@ -37,6 +42,11 @@ const BASE: ChainNetworkConfig = {
   rpcUrl: "", // e.g. an Alchemy/Infura/base.org RPC URL
   tokenAddress: "0x0000000000000000000000000000000000000000",
   escrowAddress: "0x0000000000000000000000000000000000000000",
+  // Blocks to wait before treating a deposit as final. Crediting at depth 0
+  // means a reorg can un-mine the deposit while the off-chain balance stays
+  // credited - free chips. Base builds on Ethereum finality, so a handful of
+  // blocks covers ordinary reorgs; raise it if you ever see one deeper.
+  minConfirmations: 12,
 };
 
 export const NETWORKS: Record<ChainKey, ChainNetworkConfig> = { local: LOCAL, base: BASE };

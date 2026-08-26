@@ -58,6 +58,27 @@ export async function verifyDepositTx(txHash: `0x${string}`, expectedDepositor: 
   if (receipt.status !== "success") {
     return { ok: false, error: "Transaction did not succeed on-chain." };
   }
+
+  // A mined transaction is not a settled one. Crediting at depth 0 means a
+  // reorg can un-mine the deposit while the off-chain balance stays credited,
+  // which is free chips for anyone who can induce one. Depth is checked
+  // against the chain's own head rather than trusting the receipt alone.
+  const required = activeChainConfig.minConfirmations;
+  if (required > 0) {
+    let head: bigint;
+    try {
+      head = await client.getBlockNumber();
+    } catch {
+      return { ok: false, error: "Could not confirm how deep this transaction is yet - try again shortly." };
+    }
+    const depth = head >= receipt.blockNumber ? head - receipt.blockNumber + 1n : 0n;
+    if (depth < BigInt(required)) {
+      return {
+        ok: false,
+        error: `This deposit needs ${required} confirmations before it can be credited (currently ${depth}). Try again shortly.`,
+      };
+    }
+  }
   if (!receipt.to || getAddress(receipt.to) !== getAddress(activeChainConfig.escrowAddress)) {
     return { ok: false, error: "Transaction was not sent to the escrow contract." };
   }

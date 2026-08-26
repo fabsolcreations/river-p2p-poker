@@ -35,7 +35,26 @@ async function main() {
   const operatorAddress = (process.env.OPERATOR_ADDRESS ?? deployer.account.address) as `0x${string}`;
   const ownerAddress = (process.env.OWNER_ADDRESS ?? deployer.account.address) as `0x${string}`;
 
-  const vault = await viem.deployContract("EscrowVault", [tokenAddress, operatorAddress, ownerAddress]);
+  // Withdrawal ceilings, in the token's own base units (USDC has 6 dp, so
+  // 1_000_000 = 1 USDC). These bound what a leaked operator key can move
+  // before someone notices and pauses. 0 disables a check entirely - fine
+  // for a local smoke test, a bad idea anywhere real.
+  const maxPerTx = BigInt(process.env.MAX_WITHDRAWAL_PER_TX ?? (isLocal ? "0" : "500000000"));
+  const dailyLimit = BigInt(process.env.DAILY_WITHDRAWAL_LIMIT ?? (isLocal ? "0" : "5000000000"));
+  if (!isLocal && (maxPerTx === 0n || dailyLimit === 0n)) {
+    throw new Error(
+      "Refusing to deploy to a real network with a withdrawal limit disabled. Set MAX_WITHDRAWAL_PER_TX " +
+        "and DAILY_WITHDRAWAL_LIMIT to real base-unit values - they are what bounds a leaked operator key.",
+    );
+  }
+
+  const vault = await viem.deployContract("EscrowVault", [
+    tokenAddress,
+    operatorAddress,
+    ownerAddress,
+    maxPerTx,
+    dailyLimit,
+  ]);
 
   console.log("---");
   console.log(`Network:  ${networkName}`);
@@ -44,6 +63,8 @@ async function main() {
   console.log(`Owner:    ${ownerAddress}`);
   console.log(`Vault:    ${vault.address}`);
   console.log("---");
+  console.log(`Per-tx cap:    ${maxPerTx === 0n ? "disabled" : maxPerTx.toString()}`);
+  console.log(`Daily limit:   ${dailyLimit === 0n ? "disabled" : dailyLimit.toString()}`);
   console.log("Copy the Token/Vault addresses into worker/chain-config.ts.");
 }
 

@@ -120,12 +120,30 @@ local Hardhat chain.
   function. Honest, but it looks broken — hide or label it before showing
   the site to anyone.
 
+**Withdrawal limits (added; bound a leaked hot key):** the vault takes
+`maxWithdrawalPerTx` and `dailyWithdrawalLimit` as constructor arguments
+(base units; 0 disables), enforced in `withdraw`, adjustable only by the
+`owner` — so a compromised operator cannot raise its own ceiling.
+`remainingDailyAllowance()` reports headroom. The daily window is FIXED, not
+sliding: an attacker timing a drain across a boundary can move up to twice
+the limit. That is deliberate — the goal is to bound the loss and buy time
+to `pause`, not to make theft impossible. `deploy.ts` refuses to deploy to a
+real network with either limit disabled.
+
+**Deposit finality (added):** `minConfirmations` per network (0 local, 12 on
+Base). `verifyDepositTx` checks depth against the chain head and refuses to
+credit until it is met, so a reorg cannot leave a credited balance behind an
+un-mined deposit.
+
 **Known gaps in the money path (real, unfixed):**
-- A compromised `operator` key drains the vault in one call. No per-tx cap,
-  daily limit, or timelock — only `pause`.
-- `verifyDepositTx` accepts a receipt at confirmation depth 0, so a reorg
-  could leave a credited D1 balance behind an un-mined deposit.
-- `baseUnitsToChips` truncates; sub-chip dust strands in the vault.
+- `baseUnitsToChips` truncates; a deposit that is not a whole number of
+  chips credits the floor and strands the remainder in the vault. It is
+  auditable — `onchainTransactions.tokenBaseUnits` records the exact amount
+  received, so the dust is derivable per row — but it is not credited back.
+  The deposit UI only ever sends whole chips, so this needs a direct
+  transfer to trigger.
+- No timelock on `setOperator`/`setLimits`: a compromised OWNER key is
+  still total loss. The owner is meant to be a cold key held offline.
 
 **Non-technical gate:** operating real-money gambling requires actual
 gambling and money-transmitter licensing in the relevant jurisdictions.

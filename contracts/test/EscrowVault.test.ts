@@ -20,12 +20,29 @@ describe("EscrowVault", () => {
     [owner, operator, user, outsider] = await viem.getWalletClients();
   });
 
+  // Limits default to 0 (disabled) here so the pre-existing tests exercise
+  // exactly what they did before; the limit tests deploy their own capped
+  // vault via deployCappedVault.
   async function deployVault() {
     const token = await viem.deployContract("MockUSDC");
     const vault = await viem.deployContract("EscrowVault", [
       token.address,
       operator.account.address,
       owner.account.address,
+      0n,
+      0n,
+    ]);
+    return { token, vault };
+  }
+
+  async function deployCappedVault(maxPerTx: bigint, dailyLimit: bigint) {
+    const token = await viem.deployContract("MockUSDC");
+    const vault = await viem.deployContract("EscrowVault", [
+      token.address,
+      operator.account.address,
+      owner.account.address,
+      maxPerTx,
+      dailyLimit,
     ]);
     return { token, vault };
   }
@@ -116,6 +133,55 @@ describe("EscrowVault", () => {
       );
     });
 
+    it("caps a single payout, bounding what a leaked operator key can move", async () => {
+      const cap = 100_000_000n;
+      const { token, vault } = await deployCappedVault(cap, 0n);
+      await fundAndApprove(token, vault, 500_000_000n);
+      await vault.write.deposit([500_000_000n], { account: user.account });
+
+      // The whole-pool drain a stolen hot key would attempt.
+      await viem.assertions.revertWithCustomErrorWithArgs(
+        vault.write.withdraw([user.account.address, 500_000_000n, REF], { account: operator.account }),
+        vault,
+        "ExceedsPerTxCap",
+        [500_000_000n, cap],
+      );
+
+      // A payout at the cap still goes through.
+      await vault.write.withdraw([user.account.address, cap, REF], { account: operator.account });
+      assert.equal(await token.read.balanceOf([user.account.address]), cap);
+    });
+
+    it("caps total payouts per day, and only the owner can raise the ceiling", async () => {
+      const daily = 150_000_000n;
+      const { token, vault } = await deployCappedVault(0n, daily);
+      await fundAndApprove(token, vault, 500_000_000n);
+      await vault.write.deposit([500_000_000n], { account: user.account });
+
+      const refB = `0x${"bb".repeat(32)}` as `0x${string}`;
+      await vault.write.withdraw([user.account.address, 100_000_000n, REF], { account: operator.account });
+      assert.equal(await vault.read.remainingDailyAllowance(), 50_000_000n);
+
+      await viem.assertions.revertWithCustomErrorWithArgs(
+        vault.write.withdraw([user.account.address, 100_000_000n, refB], { account: operator.account }),
+        vault,
+        "ExceedsDailyLimit",
+        [100_000_000n, 50_000_000n],
+      );
+
+      // The operator cannot lift its own ceiling - that is the point of
+      // keeping the owner a separate, colder key.
+      await viem.assertions.revertWithCustomError(
+        vault.write.setLimits([0n, 0n], { account: operator.account }),
+        vault,
+        "OwnableUnauthorizedAccount",
+      );
+
+      await vault.write.setLimits([0n, 400_000_000n], { account: owner.account });
+      await vault.write.withdraw([user.account.address, 100_000_000n, refB], { account: operator.account });
+      assert.equal(await token.read.balanceOf([user.account.address]), 200_000_000n);
+    });
+
     it("reverts for any non-operator caller", async () => {
       const { vault } = await deployAndDeposit(500_000_000n);
 
@@ -193,6 +259,8 @@ describe("EscrowVault", () => {
         hostileToken.address,
         operator.account.address,
         owner.account.address,
+        0n,
+        0n,
       ]);
       await hostileToken.write.mint([user.account.address, 1000n]);
       await hostileToken.write.approve([vault.address, 1000n], { account: user.account });

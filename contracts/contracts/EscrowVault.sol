@@ -45,26 +45,76 @@ contract EscrowVault is Ownable, Pausable, ReentrancyGuard {
     /// paying twice.
     mapping(bytes32 => bool) public usedRefIds;
 
+    /// @notice Largest single payout the operator may make. 0 disables the
+    /// check. Bounds the damage from a leaked hot key to one transaction's
+    /// worth rather than the entire pool.
+    uint256 public maxWithdrawalPerTx;
+
+    /// @notice Ceiling on payouts within a 24h window. 0 disables the check.
+    ///
+    /// This is a FIXED window, not a sliding one: it resets the first time a
+    /// withdrawal lands more than a day after the window opened. An attacker
+    /// timing a drain across a boundary could therefore move up to twice the
+    /// limit. That is a deliberate trade - a true sliding window costs far
+    /// more gas and storage, and the point here is to bound the loss and buy
+    /// time to notice and `pause`, not to make theft impossible.
+    uint256 public dailyWithdrawalLimit;
+    uint256 public windowStart;
+    uint256 public withdrawnInWindow;
+
     event Deposited(address indexed depositor, uint256 amount);
     event Withdrawn(address indexed to, uint256 amount, bytes32 indexed refId, address indexed operator);
     event OperatorUpdated(address indexed previousOperator, address indexed newOperator);
+    event LimitsUpdated(uint256 maxWithdrawalPerTx, uint256 dailyWithdrawalLimit);
 
     error ZeroAddress();
     error ZeroAmount();
     error NotOperator(address caller);
     error ZeroRefId();
     error RefIdAlreadyUsed(bytes32 refId);
+    error ExceedsPerTxCap(uint256 amount, uint256 cap);
+    error ExceedsDailyLimit(uint256 amount, uint256 remaining);
 
     modifier onlyOperator() {
         if (msg.sender != operator) revert NotOperator(msg.sender);
         _;
     }
 
-    constructor(address token_, address operator_, address initialOwner) Ownable(initialOwner) {
+    /// @param maxWithdrawalPerTx_ Per-payout ceiling; 0 disables.
+    /// @param dailyWithdrawalLimit_ 24h ceiling; 0 disables.
+    /// Both are constructor arguments rather than defaults so a deployment
+    /// has to make a deliberate choice about blast radius.
+    constructor(
+        address token_,
+        address operator_,
+        address initialOwner,
+        uint256 maxWithdrawalPerTx_,
+        uint256 dailyWithdrawalLimit_
+    ) Ownable(initialOwner) {
         if (token_ == address(0) || operator_ == address(0)) revert ZeroAddress();
         token = IERC20(token_);
         operator = operator_;
+        maxWithdrawalPerTx = maxWithdrawalPerTx_;
+        dailyWithdrawalLimit = dailyWithdrawalLimit_;
+        windowStart = block.timestamp;
         emit OperatorUpdated(address(0), operator_);
+        emit LimitsUpdated(maxWithdrawalPerTx_, dailyWithdrawalLimit_);
+    }
+
+    /// @notice Owner-only, so a compromised operator cannot raise its own
+    /// ceiling. Takes effect immediately, including mid-window.
+    function setLimits(uint256 maxWithdrawalPerTx_, uint256 dailyWithdrawalLimit_) external onlyOwner {
+        maxWithdrawalPerTx = maxWithdrawalPerTx_;
+        dailyWithdrawalLimit = dailyWithdrawalLimit_;
+        emit LimitsUpdated(maxWithdrawalPerTx_, dailyWithdrawalLimit_);
+    }
+
+    /// @notice How much the operator may still withdraw in the current window.
+    function remainingDailyAllowance() public view returns (uint256) {
+        if (dailyWithdrawalLimit == 0) return type(uint256).max;
+        if (block.timestamp >= windowStart + 1 days) return dailyWithdrawalLimit;
+        if (withdrawnInWindow >= dailyWithdrawalLimit) return 0;
+        return dailyWithdrawalLimit - withdrawnInWindow;
     }
 
     /// @notice User-initiated deposit. Requires a prior
@@ -89,6 +139,18 @@ contract EscrowVault is Ownable, Pausable, ReentrancyGuard {
         if (amount == 0) revert ZeroAmount();
         if (refId == bytes32(0)) revert ZeroRefId();
         if (usedRefIds[refId]) revert RefIdAlreadyUsed(refId);
+        if (maxWithdrawalPerTx != 0 && amount > maxWithdrawalPerTx) {
+            revert ExceedsPerTxCap(amount, maxWithdrawalPerTx);
+        }
+        if (dailyWithdrawalLimit != 0) {
+            if (block.timestamp >= windowStart + 1 days) {
+                windowStart = block.timestamp;
+                withdrawnInWindow = 0;
+            }
+            uint256 remaining = dailyWithdrawalLimit - withdrawnInWindow;
+            if (amount > remaining) revert ExceedsDailyLimit(amount, remaining);
+            withdrawnInWindow += amount;
+        }
         usedRefIds[refId] = true;
         token.safeTransfer(to, amount);
         emit Withdrawn(to, amount, refId, msg.sender);
