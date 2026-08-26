@@ -28,7 +28,8 @@ const threatRows = [
   ["Receipt awards the wrong side pot or amount", "Independent side-pot recomputation + contribution replay", "Live, checked by verifyTableBundle", "pass"],
   ["A seat disconnects mid-hand", "Hand state persists server-side; reconnect resends it, not a re-deal", "Live", "pass"],
   ["Server delays dealing to wait for a more favorable already-committed seed set", "Hand start is gated behind a fixed, content-independent delay (a Durable Object alarm) - the deal time can never be moved earlier or later based on which seeds have arrived, so there's no window left in which \"wait and see\" is even possible", "Live - operational guarantee, not itself part of the cryptographic receipt", "pass"],
-  ["Operator reads every hole card", "None — inherent to a trusted-dealer model", "Not mitigated by cryptography; operational trust only", "hard"],
+  ["Operator reads every hole card (server-dealt tables)", "None — inherent to a trusted-dealer model. The shuffle is provably fair, but the server deals the cards, so it necessarily knows them. Trustless tables exist precisely because this cannot be fixed here", "Not mitigated by cryptography on these tables; operational trust only", "hard"],
+  ["Operator reads every hole card (trustless tables)", "The two browsers encrypt and shuffle the deck together under a joint key, and each unlocks only the other's cards. The server relays without ever holding a key, so it cannot decrypt a hole card at any point - and the receipt lets anyone replay the whole deal afterwards", "Live on heads-up trustless tables", "pass"],
   ["Two players share cards out of band", "Table controls, reputation, review", "Mitigated, never eliminated", "hard"],
   ["Bot plays perfect strategy", "Policy + detection + bot-designated tables", "Product decision required", "hard"],
   ["Real money is deposited or withdrawn", "Licensed custodial ledger, audit, caps", "Not built — no real-money path exists yet", "block"],
@@ -43,17 +44,20 @@ export default function FairnessPage() {
             <span>RIVER / PROTOCOL</span>
             <h1>Fairness is not<br />one random number.</h1>
             <p>
-              RIVER&apos;s server deals every hand — that&apos;s a real trust decision, not a cryptographic
-              privacy guarantee. What is guaranteed: every seat contributes its own browser-generated
-              randomness to the shuffle, committed before it&apos;s revealed, so the server can&apos;t
-              unilaterally choose a favorable deck. Every action extends a hash-chained receipt, and
-              anyone can independently replay both after the fact.
+              RIVER runs two kinds of table, and the difference is exactly how much you have to trust us.
+              On <b>server-dealt tables</b> the shuffle is provably fair — every seat contributes its own
+              browser-generated randomness, committed before it&apos;s revealed — but the server deals the
+              cards, so it knows them. That&apos;s a real trust decision, not a privacy guarantee. On
+              <b> trustless heads-up tables</b> the two browsers encrypt and shuffle the deck together and
+              nobody, including us, can see a hole card. Either way every action extends a hash-chained
+              receipt anyone can replay afterwards.
             </p>
             <div><a className="river-button primary" href="/play/table-lab">Play a live table <ArrowRight size={16} /></a><a className="river-button ghost" href="#architecture">Read the architecture</a></div>
           </div>
           <div className="fairness-scope-board">
             <div className="scope-board-head"><span>PROTOCOL CLAIM REGISTER</span><small>CURRENT STATUS</small></div>
             <article className="live"><Check size={16} /><div><span>LIVE</span><b>Player-seeded commit-reveal shuffle</b></div><small>NOT SERVER-CHOSEN ALONE</small></article>
+            <article className="live"><Check size={16} /><div><span>LIVE</span><b>Trustless heads-up tables</b></div><small>DEALER CANNOT SEE CARDS</small></article>
             <article className="live"><Check size={16} /><div><span>LIVE</span><b>2-10 seat tables, real no-limit betting</b></div><small>DURABLE OBJECT</small></article>
             <article className="live"><Check size={16} /><div><span>LIVE</span><b>Accounts + persistent bankroll</b></div><small>D1-BACKED, REAL SESSIONS</small></article>
             <article><Clock3 size={16} /><div><span>BUILT, NOT LIVE</span><b>On-chain escrow contract</b></div><small>DEPLOY GATED ON LICENSING</small></article>
@@ -64,7 +68,7 @@ export default function FairnessPage() {
           <div className="premise-index"><span>01 / THE PREMISE</span><p>Most poker sites ask you to trust a server you can&apos;t see inside, and stop there.</p></div>
           <div className="premise-main"><h2>RIVER trusts the same server. It just makes that trust checkable.</h2><div className="premise-grid">
             <article><Radio size={20} /><span>SHUFFLE</span><h3>Who picks the deck?</h3><p>Each seat&apos;s own browser generates its own random seed and commits (hashes) it before the hand deals. The server combines every seat&apos;s contribution but doesn&apos;t control any single one alone, so it can&apos;t unilaterally choose a favorable shuffle.</p></article>
-            <article><EyeOff size={20} /><span>DEALING</span><h3>Who sees each card?</h3><p>Hole cards are sent 1:1 to the owning connection only, never broadcast to the table — an operational guarantee, not a cryptographic one.</p></article>
+            <article><EyeOff size={20} /><span>DEALING</span><h3>Who sees each card?</h3><p>On a server-dealt table, hole cards go 1:1 to the owning connection and are never broadcast — but the server dealt them, so that&apos;s an operational guarantee, not a cryptographic one. On a trustless table it <em>is</em> cryptographic: the server holds no key and can&apos;t decrypt a card at all.</p></article>
             <article><Zap size={20} /><span>ACTIONS</span><h3>What happened at the table?</h3><p>Every fold, check, call, bet, and raise extends a hash chain rooted in the hand ID. Reordering or altering one breaks the chain.</p></article>
             <article><WalletCards size={20} /><span>SETTLEMENT</span><h3>Did the payout match the pot?</h3><p>The awarded amount is checked against replayed contributions and recomputed side pots — a receipt can&apos;t quietly award more than was wagered.</p></article>
           </div></div>
