@@ -1,177 +1,188 @@
 # RIVER — handoff brief
 
-Context for an AI assistant picking this project up cold. Read this before
-touching anything.
+Everything an assistant needs to pick this project up cold. Current as of
+the `24966ca` commit.
 
 ---
 
 ## What this is
 
-**RIVER** — a real, live multiplayer poker site at **https://playriver.gg**
-(Cloudflare Workers). Test chips only; no real-money path is active.
+**RIVER** — a live multiplayer poker site at **https://playriver.gg**
+(Cloudflare Workers). Test chips only; the real-money path is built but not
+switched on (see *Money stack* below).
 
-The product's whole differentiator is **provable fairness**. That is not
-marketing here — it is the actual engineering thesis, and claims about it
-must stay precise. This project has repeatedly caught itself overclaiming
-and corrected it. Keep doing that.
+The differentiator is **provable fairness**, and that is an engineering
+claim, not a marketing one. This project has repeatedly caught itself
+overclaiming and corrected it. Keep that habit: where something is trust
+rather than math, say so.
 
 **Stack:** Next 16 + `vinext` on Cloudflare Workers · Durable Objects (one
-per poker room) · D1/SQLite via Drizzle · React 19 · viem/wagmi + Hardhat
-for the escrow contract.
+per room) · D1/SQLite via Drizzle · React 19 · viem/wagmi + Hardhat.
 
 ---
 
-## Architecture in one pass
+## Architecture
 
-- `worker/table-engine.ts` — pure hold'em rules engine. **No Cloudflare
-  APIs**, so it unit-tests in plain Node. Owns betting, side pots, hand
-  evaluation, and the `TableProofBundle` receipt + `verifyTableBundle`.
-- `worker/poker-table.ts` — the `PokerTable` Durable Object. Owns
-  WebSockets, storage, timers. One per room.
+- `worker/table-engine.ts` — pure hold'em rules. **No Cloudflare APIs**, so
+  it unit-tests in plain Node. Betting, side pots, hand evaluation,
+  `TableProofBundle` + `verifyTableBundle` (11 checks).
+- `worker/poker-table.ts` — the `PokerTable` Durable Object (~1,500 lines).
+  WebSockets, storage, timers, and the trustless relay.
 - `worker/mental-poker-protocol.ts` — pure phase machine for trustless
-  hands (see below). Same purity split as the engine.
-- `app/play/mental-poker.ts` — ElGamal card masking on secp256k1
-  (Phase 1 crypto core, complete and tested).
-- `app/play/table-transport.ts` — browser WebSocket wrapper.
-- `db/schema.ts` — D1 schema (users, sessions, tables, hands, clubs, …).
+  hands, plus `buildMentalPokerBundle`.
+- `worker/fairness-attestation.ts` — ECDSA P-256 signed seed receipts.
+- `app/play/mental-poker.ts` — ElGamal masking on secp256k1 (the crypto
+  core; complete, 15 verifier checks).
+- `app/play/mental-poker-client.ts` — browser protocol driver.
+- `worker/chain.ts` + `contracts/` — escrow contract and on-chain plumbing.
 
-### Hard constraint that shapes everything
+### Hard constraint
 
 Any file importing `db/index.ts` (which does `import { env } from
-"cloudflare:workers"`) **cannot be imported by the Node test runner**. That
-is why the rules engine and protocol machine are kept pure and framework-
-free, and why `worker/poker-table.ts` has no unit tests. Preserve this
-split — put logic in the pure modules, I/O in the Durable Object.
+"cloudflare:workers"`) **cannot be imported by the Node test runner.** That
+is why the engine and protocol machine are pure and framework-free, and why
+the Durable Object has no unit tests. Keep logic in the pure modules and I/O
+in the DO — this split is what makes the project testable at all.
 
 ---
 
-## The fairness model (three layers — do not conflate them)
+## The fairness model — three distinct layers, do not conflate
 
-**1. Shuffle entropy — provably fair.**
-Each player's browser generates a seed. The server commits to its *own*
-seed for the next hand (publishing `H(seed)`) **before** collecting any
-player seeds, and pins the hand ID at the same moment. Seeds for players
-who don't respond are derived deterministically from that commitment —
-never freshly rolled. Result: the server cannot re-roll or grind the deck.
-`verifyTableBundle` runs 11 checks including `serverCommitment` and
-`fallbackSeeds`.
+**1. Shuffle entropy (server-dealt tables) — provably fair.**
+Each browser generates a seed. The server commits to its own seed for the
+*next* hand (publishing `H(seed)`) **before** collecting player seeds, and
+pins the hand ID at the same moment. A player who doesn't respond gets a
+seed derived deterministically from that commitment, never a fresh roll.
+The server therefore cannot grind the deck. Verified by `serverCommitment`
+and `fallbackSeeds` in `verifyTableBundle`.
 
-**2. Seed substitution — provable, not just detectable.**
-The server signs an acknowledgement of every seed it receives
-(`worker/fairness-attestation.ts`, ECDSA P-256), bound to the hand ID, and
-hands it to that player. If a receipt later shows a different seed for that
-seat, the player holds the operator's own signature contradicting the
-operator's own receipt. Public key at `/api/fairness/public-key` — it
-should be **pinned**, since an operator free to swap keys could disown its
-signatures.
+**2. Seed substitution — provable, not merely detectable.**
+The server signs every seed it receives, bound to the hand ID, and gives
+that signature to the player. A receipt showing a different seed contradicts
+a signature the operator cannot disown. Public key at
+`/api/fairness/public-key` — it should be **pinned**, since an operator free
+to rotate keys could disown its own signatures.
 
-**3. The dealer still sees hole cards — NOT solved by layers 1–2.**
-This is the honest limit of a trusted-dealer model, and it is the same
-standard PokerNow and similar sites hold. **Never describe the current
-server-dealt tables as "trustless" or imply the server can't see cards.**
-The correct phrase is *"provably fair shuffle."*
+**3. The dealer sees hole cards — true on server-dealt tables ONLY.**
+Layers 1 and 2 do not touch this. **Never call server-dealt tables
+"trustless" or imply the server can't see cards.** The correct phrase is
+*"provably fair shuffle."*
 
-### In progress: trustless heads-up mode
+### Trustless heads-up tables — shipped and live
 
-Mental poker, reviving the parked Phase 1 crypto, so the dealer genuinely
-cannot see cards. **Backend is complete and tested; UI is not built.**
+Mental poker. The dealer genuinely cannot see cards.
 
-- The two browsers mask and shuffle the deck in turn under a joint ElGamal
-  key. Neither can read a card alone.
-- The Durable Object is a **relay**, not a dealer — it holds no key.
-- Hole-card partials are forwarded only to the seat that owns the card.
-- Board cards unseal **per street**, so a turn partial is refused during
-  the flop.
-- At showdown the server verifies a claimed hand with no key at all: the
+- Both browsers mask and shuffle the deck under a joint ElGamal key.
+- The Durable Object is a **relay** holding no key. Hole-card partials are
+  forwarded only to the seat that owns the card.
+- Board cards unseal **per street** — a turn partial is refused during the
+  flop, otherwise either party could read ahead.
+- At showdown the server verifies a claimed hand **with no key**: the
   revealer's partial plus the opponent's already-relayed one decrypt the
   committed ciphertext. A lie fails to decrypt.
-- Betting reuses the normal engine. **Key insight:** the engine needs hole
-  cards in exactly one place (`bestHandSeats`, at a contested showdown), so
-  it can referee betting blind. `deferShowdown` parks the hand in street
-  `"showdown"`; `finishShowdown(state, holeCards, board)` completes it.
-- **Stall policy:** if a party doesn't complete a protocol step within 45s,
-  the hand aborts and **all contributions are returned**. With dealing
-  incomplete there is no honest winner, and paying out a staller would make
-  stalling a strategy.
-- Cost: real curve work in the browser (~300ms/deal on a fast machine, plus
-  round trips). Genuinely slower than server-dealt. That's why it's a
-  separate mode, not the default.
+- Betting reuses the normal engine. It needs hole cards in exactly one place
+  (`bestHandSeats`, contested showdown), so it referees blind.
+  `deferShowdown` parks the hand in street `"showdown"`;
+  `finishShowdown(state, holeCards, board)` completes it.
+- **Stall policy:** 45s per protocol step, then the hand aborts and **all
+  contributions are returned**. With dealing incomplete there is no honest
+  winner, and paying a staller would make stalling a strategy.
+- Cost: real curve work in-browser, noticeably slower than server-dealt.
+  That is why it is a separate mode, heads-up only.
 
-**Remaining:** trustless UI states in `app/play/table-lab/page.tsx`, a lobby
-entry point, `/fairness` copy, live two-tab verification, deploy.
+**Three bugs were found here by live stall testing, not by unit tests** —
+all interactions between the engine's street advance, the single DO alarm,
+and the phase machine: betting accepted on a sealed street; the action clock
+armed against undealt cards; and an action alarm overwriting the protocol
+stall deadline. If you touch this area, re-run a live stall test.
+
+---
+
+## Money stack — built, deliberately not switched on
+
+This is the part most likely to be misread, so precisely:
+
+**What exists and works:** `contracts/contracts/EscrowVault.sol` — a pooled
+custody vault (OpenZeppelin `Ownable`/`Pausable`/`ReentrancyGuard`,
+`SafeERC20`), with `usedRefIds` replay protection so a given ledger entry
+can never be paid twice. Wallet linking via signed challenge (EOA +
+ERC-1271). Deposit confirmation with idempotency keyed on tx hash.
+Withdrawals with a 1% fee (`WITHDRAWAL_FEE_BPS = 100`) and a per-withdrawal
+gross/net choice. 14 Solidity tests, plus JS integration tests against a
+local Hardhat chain.
+
+**What is NOT switched on:**
+- `ACTIVE_NETWORK = "local"` in `worker/chain-config.ts` — points at
+  `127.0.0.1:8545`. The `BASE` config holds deliberate placeholders.
+- No `OPERATOR_PRIVATE_KEY` secret is set in production, so
+  `/api/wallet/withdraw-request` returns a clean 503.
+- Consequence: the wallet/deposit UI renders on the live site but cannot
+  function. Honest, but it looks broken — hide or label it before showing
+  the site to anyone.
+
+**Known gaps in the money path (real, unfixed):**
+- A compromised `operator` key drains the vault in one call. No per-tx cap,
+  daily limit, or timelock — only `pause`.
+- `verifyDepositTx` accepts a receipt at confirmation depth 0, so a reorg
+  could leave a credited D1 balance behind an un-mined deposit.
+- `baseUnitsToChips` truncates; sub-chip dust strands in the vault.
+
+**Non-technical gate:** operating real-money gambling requires actual
+gambling and money-transmitter licensing in the relevant jurisdictions.
+That is a legal process with regulators, not a code change, and no
+assistant can supply it. Treat any claim that it's unnecessary as false.
 
 ---
 
 ## Deployment
 
-Live at playriver.gg + www. Cloudflare account is already authenticated.
-
 ```bash
-npm run cf:deploy      # preflight + build + deploy
-npm run cf:schema      # apply drizzle migrations to remote D1 (idempotent)
+npm run cf:deploy   # preflight + build + deploy
+npm run cf:schema   # apply drizzle migrations to remote D1 (idempotent)
 ```
 
-- Real config lives in **gitignored `.env.deploy`** (see
-  `.env.deploy.example`). `CF_D1_DATABASE_ID` must be the real database —
-  the original scaffold's placeholder is all-zeroes and binds to *nothing*
-  in production while working fine locally.
-- Preflight (`tools/deploy/preflight.mjs`) blocks: placeholder D1, missing
-  wrangler auth, a non-`local` chain network, and Hardhat's public test key
-  as a secret.
-- Attaching custom domains **disabled the workers.dev URL** — playriver.gg
-  is the only address now.
-- Secrets are Worker secrets, not env files: `FAIRNESS_SIGNING_KEY` (set),
-  `OPERATOR_PRIVATE_KEY` (deliberately **not** set in production).
+- Real config in **gitignored `.env.deploy`** (see `.env.deploy.example`).
+  `CF_D1_DATABASE_ID` must be the real database — the original scaffold's
+  placeholder is all-zeroes and binds to **nothing** in production while
+  working fine locally.
+- Preflight blocks: placeholder D1, missing wrangler auth, a non-`local`
+  chain network, and Hardhat's public test key as a secret.
+- Attaching custom domains disabled the workers.dev URL. playriver.gg is the
+  only address.
+- Worker secrets (not env files): `FAIRNESS_SIGNING_KEY` (set),
+  `OPERATOR_PRIVATE_KEY` (deliberately unset).
 
 ---
 
-## Verification — always do all of these
+## Verification — do all of these
 
 ```bash
 npx tsc --noEmit
-npm test          # 75 tests; also runs the build
+npm test        # 75 tests; also runs the build
 npm run lint
 ```
 
-Chain tests need a local node: `npm run chain:node`, then
-`npm run chain:deploy:local`. **Restart the node before redeploying** — an
-accumulated-nonce chain deploys the vault to a different address than
-`worker/chain-config.ts` expects, and the tests then silently run against
-the *old* contract.
+Chain tests need `npm run chain:node` then `npm run chain:deploy:local`.
+**Restart the node before redeploying** — an accumulated-nonce chain
+deploys the vault to a different address than `chain-config.ts` expects, and
+tests then silently run against the *old* contract.
 
-**Unit tests are not sufficient in this codebase.** Every serious bug in its
-history was found by driving two browser tabs against a running dev server,
-not by review or tests: hydration mismatches, Durable Object fields that
-silently reverted after hibernation, off-screen layout, orphaned balances, a
-React effect that advanced exactly one step and stalled. Drive the real
-thing.
+**Unit tests are not sufficient here.** Every serious bug in this project's
+history came from driving two browser tabs against a running server:
+hydration mismatches, DO fields that silently reverted after hibernation,
+a React effect that advanced one step and stalled, and all three trustless
+timing bugs. Drive the real thing.
 
 ---
 
-## Standing rules from the project owner
+## Standing rules from the owner
 
 - **Do not fabricate safety, legal, or fairness claims.** Build ambitious
-  money/gambling features, but never overstate what is proven. Where
-  something is trust rather than math, say so.
+  features; never overstate what is proven.
 - **Do not remove the disclaimers** on the sibling merch site
-  (`tools/duelmerch`) that state it is an independent fan project not
-  affiliated with Duel. That is impersonation, not styling.
-- Real-money paths stay gated on actual licensing. The escrow contract is
-  built and audited, but production has no operator key and
-  `ACTIVE_NETWORK` is `"local"`.
-- Skip infrastructure/CLI explanations — absorb the plumbing and report on
-  the product.
-- **Never run a long-lived `next dev` watcher outside the project's own
-  `npm run dev`** — file watchers have frozen this machine before.
-
----
-
-## Known gaps (deliberate, not oversights)
-
-- A compromised `operator` key can drain the escrow vault in one call — no
-  per-tx cap, daily limit, or timelock, only `pause`.
-- Deposits are credited at confirmation depth 0, so a reorg could leave a
-  credited balance behind an un-mined deposit.
-- `baseUnitsToChips` truncates; sub-chip dust is stranded in the vault.
-- The wallet/deposit UI renders on the live site but cannot work there
-  (chain config points at localhost). Honest, but rough.
+  (`tools/duelmerch`) stating it is an independent fan project unaffiliated
+  with Duel. That is impersonation, not styling.
+- Skip infrastructure/CLI explanations — absorb the plumbing, report on the
+  product.
+- Never run a long-lived file watcher outside `npm run dev` — that has
+  frozen this machine before.
