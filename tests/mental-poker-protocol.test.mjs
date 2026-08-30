@@ -321,3 +321,24 @@ test("a folded trustless hand still verifies, without exposing the hand that fol
   assert.equal(bundle.deals.length, 3);
   assert.ok(bundle.deals.every((deal) => deal.recipients.length === 2));
 });
+
+test("a hand folded before any card was turned up produces no attestable receipt", async () => {
+  const { buildMentalPokerBundle, applyMaskerSeedReveal, beginSettle } = await import("../worker/mental-poker-protocol.ts");
+  const { verifyMentalPokerBundle } = await import("../app/play/mental-poker.ts");
+
+  // Deal, then fold preflop: no board opened, nobody shows down.
+  let { state, seeds } = await setupThroughDealing("mp-preflop-fold");
+  state = beginSettle(state);
+  state = applyMaskerSeedReveal(state, 0, seeds[0]);
+  state = applyMaskerSeedReveal(state, 1, seeds[1]);
+
+  const bundle = await buildMentalPokerBundle(state);
+  assert.equal(bundle.deals.length, 0, "nothing was turned up, so nothing is attested");
+
+  // The verifier rejects a zero-deal bundle by design. That is exactly why
+  // the Durable Object must not publish one - a PROOF REJECTED banner on an
+  // honest hand would discredit the verifier itself.
+  const result = await verifyMentalPokerBundle(bundle);
+  assert.equal(result.valid, false);
+  assert.equal(result.checks.dealsWellFormed, false);
+});

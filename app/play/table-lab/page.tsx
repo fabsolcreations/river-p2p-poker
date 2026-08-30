@@ -565,7 +565,12 @@ export default function TableLab() {
   // hidden here rather than opening a dialog that can only ever error.
   const showSettingsButton = isHost && !publicState?.isLounge;
   const canEditSettings = street === "waiting" || street === "complete";
-  const rabbitHuntAvailable = street === "complete" && (publicState?.board.length ?? 5) < 5;
+  // Never on a trustless table: rabbit hunting reveals board cards the server
+  // already holds, and on those tables it holds none - the remaining board is
+  // still encrypted between the two browsers, so there is nothing it could
+  // turn over. Offering the button there is a dead control.
+  const rabbitHuntAvailable =
+    street === "complete" && !publicState?.isTrustless && (publicState?.board.length ?? 5) < 5;
 
   const voiceActiveSeats = useMemo(() => {
     const set = new Set(voicePeerSeats);
@@ -730,9 +735,26 @@ export default function TableLab() {
                 <><div className="action-state"><span>WAITING FOR PLAYERS</span><h2>Share this room to start.</h2><p>The hand deals automatically once at least 2 of the {seatCount} seats are filled.</p></div>
                 <div className="action-controls"><button className="action-accent" onClick={copyLink}><Copy size={15} /> Copy room link</button></div></>
               ) : street === "complete" && handComplete ? (
-                <><div className="action-state"><span>HAND COMPLETE</span><h2>{handSummary(handComplete.payouts)}</h2><p>{publicState?.rabbitHuntRevealed ? "Rabbit hunt revealed the rest of the board." : verification?.valid ? "All checks passed." : "Verifying..."}</p></div>
+                <><div className="action-state"><span>HAND COMPLETE</span><h2>{handSummary(handComplete.payouts)}</h2><p>{publicState?.isTrustless
+                  ? mpVerification
+                    ? mpVerification.valid
+                      ? "All 15 checks passed - nobody could see your cards."
+                      : "Receipt FAILED verification. Don't keep playing here."
+                    : mpPhase === "complete"
+                      ? "No cards were turned up this hand, so there is nothing to verify."
+                      : "Waiting for both players to publish their shuffle keys..."
+                  : publicState?.rabbitHuntRevealed
+                    ? "Rabbit hunt revealed the rest of the board."
+                    : verification?.valid
+                      ? "All checks passed."
+                      : "Verifying..."}</p></div>
                 <div className="action-controls">
-                  <button onClick={() => setShowProof(true)}><ShieldCheck size={15} /> Inspect proof</button>
+                  <button
+                    onClick={() => setShowProof(true)}
+                    disabled={publicState?.isTrustless ? !mpVerification : !verification}
+                  >
+                    <ShieldCheck size={15} /> Inspect proof
+                  </button>
                   {rabbitHuntAvailable && <button onClick={rabbitHunt}><Rabbit size={15} /> Rabbit hunt</button>}
                   <button className="action-accent" onClick={sendReady} disabled={readySent}><RotateCcw size={15} /> {readySent ? "Waiting on the table..." : "Ready for next hand"}</button>
                 </div></>
@@ -884,7 +906,29 @@ export default function TableLab() {
           </aside>
         </div>
 
-        {showProof && handComplete && verification && (
+        {showProof && publicState?.isTrustless && mpVerification && mpReceipt && (
+          <div className="modal-backdrop" role="presentation" onMouseDown={() => setShowProof(false)}>
+            <section className="modal" role="dialog" aria-modal="true" aria-labelledby="mp-proof-title" onMouseDown={(event) => event.stopPropagation()}>
+              <button className="modal-close" aria-label="Close proof" onClick={() => setShowProof(false)}><X size={19} /></button>
+              <div className={`proof-verdict ${mpVerification.valid ? "pass" : "fail"}`}>
+                <ShieldCheck size={27} />
+                <div><span>VERIFICATION VERDICT</span><strong>{mpVerification.valid ? "PROOF ACCEPTED" : "PROOF REJECTED"}</strong></div>
+              </div>
+              <h2 id="mp-proof-title">Trustless hand receipt</h2>
+              <p>No dealer held these cards. Both shuffle keys are revealed in this receipt, so the whole deal replays from scratch - re-encrypted, re-shuffled, and every dealt card re-derived.</p>
+              <div className="proof-checks">
+                {Object.entries(mpVerification.checks).map(([name, passed]) => <div key={name}><span className={passed ? "passed" : "failed"}>{passed ? <Check size={14} /> : <X size={14} />}</span><b>{name.replace(/([A-Z])/g, " $1")}</b><small>{passed ? "MATCH" : "FAILED"}</small></div>)}
+              </div>
+              <div className="seed-reveal"><span>JOINT PUBLIC KEY</span><code>{mpReceipt.jointPublicKeyHex}</code></div>
+              <div className="proof-actions">
+                <button className="accent" onClick={downloadMpReceipt}><Download size={15} /> Download receipt</button>
+                <a href="/receipts"><FileJson size={15} /> Receipt desk</a>
+              </div>
+            </section>
+          </div>
+        )}
+
+        {showProof && !publicState?.isTrustless && handComplete && verification && (
           <div className="modal-backdrop" role="presentation" onMouseDown={() => setShowProof(false)}>
             <section className="modal" role="dialog" aria-modal="true" aria-labelledby="proof-title" onMouseDown={(event) => event.stopPropagation()}>
               <button className="modal-close" aria-label="Close proof" onClick={() => setShowProof(false)}><X size={19} /></button>

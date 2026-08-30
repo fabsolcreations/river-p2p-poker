@@ -1182,6 +1182,13 @@ export class PokerTable {
     if (!this.mpState || this.mpState.phase !== "complete") return;
     try {
       const bundle = await mp.buildMentalPokerBundle(this.mpState);
+      // A hand that folded before any card was turned up has nothing to
+      // attest to: no board was unsealed and nobody showed down, so the
+      // receipt would carry zero deals - which verifyMentalPokerBundle
+      // rejects. Publishing a receipt that reads PROOF REJECTED on an
+      // entirely honest hand would do more damage to trust in the verifier
+      // than publishing none, so this stays silent and the client says why.
+      if (bundle.deals.length === 0) return;
       this.broadcast({ type: "mp-receipt", bundle });
       // Same history table as a server-dealt hand: the column is JSON and
       // both receipt shapes name their own version, so /receipts can tell
@@ -1305,6 +1312,15 @@ export class PokerTable {
     this.broadcastState();
 
     if (this.hand.street === "complete" && this.hand.sidePots) {
+      // A trustless hand that ends by folding never reaches showdown, so it
+      // lands here rather than in maybeFinishTrustlessShowdown. It must NOT
+      // take the server-dealt path: buildProofBundle would fabricate a
+      // receipt from a deck this object never held, and nobody would ever be
+      // asked for their shuffle keys - leaving the table stuck waiting.
+      if (this.isTrustless) {
+        await this.completeTrustlessHand();
+        return;
+      }
       const bundle = buildProofBundle(this.hand);
       const payouts = this.stacks.map((stack, s) => (this.hand!.inHand[s] ? stack - (this.handStartStacks[s] ?? stack) : 0));
       this.broadcast({ type: "hand-complete", sidePots: this.hand.sidePots, payouts, bundle });
