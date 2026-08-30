@@ -16,7 +16,7 @@ import {
 import { useEffect, useState } from "react";
 import { useAccount, useConnect, useSignMessage, useWriteContract, usePublicClient } from "wagmi";
 import { RiverShell } from "../components/river-shell";
-import { activeChainConfig, ERC20_ABI, VAULT_ABI, TOKEN_DECIMALS, computeWithdrawal, type WithdrawalFeeMode } from "../../worker/chain-config";
+import { activeChainConfig, ERC20_ABI, VAULT_ABI, TOKEN_DECIMALS, computeWithdrawal, isChainReachableFrom, type WithdrawalFeeMode } from "../../worker/chain-config";
 
 type Preference = "sounds" | "fourColor" | "shortcuts" | "proofNotices";
 
@@ -72,6 +72,14 @@ export default function AccountPage() {
   const { writeContractAsync } = useWriteContract();
   const publicClient = usePublicClient();
   const [walletStatus, setWalletStatus] = useState<WalletStatus | null>(null);
+  // Starts false so the server render and the first client render agree, then
+  // flips in an effect. Failing closed also means the honest "not available"
+  // copy is what shows if this never resolves.
+  const [chainReachable, setChainReachable] = useState(false);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time client-only bootstrap: depends on window.location, which has no SSR equivalent
+    setChainReachable(isChainReachableFrom(window.location.hostname));
+  }, []);
   const [walletBusy, setWalletBusy] = useState(false);
   const [walletError, setWalletError] = useState("");
   const [depositChips, setDepositChips] = useState("");
@@ -334,7 +342,18 @@ export default function AccountPage() {
                 <section className="account-proof-summary">
                   <div><WalletIcon size={21} /><span>CRYPTO WALLET</span></div>
                   <div className="ledger-list">
-                    {!isConnected ? (
+                    {!chainReachable ? (
+                      // The escrow contract is real and tested, but it is only
+                      // deployed to a local chain right now - unreachable from
+                      // here. Showing the deposit flow anyway would just fail
+                      // at the first RPC call.
+                      <p className="ledger-empty">
+                        Deposits and withdrawals aren&apos;t switched on yet. The escrow contract is
+                        built and tested, but it isn&apos;t deployed anywhere real value can reach -
+                        so there is deliberately nothing to connect a wallet to. Chips at the tables
+                        are test chips.
+                      </p>
+                    ) : !isConnected ? (
                       <>
                         <p className="ledger-empty">Connect a wallet to deposit or withdraw {activeChainConfig.chainId === 8453 ? "USDC" : "test USDC"} on {activeChainConfig.chainId === 8453 ? "Base" : "the local test chain"}.</p>
                         <button type="button" className="save-preferences" onClick={handleConnectWallet}>Connect wallet</button>
@@ -423,7 +442,7 @@ export default function AccountPage() {
             {isLoggedIn && (
               <section><div className="account-rail-head"><LockKeyhole size={17} /><span>SESSION</span></div><h2>Signed in as {account.username}.</h2><p>One active session, authenticated by a password + a signed session cookie.</p><button className="save-preferences" onClick={signOut}><LogOut size={14} /> Sign out</button></section>
             )}
-            <section className="account-scope-card"><ShieldCheck size={20} /><span>HONEST SCOPE</span><h3>Real account, real persistent balance - still test chips.</h3><p>Passwords are hashed (PBKDF2), sessions are signed cookies, and the balance is a real D1-backed ledger. The crypto wallet below moves real test-network tokens through a real, tested escrow contract - it isn&apos;t deployed anywhere real value could reach yet.</p><a href="/fairness">Read the fairness model <ArrowRight size={14} /></a></section>
+            <section className="account-scope-card"><ShieldCheck size={20} /><span>HONEST SCOPE</span><h3>Real account, real persistent balance - still test chips.</h3><p>Passwords are hashed (PBKDF2), sessions are signed cookies, and the balance is a real D1-backed ledger. The escrow contract behind deposits is real and tested, but it isn&apos;t deployed anywhere real value could reach - so no deposit or withdrawal can move anything today.</p><a href="/fairness">Read the fairness model <ArrowRight size={14} /></a></section>
           </aside>
         </div>
       </main>

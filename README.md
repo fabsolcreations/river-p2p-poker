@@ -6,6 +6,11 @@ persistent bankroll in D1, and every hand produces an independently
 verifiable, hash-chained proof receipt. Money today is test chips
 everywhere — no real-value path is live yet (see below).
 
+**Live at [playriver.gg](https://playriver.gg).** The operator's signing key
+is pinned in [FAIRNESS-KEY.md](FAIRNESS-KEY.md) — that file is what makes the
+signed seed acknowledgements non-repudiable, so check it there rather than
+trusting whatever the server currently serves.
+
 ## What's actually live
 
 - Real accounts: password auth (PBKDF2 + signed session cookies) and a

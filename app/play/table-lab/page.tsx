@@ -47,7 +47,11 @@ import {
   type MpProgress,
   type MpSession,
 } from "../mental-poker-client";
-import { verifyMentalPokerBundle, type MentalPokerVerificationResult } from "../mental-poker";
+import {
+  verifyMentalPokerBundle,
+  type MentalPokerVerificationResult,
+  type ProofBundleV3 as MentalPokerBundle,
+} from "../mental-poker";
 
 const MIN_SEATS = 2;
 const MAX_SEATS = 10;
@@ -216,8 +220,12 @@ export default function TableLab() {
   const mpSessionRef = useRef<MpSession | null>(null);
   const [mpPhase, setMpPhase] = useState<string | null>(null);
   const [mpWaitingOnMe, setMpWaitingOnMe] = useState(false);
+  const [mpWaitingSeats, setMpWaitingSeats] = useState<number[]>([]);
   const [mpAbort, setMpAbort] = useState<string | null>(null);
   const [mpVerification, setMpVerification] = useState<MentalPokerVerificationResult | null>(null);
+  // Kept so the receipt can be saved - a trustless proof is only useful if it
+  // outlives the tab it was produced in.
+  const [mpReceipt, setMpReceipt] = useState<MentalPokerBundle | null>(null);
   const [voiceStatus, setVoiceStatus] = useState<VoiceStatus>("off");
   const [voicePeerSeats, setVoicePeerSeats] = useState<Seat[]>([]);
   const connectionRef = useRef<TableConnection | null>(null);
@@ -278,6 +286,7 @@ export default function TableLab() {
     lastMaskedDeckRef.current = progress.maskedDeck;
     setMpPhase(progress.phase);
     setMpWaitingOnMe(mySeatRef.current !== null && progress.waitingOn.includes(mySeatRef.current));
+    setMpWaitingSeats(progress.waitingOn);
 
     const seat = mySeatRef.current;
     if (seat === null) return;
@@ -289,6 +298,7 @@ export default function TableLab() {
       mpSessionRef.current = session;
       setMpAbort(null);
       setMpVerification(null);
+      setMpReceipt(null);
       connection.send(await initialCommitment(session));
       return;
     }
@@ -339,6 +349,7 @@ export default function TableLab() {
         setHoleCards(null);
         notify(`Hand abandoned - ${message.reason}. All chips returned.`);
       } else if (message.type === "mp-receipt") {
+        setMpReceipt(message.bundle);
         verifyMentalPokerBundle(message.bundle).then(setMpVerification);
       } else if (message.type === "hole-cards") {
         setHoleCards(message.cards);
@@ -464,6 +475,19 @@ export default function TableLab() {
     notify("Proof JSON copied");
   }
 
+  // Saves the trustless receipt so it can be re-verified later on /receipts,
+  // independently of this tab or the server that relayed the hand.
+  function downloadMpReceipt() {
+    if (!mpReceipt) return;
+    const blob = new Blob([JSON.stringify(mpReceipt, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `trustless-${mpReceipt.handId}.json`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  }
+
   function downloadProof() {
     if (!handComplete?.bundle) return;
     const blob = new Blob([JSON.stringify(handComplete.bundle, null, 2)], { type: "application/json" });
@@ -478,6 +502,18 @@ export default function TableLab() {
   // Plain-language read of where the two browsers are in the deal. Worth
   // being explicit that the wait is real cryptography, not lag - masking 52
   // curve points twice is genuinely slower than a server-side shuffle.
+  // "Waiting on your opponent" is more useful than "waiting" - during a
+  // multi-second deal the difference between "your browser is busy" and
+  // "theirs is" is the whole question a player has.
+  const mpWaitingLabel = (() => {
+    if (mpWaitingSeats.length === 0) return "";
+    if (mySeat === null) return `Waiting on seat ${mpWaitingSeats.join(" and ")}.`;
+    const others = mpWaitingSeats.filter((seat) => seat !== mySeat);
+    if (mpWaitingOnMe && others.length > 0) return "Waiting on both browsers.";
+    if (mpWaitingOnMe) return "Your browser is working...";
+    return `Waiting on seat ${others.join(" and ")}.`;
+  })();
+
   const mpStatusLine = (() => {
     if (mpAbort) return `Hand abandoned - ${mpAbort}. Every chip was returned.`;
     switch (mpPhase) {
@@ -485,13 +521,15 @@ export default function TableLab() {
         return "Exchanging sealed commitments - neither browser can see a card yet.";
       case "mask-seat-0":
       case "mask-seat-1":
-        return mpWaitingOnMe ? "Encrypting and shuffling the deck in your browser..." : "Waiting for your opponent to shuffle.";
+        return mpWaitingOnMe
+          ? "Encrypting and shuffling the deck in your browser..."
+          : `Your opponent is shuffling. ${mpWaitingLabel}`;
       case "hole-partials":
-        return "Unlocking each other's hole cards - you only ever unlock theirs, never your own.";
+        return `Unlocking each other's hole cards - you only ever unlock theirs, never your own. ${mpWaitingLabel}`;
       case "board-partials":
-        return "Both players are unsealing the next community card.";
+        return `Both players are unsealing the next community card. ${mpWaitingLabel}`;
       case "showdown":
-        return "Revealing hole cards, checked against the deck committed before the hand.";
+        return `Revealing hole cards, checked against the deck committed before the hand. ${mpWaitingLabel}`;
       case "settle":
         return "Publishing shuffle keys so anyone can replay this hand.";
       case "complete":
@@ -584,6 +622,11 @@ export default function TableLab() {
                 <>
                   <span>TRUSTLESS TABLE</span>
                   <p>{mpStatusLine}</p>
+                  {mpReceipt && (
+                    <button type="button" className="mp-receipt-save" onClick={downloadMpReceipt}>
+                      <Download size={13} /> Save receipt
+                    </button>
+                  )}
                 </>
               ) : (
                 <>

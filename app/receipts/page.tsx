@@ -35,6 +35,11 @@ import {
 } from "../play/proof";
 import { verifyTableBundle, type TableProofBundle, type TableVerificationResult } from "../../worker/table-engine";
 import { buildReplay, type ReplayData } from "./hand-replay";
+import {
+  verifyMentalPokerBundle,
+  type MentalPokerVerificationResult,
+  type ProofBundleV3,
+} from "../play/mental-poker";
 
 type Inspection = { bundle: ProofBundle; result: VerificationResult; source: string };
 
@@ -93,6 +98,21 @@ async function sampleBundle(handId = "river-receipt-sample-v2"): Promise<ProofBu
   };
 }
 
+// A trustless-table receipt. Different shape and a different verifier from
+// the server-dealt V2 bundle, so it's detected by its own version tag rather
+// than by duck-typing against the other one.
+function looksLikeMentalPokerBundle(value: unknown): value is ProofBundleV3 {
+  if (!value || typeof value !== "object") return false;
+  const candidate = value as Partial<ProofBundleV3>;
+  return (
+    candidate.version === "RIVER_POC_V3" &&
+    typeof candidate.handId === "string" &&
+    Array.isArray(candidate.maskedDeck) &&
+    Array.isArray(candidate.deals) &&
+    !!candidate.maskingRounds
+  );
+}
+
 function looksLikeBundle(value: unknown): value is ProofBundle {
   if (!value || typeof value !== "object") return false;
   const candidate = value as Partial<ProofBundle>;
@@ -110,6 +130,7 @@ export default function ReceiptsPage() {
   const [signedIn, setSignedIn] = useState<boolean | "loading">("loading");
   const [realHands, setRealHands] = useState<RealHandRow[]>([]);
   const [tableInspection, setTableInspection] = useState<{ bundle: TableProofBundle; result: TableVerificationResult } | null>(null);
+  const [mentalInspection, setMentalInspection] = useState<{ bundle: ProofBundleV3; result: MentalPokerVerificationResult; source: string } | null>(null);
   const [replay, setReplay] = useState<ReplayData | null>(null);
   const [replayIndex, setReplayIndex] = useState(0);
   const [replaying, setReplaying] = useState(false);
@@ -192,11 +213,20 @@ export default function ReceiptsPage() {
     if (!file) return;
     try {
       const parsed: unknown = JSON.parse(await file.text());
+      // Trustless receipts carry their own version tag and verifier.
+      if (looksLikeMentalPokerBundle(parsed)) {
+        setInspection(null);
+        setMentalInspection({ bundle: parsed, result: await verifyMentalPokerBundle(parsed), source: file.name });
+        setError("");
+        return;
+      }
       if (!looksLikeBundle(parsed)) throw new Error("shape");
+      setMentalInspection(null);
       await inspect(parsed, file.name);
     } catch {
       setInspection(null);
-      setError("That file is not a recognizable RIVER V2 hand receipt.");
+      setMentalInspection(null);
+      setError("That file is not a recognizable RIVER hand receipt (V2 server-dealt, or V3 trustless).");
     } finally {
       if (inputRef.current) inputRef.current.value = "";
     }
@@ -259,6 +289,26 @@ export default function ReceiptsPage() {
             ))}</div>
           )}
         </section>
+
+        {mentalInspection && (
+          <div className="modal-backdrop" role="presentation" onMouseDown={() => setMentalInspection(null)}>
+            <section className="modal" role="dialog" aria-modal="true" aria-labelledby="mp-proof-title" onMouseDown={(event) => event.stopPropagation()}>
+              <button className="modal-close" aria-label="Close proof" onClick={() => setMentalInspection(null)}><X size={19} /></button>
+              <div className={`proof-verdict ${mentalInspection.result.valid ? "pass" : "fail"}`}><ShieldCheck size={27} /><div><span>VERIFICATION VERDICT</span><strong>{mentalInspection.result.valid ? "PROOF ACCEPTED" : "PROOF REJECTED"}</strong></div></div>
+              <h2 id="mp-proof-title">Trustless hand receipt</h2>
+              <p>
+                From a table where no dealer held the cards. Both players&apos; masking keys are revealed
+                here, so the whole deal replays from scratch: the deck is re-encrypted, re-shuffled, and
+                every dealt card re-derived. Verified from <b>{mentalInspection.source}</b>.
+              </p>
+              <div className="proof-checks">
+                {Object.entries(mentalInspection.result.checks).map(([name, passed]) => <div key={name}><span className={passed ? "passed" : "failed"}>{passed ? <Check size={14} /> : <X size={14} />}</span><b>{name.replace(/([A-Z])/g, " $1")}</b><small>{passed ? "MATCH" : "FAILED"}</small></div>)}
+              </div>
+              <div className="seed-reveal"><span>JOINT PUBLIC KEY</span><code>{mentalInspection.bundle.jointPublicKeyHex}</code></div>
+              <div className="seed-reveal"><span>CARDS ACCOUNTED FOR</span><code>{mentalInspection.bundle.deals.length} of 9 (4 hole + 5 board; folded hands stay private)</code></div>
+            </section>
+          </div>
+        )}
 
         {tableInspection && (
           <div className="modal-backdrop" role="presentation" onMouseDown={() => setTableInspection(null)}>

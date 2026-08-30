@@ -53,6 +53,14 @@
         "tools/duelmerch/public"
       ],
       "port": 5603
+    },
+    {
+      "name": "aburi",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "C:\\Users\\mypc\\projectnew\\aburi\\apps\\api\\dist\\index.js"
+      ],
+      "port": 4000
     }
   ]
 }

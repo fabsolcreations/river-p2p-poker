@@ -58,6 +58,26 @@ export const ACTIVE_NETWORK: ChainKey = "local";
 
 export const activeChainConfig: ChainNetworkConfig = NETWORKS[ACTIVE_NETWORK];
 
+/**
+ * Whether the configured chain can actually be reached from the page the
+ * user is on. A local dev chain lives at 127.0.0.1, which is unreachable
+ * from a deployed site - showing deposit/withdraw controls there produces a
+ * wallet flow that cannot succeed, which reads as broken rather than as
+ * "not switched on yet".
+ *
+ * Takes the hostname as an argument rather than reading window itself, so
+ * callers decide when it is safe to evaluate (reading window during render
+ * would differ between SSR and hydration - a mismatch this project has hit
+ * before).
+ */
+export function isChainReachableFrom(hostname: string): boolean {
+  const rpc = activeChainConfig.rpcUrl;
+  if (!rpc) return false;
+  const rpcIsLocal = /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:|\/|$)/.test(rpc);
+  if (!rpcIsLocal) return true;
+  return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "[::1]";
+}
+
 // 1 chip (users.balance in db/schema.ts) = 1 whole token unit.
 export const TOKEN_DECIMALS = 6;
 export const CHIPS_TO_BASE_UNITS = 10n ** BigInt(TOKEN_DECIMALS);
