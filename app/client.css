@@ -837,3 +837,5 @@ a.lobby-row:hover { background: #191e1a; }
 /* Save-receipt control on a trustless table's status ribbon. */
 .mp-receipt-save { align-items: center; background: transparent; border: 1px solid rgba(69,88,255,.5); color: #8fa0ff; cursor: pointer; display: inline-flex; font-size: 11px; font-weight: 700; gap: 6px; margin-left: auto; padding: 5px 10px; }
 .mp-receipt-save:hover { border-color: #4558ff; color: #b9c3ff; }
+
+.casino-badge.trustless { background: rgba(69,88,255,.14); border-color: rgba(69,88,255,.45); color: #8fa0ff; }

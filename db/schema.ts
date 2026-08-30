@@ -46,6 +46,10 @@ export const tables = sqliteTable("tables", {
   // stay house-managed (worker/poker-table.ts rejects host settings
   // changes on these), not whoever-sat-down-first-managed.
   isLounge: integer("is_lounge", { mode: "boolean" }).notNull().default(false),
+  // A mental-poker room: the two browsers deal to each other and the server
+  // holds no key. Surfaced in the lobby because it is a materially different
+  // trust model, not just a different table size.
+  isTrustless: integer("is_trustless", { mode: "boolean" }).notNull().default(false),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });

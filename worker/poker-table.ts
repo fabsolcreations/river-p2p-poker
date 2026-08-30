@@ -603,6 +603,7 @@ export class PokerTable {
         minBuyIn: this.minBuyIn,
         maxBuyIn: this.maxBuyIn,
         isLounge: this.isLounge,
+        isTrustless: this.isTrustless,
       };
       await db
         .insert(tables)
@@ -1182,6 +1183,15 @@ export class PokerTable {
     try {
       const bundle = await mp.buildMentalPokerBundle(this.mpState);
       this.broadcast({ type: "mp-receipt", bundle });
+      // Same history table as a server-dealt hand: the column is JSON and
+      // both receipt shapes name their own version, so /receipts can tell
+      // them apart and run the right verifier.
+      if (this.hand) {
+        const payouts = this.stacks.map((stack, s) =>
+          this.hand!.inHand[s] ? stack - (this.handStartStacks[s] ?? stack) : 0,
+        );
+        await this.recordHandHistory(bundle.handId, bundle, payouts);
+      }
     } catch {
       // A receipt that can't be assembled is worth surfacing as absent
       // rather than as something fabricated - the hand result already stands
@@ -1301,7 +1311,7 @@ export class PokerTable {
       this.readyForNext = new Array(this.seatCount).fill(false);
       await this.persist(["readyForNext"]);
       await this.syncRegistry();
-      await this.recordHandHistory(bundle, payouts);
+      await this.recordHandHistory(bundle.handId, bundle, payouts);
     }
   }
 
@@ -1334,7 +1344,7 @@ export class PokerTable {
   // authenticated account (anonymous seats have no account to attach
   // history to, and a room of entirely anonymous seats has nobody who
   // could ever look this row up).
-  private async recordHandHistory(bundle: TableProofBundle, payouts: number[]): Promise<void> {
+  private async recordHandHistory(handId: string, bundle: unknown, payouts: number[]): Promise<void> {
     if (!this.hand) return;
     const participants: { userId: string; seat: Seat; netResult: number }[] = [];
     for (let s = 0; s < this.seatCount; s += 1) {
@@ -1345,13 +1355,13 @@ export class PokerTable {
     try {
       const db = getDb();
       await db.insert(hands).values({
-        handId: bundle.handId,
+        handId,
         roomCode: this.roomCode,
         seatCount: this.seatCount,
         bundle: JSON.stringify(bundle),
       });
       await db.insert(handParticipants).values(
-        participants.map((p) => ({ id: crypto.randomUUID(), handId: bundle.handId, userId: p.userId, seat: p.seat, netResult: p.netResult })),
+        participants.map((p) => ({ id: crypto.randomUUID(), handId, userId: p.userId, seat: p.seat, netResult: p.netResult })),
       );
     } catch {
       // Hand history is a convenience, never a gate on gameplay.

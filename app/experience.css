@@ -629,3 +629,7 @@ button, a, input, select { -webkit-tap-highlight-color: transparent; }
   .room-scale-visual article { grid-template-columns: 110px 1fr; min-height: 115px; padding: 15px 8px; }
   .room-scale-visual article::before { display: none; }
 }
+
+/* Marks a hand that was dealt between the two browsers rather than by the
+   server - a different trust model, so it is worth seeing before opening it. */
+.receipt-kind { background: rgba(69,88,255,.12); border: 1px solid rgba(69,88,255,.4); color: #4558ff; font-size: 9px; font-style: normal; font-weight: 700; letter-spacing: .06em; margin-left: 8px; padding: 2px 5px; vertical-align: middle; }

@@ -1,0 +1,1 @@
+ALTER TABLE `tables` ADD `is_trustless` integer DEFAULT false NOT NULL;

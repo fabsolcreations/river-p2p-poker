@@ -204,9 +204,24 @@ export default function ReceiptsPage() {
   }
 
   async function inspectRealHand(row: RealHandRow) {
-    const bundle = JSON.parse(row.bundle) as TableProofBundle;
-    const result = await verifyTableBundle(bundle);
-    setTableInspection({ bundle, result });
+    // Stored receipts are self-describing: a trustless hand records a
+    // ProofBundleV3, a server-dealt one a TableProofBundle. Route on the
+    // version tag rather than assuming.
+    const parsed: unknown = JSON.parse(row.bundle);
+    if (looksLikeMentalPokerBundle(parsed)) {
+      setTableInspection(null);
+      setMentalInspection({ bundle: parsed, result: await verifyMentalPokerBundle(parsed), source: `hand ${row.handId.slice(0, 12)}` });
+      return;
+    }
+    const bundle = parsed as TableProofBundle;
+    setMentalInspection(null);
+    setTableInspection({ bundle, result: await verifyTableBundle(bundle) });
+  }
+
+  // Cheap enough to run over the visible page of history, and it drives the
+  // TRUSTLESS badge so a hand's kind is visible without opening it.
+  function isTrustlessRow(row: RealHandRow): boolean {
+    return row.bundle.includes('"RIVER_POC_V3"');
   }
 
   async function importFile(file?: File) {
@@ -279,7 +294,7 @@ export default function ReceiptsPage() {
               // would otherwise collide.
               <button key={`${row.handId}-${row.seat}`} onClick={() => inspectRealHand(row)}>
                 <code>{row.handId.slice(-14)}</code>
-                <b>{row.roomCode}</b>
+                <b>{row.roomCode}{isTrustlessRow(row) && <i className="receipt-kind">TRUSTLESS</i>}</b>
                 <span>Seat {row.seat}</span>
                 <b className={row.netResult >= 0 ? "positive" : ""}>{row.netResult >= 0 ? "+" : ""}{row.netResult}</b>
                 <span>{new Date(row.completedAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}</span>

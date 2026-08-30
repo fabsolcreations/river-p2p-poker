@@ -17,6 +17,7 @@ type TableRow = {
   minBuyIn: number;
   maxBuyIn: number;
   isLounge: boolean;
+  isTrustless: boolean;
 };
 
 const seatOptions = [2, 4, 6, 8, 9, 10];
@@ -140,8 +141,8 @@ export default function LobbyPage() {
             </div>
           ) : (
             rows.map((table) => (
-              <a className="lobby-row" href={`/play/table-lab?room=${encodeURIComponent(table.roomCode)}&seats=${table.seatCount}`} key={table.roomCode}>
-                <span className="lobby-room-name"><b>{table.roomCode}</b>{table.isLounge && <i className="casino-badge idle">LOUNGE</i>}</span>
+              <a className="lobby-row" href={`/play/table-lab?room=${encodeURIComponent(table.roomCode)}&seats=${table.seatCount}${table.isTrustless ? "&trustless=1" : ""}`} key={table.roomCode}>
+                <span className="lobby-room-name"><b>{table.roomCode}</b>{table.isLounge && <i className="casino-badge idle">LOUNGE</i>}{table.isTrustless && <i className="casino-badge trustless">TRUSTLESS</i>}</span>
                 <span className="lobby-stakes-cell">{table.smallBlind}/{table.bigBlind}</span>
                 <span className="lobby-seats"><b>{table.occupiedCount}<i> / {table.seatCount}</i></b></span>
                 <span><i className={`casino-badge ${table.status === "playing" ? "live" : "idle"}`}>{table.status === "playing" ? "IN HAND" : "WAITING"}</i></span>
