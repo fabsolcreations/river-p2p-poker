@@ -161,6 +161,19 @@ export const duelAdapter: SportsbookAdapter = {
       return verdict;
     }
 
+    if (base.kind === 'unknown') {
+      // No contradiction - the shape rules simply found nothing to go on. An
+      // observed path is real evidence, so use it, but at a confidence that
+      // makes clear it rests on the path rather than the payload.
+      verdict.kind = known.kind as CaptureClassification['kind'];
+      verdict.confidence = 0.75;
+      verdict.reasons = [
+        ...verdict.reasons,
+        'shape analysis found nothing decisive, so this verdict rests on the observed path rather than the payload',
+      ];
+      return verdict;
+    }
+
     // They disagree. Say so loudly and keep the SHAPE verdict, because the
     // payload in front of us is evidence and the map is a memory of one
     // afternoon. A silent override here is exactly how this tool would start
@@ -179,15 +192,18 @@ export const duelAdapter: SportsbookAdapter = {
     const warnings = [...base.warnings];
 
     // Duel's feed gives ids for events, markets and outcomes but no names -
-    // those live in the prematch/live trees and the market descriptions. Until
-    // those are joined (Milestone 3) a leg is correctly identified and
-    // unhelpfully labelled, and saying so beats leaving a blank cell.
+    // those come from the market descriptions and the prematch/live trees, and
+    // are joined in when those payloads have been captured. A leg we could not
+    // name is reported rather than left as a blank cell, with the reason: an
+    // empty dictionary and a genuinely unknown event look identical otherwise.
     if (base.kind === 'bets_feed' && base.bets.length > 0) {
-      const unnamed = base.bets.reduce((n, b) => n + b.legs.filter((l) => l.eventName === null).length, 0);
+      const legs = base.bets.flatMap((b) => b.legs);
+      const unnamed = legs.filter((l) => l.eventName === null).length;
       if (unnamed > 0) {
         warnings.push(
-          `${unnamed} legs reference an event by id with no name in this payload. Duel's feed carries ids only; ` +
-            'names come from the prematch/live trees and the market descriptions, which are joined at Milestone 3.',
+          `${unnamed} of ${legs.length} legs could not be named. Their events were not in the market descriptions or ` +
+            'the prematch/live trees captured so far - browse those sections of the sportsbook, or check /api/refs to ' +
+            'see what the dictionaries currently hold.',
         );
       }
     }

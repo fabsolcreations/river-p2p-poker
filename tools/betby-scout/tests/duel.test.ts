@@ -19,6 +19,15 @@ import { dirname, join } from 'node:path';
 
 import { duelAdapter, DUEL_BRAND_ID, DUEL_SPORTS_HOST } from '../src/adapters/betby/duel.ts';
 import { parseMoney, parseSpecifiers } from '../src/adapters/betby/generic-betby.ts';
+import {
+  emptyReference,
+  mergeReference,
+  ordinal,
+  parseEventTree,
+  parseMarketDescriptions,
+  referenceSize,
+  renderTemplate,
+} from '../src/adapters/betby/dictionary.ts';
 import { adapterFor, sportsbookIdFor } from '../src/adapters/registry.ts';
 import type { ClassifyInput } from '../src/shared/types.ts';
 import { MIN_CLASSIFY_CONFIDENCE } from '../src/shared/types.ts';
@@ -85,12 +94,24 @@ test('shape alone is enough - the same payload on an unknown path still classifi
   assert.ok(c.confidence >= MIN_CLASSIFY_CONFIDENCE);
 });
 
-test('a known path with an unexpected payload keeps the shape verdict and says so', () => {
-  // Guards the rule that observation never silently overrides evidence.
-  const c = duelAdapter.classify(input({ totally: 'different' }, FEED_PATH));
-  assert.notEqual(c.kind, 'bets_feed', 'the path must not force a verdict the payload does not support');
+test('a known path serving a payload of a different shape keeps the SHAPE verdict', () => {
+  // Guards the rule that observation never silently overrides positive
+  // evidence. The market dictionary has a decisive shape of its own, so
+  // serving it on the feed path must not make it a feed.
+  const c = duelAdapter.classify(input(markets, FEED_PATH));
+  assert.equal(c.kind, 'market_list', 'the payload is what it is, whatever the path says');
   assert.ok(c.reasons.some((r) => /may have changed/.test(r)));
-  assert.ok(c.confidence <= 0.5);
+  assert.ok(c.confidence <= 0.5, 'and the disagreement must cost confidence');
+});
+
+test('a known path with an inscrutable payload falls back to the observed kind', () => {
+  // Different case: shape analysis found NOTHING, so there is no evidence to
+  // override - only a gap the observed path can fill. The reason must say the
+  // verdict rests on the path, not the payload.
+  const c = duelAdapter.classify(input({ totally: 'different' }, FEED_PATH));
+  assert.equal(c.kind, 'bets_feed');
+  assert.ok(c.confidence < 0.9, 'a path-derived verdict must rank below a shape-derived one');
+  assert.ok(c.reasons.some((r) => /rests on the observed path/.test(r)));
 });
 
 /* --- parsing ------------------------------------------------------------ */
@@ -182,8 +203,11 @@ test('the missing-timestamp reality is reported once, not fifty times', () => {
   assert.ok(parsed.bets.every((b) => b.ts === 0), 'and the ts is honestly zero rather than invented');
 });
 
-test('unnamed legs are flagged rather than left as blank cells', () => {
-  assert.ok(parsed.warnings.some((w) => /names come from the prematch\/live trees/.test(w)));
+test('with no dictionary loaded, every leg is unnamed and the parser says so', () => {
+  // `parsed` is deliberately built without refs. That is the cold-start state,
+  // and it must be reported rather than looking like a feed of nameless events.
+  assert.ok(parsed.bets.flatMap((b) => b.legs).every((l) => l.eventName === null));
+  assert.ok(parsed.warnings.some((w) => /could not be named/.test(w)));
 });
 
 test('stakeUsd stays null - no FX rate source exists yet', () => {
@@ -231,4 +255,144 @@ test('the market description fixture can name the markets the feed references', 
   // capture today - the data is there, it is simply not wired up yet.
   assert.ok(named.length > 0, 'market ids in the feed resolve against the descriptions endpoint');
   assert.equal(named.length, ids.size, 'every referenced market has a description');
+});
+
+/* ------------------------------------------------------------------ *
+ * Name resolution — the id -> name join, against real payloads
+ * ------------------------------------------------------------------ */
+
+const tree: unknown = JSON.parse(readFileSync(join(HERE, 'fixtures', 'duel-event-tree.json'), 'utf8'));
+
+function buildRefs() {
+  const ref = emptyReference();
+  const md = parseMarketDescriptions(markets);
+  if (md) mergeReference(ref, { markets: md });
+  const t = parseEventTree(tree);
+  if (t) mergeReference(ref, t);
+  return ref;
+}
+
+const refs = buildRefs();
+const named = duelAdapter.parse({
+  ...input(feed, FEED_PATH),
+  captureId: 'c_real',
+  sportsbookId: 'duel',
+  classification: duelAdapter.classify(input(feed, FEED_PATH)),
+  ctx: { now: NOW, refs },
+});
+
+test('both reference payloads parse into dictionaries', () => {
+  const size = referenceSize(refs);
+  assert.ok(size.markets > 0, 'market descriptions loaded');
+  assert.ok(size.events > 0, 'event tree loaded');
+  assert.ok(size.sports > 0 && size.tournaments > 0);
+
+  // Each parser must reject the other's payload - that is what lets the store
+  // identify a payload by trying to parse it rather than trusting a label.
+  assert.equal(parseEventTree(markets), null, 'market descriptions are not an event tree');
+  assert.equal(parseMarketDescriptions(feed), null, 'a bets feed is not a market dictionary');
+  assert.equal(parseEventTree({ version: 1, status: {} }), null, 'the cursor-0 handshake has no events');
+});
+
+test('feed legs resolve to real team, league and market names', () => {
+  const legs = named.bets.flatMap((b) => b.legs);
+  const withNames = legs.filter((l) => l.eventName !== null);
+  assert.ok(withNames.length > 0, 'at least some legs resolve against this snapshot');
+
+  for (const leg of withNames) {
+    assert.ok((leg.eventName as string).length > 0);
+    // A resolved name must never still contain an unrendered template token.
+    assert.ok(!/\{[^}]*\}/.test(leg.eventName as string), `unrendered token in "${leg.eventName}"`);
+    if (leg.selectionName) {
+      assert.ok(!/\{\$competitor\d\}/.test(leg.selectionName), `competitor token left in "${leg.selectionName}"`);
+    }
+  }
+});
+
+test('naming adds information without changing identity', () => {
+  // The join must not alter any key, or a named leg would stop matching the
+  // same leg captured before the dictionary arrived.
+  assert.deepEqual(
+    parsed.bets.map((b) => b.key),
+    named.bets.map((b) => b.key),
+  );
+  assert.deepEqual(
+    parsed.bets.flatMap((b) => b.legs.map((l) => l.selectionKey)),
+    named.bets.flatMap((b) => b.legs.map((l) => l.selectionKey)),
+  );
+  // ...and it strictly adds names.
+  const before = parsed.bets.flatMap((b) => b.legs).filter((l) => l.eventName !== null).length;
+  const after = named.bets.flatMap((b) => b.legs).filter((l) => l.eventName !== null).length;
+  assert.ok(after > before, `expected more named legs with refs (${before} -> ${after})`);
+});
+
+test('current odds come from the event tree, not from the feed row', () => {
+  const withCurrent = named.bets.flatMap((b) => b.legs).filter((l) => l.currentOdds !== null);
+  assert.ok(withCurrent.length > 0, 'the tree carried live prices for some feed selections');
+  // Without the dictionary there is no current price at all - the feed row
+  // only ever carries the price at bet time.
+  assert.ok(parsed.bets.flatMap((b) => b.legs).every((l) => l.currentOdds === null));
+  for (const l of withCurrent) assert.ok((l.currentOdds as number) > 1);
+});
+
+test('an unnamed leg is reported with a reason, not silently blank', () => {
+  const legs = named.bets.flatMap((b) => b.legs);
+  if (legs.some((l) => l.eventName === null)) {
+    assert.ok(named.warnings.some((w) => /could not be named/.test(w)));
+    assert.ok(named.warnings.some((w) => /api\/refs/.test(w)), 'the warning should say where to look');
+  }
+});
+
+/* --- template engine --------------------------------------------------- */
+
+test('every template form the descriptions use renders correctly', () => {
+  const ctx = {
+    specifiers: { total: '2.5', hcp: '1.5', setnr: '2', gamenr: '3', from: '1', to: '5' },
+    competitors: ['G2 Esports', 'LOUD'],
+  };
+  assert.equal(renderTemplate('over {total}', ctx), 'over 2.5');
+  assert.equal(renderTemplate('{$competitor1}', ctx), 'G2 Esports');
+  assert.equal(renderTemplate('{$competitor2}', ctx), 'LOUD');
+  assert.equal(renderTemplate('{!setnr} set game {gamenr} - winner', ctx), '2nd set game 3 - winner');
+  assert.equal(renderTemplate('{+hcp}', ctx), '+1.5');
+  assert.equal(renderTemplate('{-hcp}', ctx), '-1.5');
+  assert.equal(renderTemplate('{(to-from)}', ctx), '4');
+
+  // Ordinals, including the 11/12/13 exception.
+  assert.equal(ordinal(1), '1st');
+  assert.equal(ordinal(2), '2nd');
+  assert.equal(ordinal(3), '3rd');
+  assert.equal(ordinal(4), '4th');
+  assert.equal(ordinal(11), '11th');
+  assert.equal(ordinal(12), '12th');
+  assert.equal(ordinal(13), '13th');
+  assert.equal(ordinal(21), '21st');
+});
+
+test('an unresolvable token is left visible rather than blanked', () => {
+  const ctx = { specifiers: {}, competitors: [] };
+  // A silently emptied label reads as a real name and cannot be diagnosed;
+  // "{$competitor1}" on screen is obviously a gap.
+  assert.equal(renderTemplate('{$competitor1}', ctx), '{$competitor1}');
+  assert.equal(renderTemplate('over {total}', ctx), 'over {total}');
+  assert.equal(renderTemplate('no tokens here', ctx), 'no tokens here');
+});
+
+test('a zero handicap renders unsigned', () => {
+  const ctx = { specifiers: { hcp: '0' }, competitors: [] };
+  assert.equal(renderTemplate('{+hcp}', ctx), '0');
+});
+
+test('event tree scheduled times are converted from seconds to ms', () => {
+  const t = parseEventTree(tree);
+  assert.ok(t);
+  const dated = [...(t as { events: Map<string, { scheduled: number | null }> }).events.values()].filter(
+    (e) => e.scheduled !== null,
+  );
+  assert.ok(dated.length > 0);
+  for (const e of dated) {
+    // Anything still in seconds would land in 1970 and break every kickoff
+    // comparison downstream.
+    assert.ok((e.scheduled as number) > 1_600_000_000_000, `scheduled ${e.scheduled} looks like seconds, not ms`);
+  }
 });

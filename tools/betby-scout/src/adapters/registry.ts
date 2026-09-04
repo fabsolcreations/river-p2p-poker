@@ -177,7 +177,7 @@ export function classifyPayload(input: ClassifyInput, ctx: AdapterMatchContext):
  * failure returns an empty preview whose `warnings` say what went wrong, which
  * is exactly what the debug panel is there to display.
  */
-export function parseCapture(capture: RawCapture, now: number): ParsePreview {
+export function parseCapture(capture: RawCapture, now: number, refs?: unknown): ParsePreview {
   let input: ClassifyInput;
   try {
     input = makeClassifyInput(capture);
@@ -197,7 +197,7 @@ export function parseCapture(capture: RawCapture, now: number): ParsePreview {
       captureId: capture.captureId,
       sportsbookId: sportsbookIdFor(ctx),
       classification: classifyPayload(input, ctx),
-      ctx: { now },
+      ctx: { now, refs },
     },
     ctx,
   );

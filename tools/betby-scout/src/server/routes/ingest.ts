@@ -13,6 +13,7 @@ import type { FastifyInstance } from 'fastify';
 import type { FrameReport, IngestBatch, RawCapture } from '../../shared/types.ts';
 import { PROTOCOL_VERSION } from '../../shared/types.ts';
 import { toIngestResult } from '../db/db.ts';
+import { classifyCapture } from '../../adapters/registry.ts';
 import type { ScoutServerConfig } from '../config.ts';
 import type { ServerContext } from '../index.ts';
 
@@ -131,8 +132,40 @@ export function validateFrameReport(input: unknown): FrameReport | null {
   return { sessionId, ts, topOrigin, frames };
 }
 
+/**
+ * Bodies above this are left with the collector's verdict. Re-classifying a
+ * multi-megabyte payload on the ingest path would stall the request for every
+ * other capture in the batch, and the panel's in-page verdict is no worse.
+ */
+const MAX_RECLASSIFY_BYTES = 4_000_000;
+
+/**
+ * Replaces each capture's classification with the server's own, in place.
+ * Never throws: classifyCapture is already total, but a malformed row that
+ * slipped past validation must not take down an entire batch of good ones.
+ */
+export function reclassify(batch: IngestBatch): number {
+  let changed = 0;
+  for (const capture of batch.captures) {
+    if (typeof capture?.captureId !== 'string') continue;
+    if (typeof capture.bodyBytes === 'number' && capture.bodyBytes > MAX_RECLASSIFY_BYTES) continue;
+    try {
+      const verdict = classifyCapture(capture);
+      // Keep the collector's verdict if ours is strictly less informative -
+      // the page saw the live response, we only see what survived the wire.
+      const incoming = capture.classification;
+      if (verdict.kind === 'unknown' && incoming && incoming.kind !== 'unknown') continue;
+      capture.classification = verdict;
+      changed += 1;
+    } catch {
+      // Leave the incoming verdict in place.
+    }
+  }
+  return changed;
+}
+
 export function registerIngestRoutes(app: FastifyInstance, ctx: ServerContext): void {
-  const { db, hub, config } = ctx;
+  const { db, hub, config, refs } = ctx;
 
   app.post('/api/ingest', async (request, reply) => {
     const validated = validateIngestBatch(request.body, config);
@@ -143,7 +176,20 @@ export function registerIngestRoutes(app: FastifyInstance, ctx: ServerContext): 
       return;
     }
 
+    // Re-classify with the server's own adapters before storing.
+    //
+    // The incoming verdict was produced in the page by whatever collector build
+    // is installed there, which drifts behind the server as adapters improve.
+    // Left alone it produces a genuinely confusing UI: the capture table shows
+    // the stored kind while the detail pane re-parses and shows a different one,
+    // so the same row reads "Unknown" in the list and "Bets feed" when opened.
+    // The server has the newer adapters, so it is the authority.
+    reclassify(validated.batch);
+
     const stored = db.insertCaptures(validated.batch, Date.now());
+    // Absorb any dictionary payloads before broadcasting, so a dashboard that
+    // re-parses on the back of this event already sees the new names.
+    for (const capture of stored.accepted) refs.observe(capture);
     hub.broadcastCaptures(stored.accepted);
 
     await reply.send(toIngestResult(stored));

@@ -316,3 +316,99 @@ test('an ingest sent as an envelope actually lands in the database', async () =>
   const validated = validateIngestBatch(message?.type === 'ingest' ? message.batch : null, loadConfig({ SCOUT_LOG_LEVEL: 'silent' }));
   assert.equal(validated.ok, true, 'the uploader\'s batch must pass the server\'s own validator');
 });
+
+/* ------------------------------------------------------------------ *
+ * Reference store — recognises dictionary payloads by parsing them
+ * ------------------------------------------------------------------ */
+
+test('the reference store absorbs a real market dictionary and names a leg', async () => {
+  const { readFileSync } = await import('node:fs');
+  const { fileURLToPath } = await import('node:url');
+  const { dirname, join: pjoin } = await import('node:path');
+  const here = dirname(fileURLToPath(import.meta.url));
+  const markets = readFileSync(pjoin(here, 'fixtures', 'duel-markets-subset.json'), 'utf8');
+  const tree = readFileSync(pjoin(here, 'fixtures', 'duel-event-tree.json'), 'utf8');
+  const feed = readFileSync(pjoin(here, 'fixtures', 'duel-bets-feed.json'), 'utf8');
+
+  const duelCapture = (id: string, path: string, body: string): RawCapture =>
+    capture({
+      captureId: id,
+      seq: Number(id.replace(/\D/g, '')) || 1,
+      url: `https://sports-proxy.duel.com${path}`,
+      urlHost: 'sports-proxy.duel.com',
+      urlPath: path,
+      body,
+      bodyBytes: body.length,
+    });
+
+  const before = await app.inject({ method: 'GET', url: '/api/refs' });
+  assert.equal((before.json() as { markets: number }).markets, 0, 'starts empty');
+
+  await app.inject({
+    method: 'POST',
+    url: '/api/ingest',
+    payload: batch([
+      duelCapture('c_md0000000000001', '/api/v3/descriptions/brand/1/markets/en', markets),
+      duelCapture('c_tr0000000000002', '/api/v4/prematch/brand/1/en/123', tree),
+      duelCapture('c_fd0000000000003', '/api/v1/promo/bets_feed/brand/1', feed),
+    ]),
+  });
+
+  const after = (await app.inject({ method: 'GET', url: '/api/refs' })).json() as {
+    markets: number;
+    events: number;
+    absorbed: { marketDescriptions: number; eventTrees: number };
+  };
+  assert.ok(after.markets > 0, 'market descriptions were recognised by parsing, not by their path');
+  assert.ok(after.events > 0, 'the event tree was recognised too');
+  assert.equal(after.absorbed.marketDescriptions, 1);
+  assert.equal(after.absorbed.eventTrees, 1);
+
+  // And the feed capture now parses with names attached.
+  const res = await app.inject({ method: 'GET', url: '/api/captures/c_fd0000000000003/parse' });
+  assert.equal(res.statusCode, 200);
+  const preview = res.json() as { bets: Array<{ legs: Array<{ eventName: string | null }> }> };
+  const legs = preview.bets.flatMap((b) => b.legs);
+  assert.ok(legs.length > 0);
+  assert.ok(
+    legs.some((l) => l.eventName !== null),
+    'the join must reach the parse endpoint, not just the adapter',
+  );
+});
+
+test('a truncated dictionary is refused rather than half-loaded', async () => {
+  const { readFileSync } = await import('node:fs');
+  const { fileURLToPath } = await import('node:url');
+  const { dirname, join: pjoin } = await import('node:path');
+  const here = dirname(fileURLToPath(import.meta.url));
+  const markets = readFileSync(pjoin(here, 'fixtures', 'duel-markets-subset.json'), 'utf8');
+
+  const beforeCount = (await app.inject({ method: 'GET', url: '/api/refs' })).json() as {
+    absorbed: { marketDescriptions: number };
+  };
+
+  await app.inject({
+    method: 'POST',
+    url: '/api/ingest',
+    payload: batch([
+      capture({
+        captureId: 'c_trunc0000000001',
+        seq: 77,
+        urlHost: 'sports-proxy.duel.com',
+        urlPath: '/api/v3/descriptions/brand/1/markets/en',
+        body: markets.slice(0, 4000),
+        bodyBytes: markets.length,
+        truncated: true,
+      }),
+    ]),
+  });
+
+  const afterCount = (await app.inject({ method: 'GET', url: '/api/refs' })).json() as {
+    absorbed: { marketDescriptions: number };
+  };
+  assert.equal(
+    afterCount.absorbed.marketDescriptions,
+    beforeCount.absorbed.marketDescriptions,
+    'a truncated dictionary would name some legs and not others, with no way to tell which',
+  );
+});

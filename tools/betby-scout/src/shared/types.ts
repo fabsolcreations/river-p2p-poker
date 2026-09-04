@@ -263,6 +263,15 @@ export interface ParsePreview {
 export interface AdapterContext {
   /** Epoch ms to use as "now" - injected so parsing is deterministic in tests. */
   now: number;
+  /**
+   * Reference dictionaries captured from other endpoints, used to turn ids into
+   * names. Deliberately `unknown` here: this file must stay free of any
+   * platform-specific type, and only the adapter that produced the dictionary
+   * knows how to read it. Absent means "we have not captured that payload yet",
+   * which is a normal state, not an error - legs simply stay unnamed and the
+   * parser says so.
+   */
+  refs?: unknown;
 }
 
 export interface ClassifyInput {

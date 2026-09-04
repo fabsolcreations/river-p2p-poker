@@ -45,7 +45,7 @@ on the site once it is running.
 
 ```bash
 npm run build      # collector + dashboard + server
-npm test           # 106 tests
+npm test           # 118 tests
 npm run typecheck
 ```
 
@@ -137,7 +137,8 @@ displays real traffic, and it has now been run against Duel's live sportsbook.
 |---|---|
 | ✅ M1 | Project structure, collector, debug panel, server, live dashboard |
 | ✅ M2 | **Duel's BETBY API reverse-engineered from real traffic** — see below |
-| ⬜ M3 | Join feed legs to event/market names; persist normalized rows |
+| ✅ M3a | Feed legs joined to real event, market and outcome names |
+| ⬜ M3b | Persist normalized rows into the schema (tables already exist) |
 | ⬜ M4–M5 | Realtime opportunity dashboard, odds history and line movement |
 | ⬜ M6–M7 | Bettor tracking, sharpness score |
 | ⬜ M8 | Signal engine |
@@ -174,12 +175,36 @@ what the page itself requested. Real responses are checked in under
 - Live prices arrive over `wss://sports-proxy.duel.com/api/v1/ws_new`, and the
   prematch/live trees are long-polled with an incrementing cursor.
 - Event, market and outcome are **ids only**. Names live in
-  `/api/v3/descriptions/.../markets/{lang}` and the prematch/live trees; joining
-  them is Milestone 3.
+  `/api/v3/descriptions/.../markets/{lang}` and the prematch/live trees, and
+  Scout now joins them automatically — see below.
 
 On that captured sample the classifier returns `bets_feed` at **0.97**, and the
 reason it gives is the one that generalises to any BETBY book: *35 distinct
 masked handles across 50 rows* — a public feed, not one account's history.
+
+### Naming a leg
+
+A feed row names nothing: market 68, outcome 12, `total=0.5`, event
+2704263723815669762. The names come from two other payloads the page also
+fetches, so Scout watches for them, keeps them, and joins:
+
+```
+Soccer | LaLiga · Real Betis Seville vs Real Madrid
+  1x2 → Real Madrid @ 1.46
+American Football | NCAA · Oklahoma Sooners vs UTEP Miners
+  Handicap (incl. overtime) → Oklahoma Sooners (-37.5) @ 1.63  (now 1.64)
+```
+
+That "(now 1.64)" is the event tree's current price for the same selection — the
+first hint of closing-line value the tool can compute, and it comes free with
+the join.
+
+Outcome names are templates (`over {total}`, `{$competitor1}`, `{!setnr} set
+game {gamenr}`) — seven forms across 2111 markets, all rendered by
+`dictionary.ts`. A token that cannot be resolved is **left visible** rather than
+blanked, so a gap looks like a gap instead of a plausible name. Coverage depends
+on what has been captured: `/api/refs` reports exactly what the dictionaries
+hold, and an unnamed leg says so in the parse warnings.
 
 `duel.ts` records the observed endpoints, but only to **raise confidence in a
 verdict the shape analysis already reached**. Move the endpoint and the tool

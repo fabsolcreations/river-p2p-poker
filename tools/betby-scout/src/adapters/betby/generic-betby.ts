@@ -45,6 +45,7 @@ import {
   selectionKey as makeSelectionKey,
 } from '../../shared/ids.ts';
 import { isValidDecimalOdds } from '../../shared/odds.ts';
+import { resolveLeg, type BetbyReference } from './dictionary.ts';
 import {
   findObjectArrays,
   flattenPaths,
@@ -585,6 +586,47 @@ export function classifyGeneric(input: ClassifyInput): CaptureClassification {
       );
     }
 
+    // Market-description dictionary: an object keyed by market id whose values
+    // each carry a name and a variants/outcomes structure. Structural, so it
+    // recognises the same dictionary on any BETBY book.
+    const entries = Object.entries(o);
+    if (entries.length >= 5) {
+      const objectValues = entries.filter(([, v]) => isObj(v));
+      const described = objectValues.filter(([, v]) => {
+        const rec = v as Record<string, unknown>;
+        return typeof rec['name'] === 'string' && (isObj(rec['variants']) || Array.isArray(rec['outcomes']));
+      });
+      const frac = objectValues.length > 0 ? described.length / objectValues.length : 0;
+      if (described.length >= 5 && frac >= 0.8) {
+        add(
+          'market_list',
+          DECISIVE,
+          `${described.length} of ${objectValues.length} entries are named descriptors with an outcome/variant block - a market dictionary keyed by id`,
+        );
+      }
+    }
+
+    // Event tree: an `events` map whose values carry a descriptor with
+    // competitors. This is the payload that names everything else.
+    const eventsBlock = pick(o, 'events');
+    if (isObj(eventsBlock)) {
+      const eventValues = Object.values(eventsBlock).filter(isObj);
+      const withDesc = eventValues.filter((e) => {
+        const desc = (e as Record<string, unknown>)['desc'];
+        return isObj(desc) && Array.isArray((desc as Record<string, unknown>)['competitors']);
+      });
+      if (withDesc.length >= 2) {
+        add(
+          'event_list',
+          DECISIVE,
+          `an "events" map of ${eventValues.length} entries, ${withDesc.length} carrying a descriptor with competitors - an event tree keyed by id`,
+        );
+        if (isObj(pick(o, 'sports')) || isObj(pick(o, 'tournaments'))) {
+          add('event_list', 1, 'accompanied by sports/tournaments name maps');
+        }
+      }
+    }
+
     // Taxonomy tree: deep nesting of named nodes, no odds, no times.
     if (depth >= 4 && hasChildArray(o) && !hasOddsLikeNumber(o)) {
       add('sport_tree', DECISIVE, `nested to depth ${depth} with child-array containers, no odds and no timestamps`);
@@ -694,6 +736,7 @@ function parseLeg(
   consumed: Consumed,
   prefix: string,
   warnings: string[],
+  refs: BetbyReference | null,
 ): NormalizedFeedBetLeg {
   consumed.markKeys(prefix, raw, K_EVENT_ID);
   consumed.markKeys(prefix, raw, K_SPORT);
@@ -715,7 +758,8 @@ function parseLeg(
   const selectionName = str(pick(raw, ...K_SELECTION_NAME));
   // A numeric line field wins when present; otherwise fall back to the BETBY
   // specifier string, which is where every real handicap and total lives.
-  const spec = parseSpecifiers(pick(raw, ...K_SPECIFIERS));
+  const specifierRaw = str(pick(raw, ...K_SPECIFIERS)) ?? '';
+  const spec = parseSpecifiers(specifierRaw);
   const line = num(pick(raw, ...K_LINE)) ?? spec.line;
 
   const rawOdds = num(pick(raw, ...K_ODDS));
@@ -758,21 +802,49 @@ function parseLeg(
         })
       : null;
 
+  // A feed leg names nothing - it is ids and a specifier string. When the
+  // reference dictionaries have been captured, join against them to recover the
+  // teams, the market and the outcome. Anything still unknown stays null.
+  let resolvedEventName = eventName;
+  let resolvedSport = sport;
+  let resolvedLeague = league;
+  let resolvedMarketName = marketName;
+  let resolvedSelectionName = selectionName;
+  let currentOdds: number | null = null;
+
+  if (refs) {
+    const hit = resolveLeg(refs, {
+      eventId: sourceEventId,
+      marketId: str(pick(raw, ...K_MARKET_ID)),
+      outcomeId: str(pick(raw, ...K_SELECTION_ID)),
+      specifiers: spec.all,
+      specifierKey: specifierRaw,
+    });
+    resolvedEventName = eventName ?? hit.eventName;
+    resolvedSport = sport ?? hit.sport;
+    resolvedLeague = league ?? hit.league;
+    resolvedMarketName = marketName ?? hit.marketName;
+    resolvedSelectionName = selectionName ?? hit.selectionName;
+    currentOdds = hit.currentOdds;
+  }
+
   return {
     betKey,
     idx,
     eventKey: evKey,
     sourceEventId,
-    sport,
-    league,
-    eventName,
+    sport: resolvedSport,
+    league: resolvedLeague,
+    eventName: resolvedEventName,
     marketKey: mkKey,
-    marketName,
+    marketName: resolvedMarketName,
     selectionKey: selKey,
-    selectionName,
+    selectionName: resolvedSelectionName,
     line,
     oddsAtBet,
-    currentOdds: null, // never present at placement time; filled by later milestones
+    // Present only when the event tree carried a live price for this exact
+    // selection; the feed row itself never has one.
+    currentOdds,
     live: bool(pick(raw, ...K_LIVE)),
     status: toBetStatus(pick(raw, ...K_STATUS)),
   };
@@ -784,6 +856,7 @@ function parseFeedBets(
   sportsbookId: string,
   consumed: Consumed,
   warnings: string[],
+  refs: BetbyReference | null,
 ): NormalizedFeedBet[] {
   const out: NormalizedFeedBet[] = [];
   // Counted and reported once. Some feeds - BETBY's among them - carry no
@@ -830,7 +903,7 @@ function parseFeedBets(
     // Placeholder key so legs can reference their parent; recomputed below once
     // the fingerprint is known.
     const legs = legsRaw.map((l, i) =>
-      parseLeg(l, i, '', sportsbookId, consumed, `${prefix}.${legContainer?.path ?? 'legs'}[]`, warnings),
+      parseLeg(l, i, '', sportsbookId, consumed, `${prefix}.${legContainer?.path ?? 'legs'}[]`, warnings, refs),
     );
 
     const key = makeFeedBetKey({
@@ -1032,12 +1105,16 @@ export function parseGeneric(input: ParseInput): ParsePreview {
     ]);
   }
 
+  // ctx.refs is typed `unknown` in the shared contract so that file stays
+  // platform-neutral; only this adapter knows the dictionary's shape.
+  const refs = (ctx.refs ?? null) as BetbyReference | null;
+
   const preview = emptyPreview(kind, GENERIC_BETBY_ID, warnings);
   const arrays = findObjectArrays(input.json, { minLength: 1, limit: 12 });
   const biggest = arrays[0];
 
   if ((kind === 'bets_feed' || kind === 'user_bets') && biggest) {
-    preview.bets = parseFeedBets(biggest.items, biggest.path, sportsbookId, consumed, warnings);
+    preview.bets = parseFeedBets(biggest.items, biggest.path, sportsbookId, consumed, warnings, refs);
     if (preview.bets.length === 0) {
       warnings.push('classified as a bets feed but no row yielded a readable bet - the field names differ from every spelling we try');
     }

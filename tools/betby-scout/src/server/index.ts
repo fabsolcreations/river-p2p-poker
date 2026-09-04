@@ -44,8 +44,9 @@ import websocket from '@fastify/websocket';
 import { loadConfig, packageVersion, type ScoutServerConfig } from './config.ts';
 import { openDb, toIngestResult, type ScoutDb } from './db/db.ts';
 import { Hub, parseCollectorMessage, parseIdentity, type HubSocket } from './hub.ts';
+import { ReferenceStore } from './refs.ts';
 import { registerHealthRoutes } from './routes/health.ts';
-import { registerIngestRoutes, validateIngestBatch, validateFrameReport } from './routes/ingest.ts';
+import { registerIngestRoutes, reclassify, validateIngestBatch, validateFrameReport } from './routes/ingest.ts';
 import { registerCaptureRoutes } from './routes/captures.ts';
 import { registerStatsRoutes } from './routes/stats.ts';
 import { registerConfigRoutes } from './routes/config.ts';
@@ -55,6 +56,8 @@ import { registerExportRoutes } from './routes/export.ts';
 export interface ServerContext {
   db: ScoutDb;
   hub: Hub;
+  /** Market/event dictionaries used to turn feed ids into names. */
+  refs: ReferenceStore;
   config: ScoutServerConfig;
   /** Epoch ms the process started, for uptime reporting. */
   startedAt: number;
@@ -152,9 +155,15 @@ export async function buildServer(options: BuildOptions = {}): Promise<FastifyIn
     ignoreTrailingSlash: true,
   });
 
+  const refs = new ReferenceStore(db);
+  // Rebuild from what is already stored, so a restart does not briefly
+  // un-name every leg until fresh dictionary payloads happen to arrive.
+  refs.hydrate();
+
   const ctx: ServerContext = {
     db,
     hub,
+    refs,
     config,
     startedAt: Date.now(),
     version: packageVersion(),
@@ -309,7 +318,10 @@ function registerWebsockets(app: FastifyInstance, ctx: ServerContext): void {
               return;
             }
             hub.identifyCollector(client, validated.batch.identity);
+            // Same authority rule as the HTTP path: the server's adapters win.
+            reclassify(validated.batch);
             const stored = db.insertCaptures(validated.batch, Date.now());
+            for (const capture of stored.accepted) ctx.refs.observe(capture);
             hub.broadcastCaptures(stored.accepted);
             socket.send(JSON.stringify({ type: 'ingest-result', result: toIngestResult(stored) }));
             break;

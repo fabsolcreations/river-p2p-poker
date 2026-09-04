@@ -72,8 +72,15 @@ export function registerCaptureRoutes(app: FastifyInstance, ctx: ServerContext):
     }
     // `now` is passed explicitly so a re-parse of an old capture produces odds
     // snapshots stamped at re-parse time, which is the truth: we are observing
-    // the price now, from a record made then.
-    await reply.send(parseCapture(capture, Date.now()));
+    // the price now, from a record made then. `refs` carries the market/event
+    // dictionaries, which is what turns a leg's ids into names.
+    await reply.send(parseCapture(capture, Date.now(), ctx.refs.get()));
+  });
+
+  app.get('/api/refs', async (_request, reply) => {
+    // What the name resolution currently knows. Empty counts here explain an
+    // unnamed leg better than the leg itself can.
+    await reply.send(ctx.refs.stats());
   });
 
   app.get('/api/sessions', async (_request, reply) => {
