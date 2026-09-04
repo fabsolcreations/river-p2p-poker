@@ -1,0 +1,144 @@
+@import 'tailwindcss';
+
+/*
+ * Duel's own palette, transcribed from CONTRACT.md (which took it from the
+ * book's stylesheet). Declaring them in @theme is what makes `bg-dark-800`,
+ * `text-dark-100`, `border-dark-600` etc. exist as real utilities in Tailwind v4.
+ *
+ * These deliberately overwrite Tailwind's stock blue/green/red/yellow/purple
+ * 500-700 stops, so only those stops are used anywhere in this app - reaching
+ * for `red-400` would silently get Tailwind's default red and break the visual
+ * system.
+ */
+@theme {
+  --color-dark-900: #070b23;
+  --color-dark-800: #0c102b;
+  --color-dark-700: #121731;
+  --color-dark-600: #181e3c;
+  --color-dark-500: #1f2546;
+  --color-dark-400: #343c64;
+  --color-dark-300: #47507c;
+  --color-dark-200: #767faa;
+  --color-dark-100: #a4aac6;
+
+  --color-blue-500: #5e6eff;
+  --color-blue-600: #4558ff;
+  --color-blue-700: #2133dc;
+
+  --color-green-500: #6de8bf;
+  --color-green-600: #20d095;
+  --color-green-700: #19a375;
+
+  --color-red-500: #e8305e;
+  --color-red-600: #cf1745;
+  --color-red-700: #a11236;
+
+  --color-yellow-500: #ff9900;
+  --color-yellow-600: #db8504;
+
+  --color-purple-500: #8a70e2;
+  --color-purple-600: #765dc5;
+
+  /*
+   * Duel ships TT-Interphases-Pro. We do not have a licence for it, so we use
+   * the system stack rather than a lookalike that would misrepresent the brand.
+   */
+  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, 'SF Mono', 'Cascadia Mono', 'Segoe UI Mono', Menlo,
+    Consolas, monospace;
+}
+
+@layer base {
+  html {
+    /* The tool is dark-only; telling the UA stops form controls rendering light. */
+    color-scheme: dark;
+  }
+
+  body {
+    margin: 0;
+    background-color: var(--color-dark-900);
+    color: var(--color-dark-100);
+    font-family: var(--font-sans);
+    font-size: 13px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /*
+   * Every number in this tool is compared column-to-column, so tabular figures
+   * are the default rather than something each call site has to remember.
+   */
+  code,
+  kbd,
+  pre,
+  samp {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+
+  ::selection {
+    background-color: color-mix(in oklab, var(--color-blue-500) 45%, transparent);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-blue-500);
+    outline-offset: 1px;
+  }
+
+  /* Scrollbars: the default light-on-dark ones are unusable against #070b23. */
+  * {
+    scrollbar-color: var(--color-dark-400) transparent;
+    scrollbar-width: thin;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background-color: var(--color-dark-400);
+    border-radius: 8px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: var(--color-dark-300);
+  }
+}
+
+@layer components {
+  /*
+   * Shared surface + control recipes. Radii come straight from CONTRACT.md:
+   * 12px cards, 8px controls, 4px chips - which are Tailwind's xl / lg / sm.
+   */
+  .scout-card {
+    @apply rounded-xl border border-dark-600 bg-dark-800;
+  }
+
+  .scout-control {
+    @apply rounded-lg border border-dark-500 bg-dark-700 px-2.5 py-1.5 text-dark-100
+      transition-colors hover:border-dark-400 focus:border-blue-500 focus:outline-none;
+  }
+
+  .scout-button {
+    @apply rounded-lg border border-dark-500 bg-dark-700 px-3 py-1.5 font-medium text-dark-100
+      transition-colors hover:border-dark-400 hover:bg-dark-600
+      disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-dark-700;
+  }
+
+  .scout-button-primary {
+    @apply rounded-lg border border-blue-600 bg-blue-600 px-3 py-1.5 font-medium text-white
+      transition-colors hover:bg-blue-500
+      disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-blue-600;
+  }
+
+  .scout-num {
+    @apply text-right font-mono tabular-nums;
+  }
+}

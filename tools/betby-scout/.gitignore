@@ -1,0 +1,8 @@
+node_modules/
+dist/
+data/
+captures/*.json
+captures/*.ndjson
+!captures/.gitkeep
+*.tsbuildinfo
+.env

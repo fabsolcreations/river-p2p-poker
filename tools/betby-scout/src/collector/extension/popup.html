@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Betby Scout</title>
+    <style>
+      /* Tokens lifted from Duel's own stylesheet - see CONTRACT.md. */
+      :root {
+        --dark-900: #070b23;
+        --dark-800: #0c102b;
+        --dark-700: #121731;
+        --dark-600: #181e3c;
+        --dark-500: #1f2546;
+        --dark-400: #343c64;
+        --dark-300: #47507c;
+        --dark-200: #767faa;
+        --dark-100: #a4aac6;
+        --blue-500: #5e6eff;
+        --blue-600: #4558ff;
+        --blue-700: #2133dc;
+        --green-500: #6de8bf;
+        --green-600: #20d095;
+        --red-500: #e8305e;
+        --red-600: #cf1745;
+        --yellow-500: #ff9900;
+        --purple-500: #8a70e2;
+        --text: #e7eaf8;
+        --mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
+      }
+
+      * { box-sizing: border-box; }
+
+      html, body {
+        margin: 0;
+        background: var(--dark-900);
+        color: var(--text);
+      }
+
+      body {
+        width: 340px;
+        font: 13px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        padding: 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      /* Every number in this UI is tabular so columns do not jitter on update. */
+      .num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+      header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+      }
+      .brand { display: flex; align-items: center; gap: 8px; min-width: 0; }
+      .mark {
+        width: 26px; height: 26px; border-radius: 8px; flex: none;
+        background: linear-gradient(140deg, var(--blue-500), var(--purple-500));
+      }
+      h1 { font-size: 14px; font-weight: 600; margin: 0; letter-spacing: 0.01em; }
+      .sub { margin: 0; font-size: 11px; color: var(--dark-200); }
+
+      button {
+        font: inherit;
+        color: var(--text);
+        background: var(--dark-600);
+        border: 1px solid var(--dark-400);
+        border-radius: 8px;
+        padding: 6px 10px;
+        cursor: pointer;
+      }
+      button:hover:not(:disabled) { background: var(--dark-500); border-color: var(--dark-300); }
+      button:disabled { opacity: 0.45; cursor: default; }
+      button.primary { background: var(--blue-600); border-color: var(--blue-500); }
+      button.primary:hover:not(:disabled) { background: var(--blue-500); }
+      button.on { background: var(--green-600); border-color: var(--green-500); color: var(--dark-900); font-weight: 600; }
+      button.off { background: var(--dark-600); border-color: var(--red-600); color: var(--red-500); font-weight: 600; }
+      button.ghost { background: transparent; border-color: var(--dark-500); color: var(--dark-100); }
+      button.tiny { padding: 3px 7px; font-size: 11px; border-radius: 4px; }
+
+      .card {
+        background: var(--dark-800);
+        border: 1px solid var(--dark-600);
+        border-radius: 12px;
+        padding: 10px;
+      }
+
+      .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+      .stat {
+        background: var(--dark-700);
+        border: 1px solid var(--dark-600);
+        border-radius: 8px;
+        padding: 7px 9px;
+      }
+      .stat .k { font-size: 10px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--dark-200); }
+      .stat .v { font-size: 15px; margin-top: 1px; }
+      .v.good { color: var(--green-500); }
+      .v.bad { color: var(--red-500); }
+      .v.idle { color: var(--dark-100); }
+      .v.warn { color: var(--yellow-500); }
+
+      .tabline {
+        font-size: 11px;
+        color: var(--dark-100);
+        word-break: break-all;
+        display: flex;
+        gap: 6px;
+        align-items: baseline;
+      }
+      .badge {
+        flex: none;
+        font-size: 10px;
+        padding: 1px 6px;
+        border-radius: 4px;
+        border: 1px solid var(--dark-400);
+        color: var(--dark-100);
+        background: var(--dark-700);
+      }
+      .badge.live { border-color: var(--green-600); color: var(--green-500); }
+      .badge.none { border-color: var(--dark-400); color: var(--dark-200); }
+
+      label { display: block; font-size: 10px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--dark-200); margin-bottom: 4px; }
+      .row { display: flex; gap: 6px; }
+      input[type="text"] {
+        flex: 1 1 auto;
+        min-width: 0;
+        font: 12px/1.4 var(--mono);
+        color: var(--text);
+        background: var(--dark-900);
+        border: 1px solid var(--dark-500);
+        border-radius: 8px;
+        padding: 6px 8px;
+      }
+      input[type="text"]:focus { outline: none; border-color: var(--blue-500); }
+
+      .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+
+      h2 { font-size: 11px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--dark-200); margin: 0 0 4px; font-weight: 600; }
+      h3 { font-size: 10px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--dark-200); margin: 10px 0 4px; font-weight: 600; }
+      .hint { margin: 0 0 8px; font-size: 11px; color: var(--dark-200); }
+
+      ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 5px; }
+      li {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        background: var(--dark-700);
+        border: 1px solid var(--dark-600);
+        border-radius: 8px;
+        padding: 5px 7px;
+      }
+      li .origin { flex: 1 1 auto; min-width: 0; font-family: var(--mono); font-size: 11px; overflow-wrap: anywhere; }
+      li .meta { font-size: 10px; color: var(--dark-200); }
+      li.static { opacity: 0.75; }
+      .empty { font-size: 11px; color: var(--dark-300); font-style: italic; }
+
+      .notice {
+        margin: 0;
+        font-size: 11px;
+        border-radius: 8px;
+        padding: 7px 9px;
+        border: 1px solid var(--dark-400);
+        background: var(--dark-700);
+        color: var(--dark-100);
+        overflow-wrap: anywhere;
+      }
+      .notice.err { border-color: var(--red-600); color: var(--red-500); }
+      .notice.ok { border-color: var(--green-600); color: var(--green-500); }
+
+      footer { font-size: 10px; color: var(--dark-300); text-align: center; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="brand">
+        <div class="mark"></div>
+        <div>
+          <h1>Betby Scout</h1>
+          <p class="sub">collector v<span id="version" class="num">–</span></p>
+        </div>
+      </div>
+      <button id="toggle-collect" class="off" type="button">…</button>
+    </header>
+
+    <section class="stats">
+      <div class="stat">
+        <div class="k">Hook in tab</div>
+        <div class="v idle" id="stat-hook">unknown</div>
+      </div>
+      <div class="stat">
+        <div class="k">Captures</div>
+        <div class="v idle num" id="stat-captures">–</div>
+      </div>
+      <div class="stat">
+        <div class="k">Server</div>
+        <div class="v idle" id="stat-server">unknown</div>
+      </div>
+      <div class="stat">
+        <div class="k">Dropped</div>
+        <div class="v idle num" id="stat-dropped">–</div>
+      </div>
+    </section>
+
+    <div class="tabline">
+      <span class="badge none" id="tab-badge">no tab</span>
+      <span id="tab-origin">–</span>
+    </div>
+
+    <section class="card">
+      <label for="server-url">Local server</label>
+      <div class="row">
+        <input type="text" id="server-url" spellcheck="false" autocomplete="off" placeholder="http://127.0.0.1:8787" />
+        <button id="server-save" type="button" class="ghost">Save</button>
+      </div>
+    </section>
+
+    <section class="actions">
+      <button id="btn-discover" type="button" class="primary">Discover frames</button>
+      <button id="btn-panel" type="button">Toggle panel</button>
+      <button id="btn-export" type="button">Export capture</button>
+      <button id="btn-dashboard" type="button">Dashboard</button>
+    </section>
+
+    <section class="card">
+      <h2>Sites</h2>
+      <p class="hint">
+        Granting a site lets the collector read traffic that site's frames already make. It never sends a
+        request of its own and never touches a betslip.
+      </p>
+      <ul id="granted"></ul>
+      <h3>Frames seen in this tab</h3>
+      <ul id="discovered"></ul>
+      <p class="empty" id="discovered-empty" hidden>Nothing yet — open the sportsbook, then press Discover frames.</p>
+    </section>
+
+    <p class="notice" id="notice" hidden></p>
+
+    <footer>Read-only observer. Never places a bet.</footer>
+
+    <script src="popup.js"></script>
+  </body>
+</html>

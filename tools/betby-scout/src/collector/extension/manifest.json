@@ -1,0 +1,45 @@
+{
+  "manifest_version": 3,
+  "name": "Betby Scout Collector",
+  "version": "0.1.0",
+  "description": "Read-only observer for BETBY-powered sportsbooks. Records the traffic the page already makes so it can be analysed locally. Never places bets.",
+  "minimum_chrome_version": "111",
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "permissions": ["scripting", "storage", "tabs"],
+  "host_permissions": ["https://duel.com/*", "https://*.duel.com/*"],
+  "optional_host_permissions": ["https://*/*"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Betby Scout",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://duel.com/*", "https://*.duel.com/*"],
+      "js": ["hook.js"],
+      "run_at": "document_start",
+      "all_frames": true,
+      "world": "MAIN"
+    },
+    {
+      "matches": ["https://duel.com/*", "https://*.duel.com/*"],
+      "js": ["content.js"],
+      "run_at": "document_start",
+      "all_frames": true,
+      "world": "ISOLATED"
+    }
+  ]
+}

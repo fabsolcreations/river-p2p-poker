@@ -1,0 +1,23 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "lib": ["ES2023"],
+    "types": ["node"],
+    "module": "NodeNext",
+    "moduleResolution": "nodenext",
+    "allowImportingTsExtensions": false,
+    "rewriteRelativeImportExtensions": true,
+    "noEmit": false,
+    // rootDir "src" + outDir "dist" mirrors the source tree, so src/server/index.ts
+    // lands at dist/server/index.js and its sibling imports of src/shared and
+    // src/adapters resolve to dist/shared and dist/adapters. Emitting into
+    // "dist/server" instead would nest everything one level deeper and break
+    // `npm start`. dist/dashboard and dist/collector are produced by other tools
+    // and are never emitted into by tsc, so they cannot collide.
+    "outDir": "dist",
+    "rootDir": "src",
+    "declaration": false,
+    "sourceMap": true
+  },
+  "include": ["src/server/**/*.ts", "src/shared/**/*.ts", "src/adapters/**/*.ts"]
+}
