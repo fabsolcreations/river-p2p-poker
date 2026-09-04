@@ -1,0 +1,1125 @@
+[
+ {
+  "id": "31909500350537",
+  "odds": "2.130",
+  "stake": "5.00 $",
+  "pot_win": "10.65 $",
+  "player": "****707",
+  "type": "combo",
+  "selections": [
+   {
+    "event_id": "2704263723815669762",
+    "market_id": "68",
+    "outcome_id": "12",
+    "specifiers": "total=0.5",
+    "k": "1.5"
+   },
+   {
+    "event_id": "2704260867746312199",
+    "market_id": "68",
+    "outcome_id": "12",
+    "specifiers": "total=0.5",
+    "k": "1.42"
+   }
+  ]
+ },
+ {
+  "id": "31909500350778",
+  "odds": "2.460",
+  "stake": "610.00 $",
+  "pot_win": "1500.60 $",
+  "player": "**mei",
+  "type": "single",
+  "selections": [
+   {
+    "event_id": "2706036055265652757",
+    "market_id": "186",
+    "outcome_id": "5",
+    "specifiers": "",
+    "k": "2.46"
+   }
+  ]
+ },
+ {
+  "id": "31823424844726",
+  "odds": "3.300",
+  "stake": "10.00 $",
+  "pot_win": "33.00 $",
+  "player": "****bon",
+  "type": "single",
+  "selections": [
+   {
+    "event_id": "2707296244329484292",
+    "market_id": "70",
+    "outcome_id": "12",
+    "specifiers": "total=0.5",
+    "k": "3.3"
+   }
+  ]
+ },
+ {
+  "id": "31823424844250",
+  "odds": "10.000",
+  "stake": "3.00 $",
+  "pot_win": "30.00 $",
+  "player": "****a55",
+  "type": "single",
+  "selections": [
+   {
+    "event_id": "2706122478064898081",
+    "market_id": "18",
+    "outcome_id": "12",
+    "specifiers": "total=3.5",
+    "k": "10.0"
+   }
+  ]
+ },
+ {
+  "id": "31823424843950",
+  "odds": "3.500",
+  "stake": "14.00 $",
+  "pot_win": "49.00 $",
+  "player": "****bon",
+  "type": "single",
+  "selections": [
+   {
+    "event_id": "2707296244329484292",
+    "market_id": "66",
+    "outcome_id": "1715",
+    "specifiers": "hcp=0",
+    "k": "3.5"
+   }
+  ]
+ },
+ {
+  "id": "31823424844068",
+  "odds": "4.407",
+  "stake": "7000.00 $",
+  "pot_win": "30849.00 $",
+  "player": "****e22",
+  "type": "combo",
+  "selections": [
+   {
+    "event_id": "2705312831800221706",
+    "market_id": "18",
+    "outcome_id": "12",
+    "specifiers": "total=3.5",
+    "k": "1.95"
+   },
+   {
+    "event_id": "2704260867746312219",
+    "market_id": "18",
+    "outcome_id": "12",
+    "specifiers": "total=3.5",
+    "k": "2.26"
+   }
+  ]
+ },
+ {
+  "id": "31743020032880",
+  "odds": "2.100",
+  "stake": "3.75 $",
+  "pot_win": "7.88 $",
+  "player": "****sht",
+  "type": "single",
+  "selections": [
+   {
+    "event_id": "2706297248194637847",
+    "market_id": "330",
+    "outcome_id": "5",
+    "specifiers": "mapnr=2",
+    "k": "2.1"
+   }
+  ]
+ },
+ {
+  "id": "31743020032954",
+  "odds": "1.460",
+  "stake": "2.65 $",
+  "pot_win": "3.87 $",
+  "player": "****maj",
+  "type": "single",
+  "selections": [
+   {
+    "event_id": "2705312831800221706",
+    "market_id": "1",
+    "outcome_id": "3",
+    "specifiers": "",
+    "k": "1.46"
+   }
+  ]
+ },
+ {
+  "id": "31743020032289",
+  "odds": "1.810",
+  "stake": "18.60 $",
+  "pot_win": "33.67 $",
+  "player": "****s74",
+  "type": "single",
+  "selections": [
+   {
+    "event_id": "2707326129232023584",
+    "market_id": "251",
+    "outcome_id": "4",
+    "specifiers": "",
+    "k": "1.81"
+   }
+  ]
+ },
+ {
+  "id": "31661767974915",
+  "odds": "1.240",
+  "stake": "2.00 $",
+  "pot_win": "2.48 $",
+  "player": "***oze",
+  "type": "single",
+  "selections": [
+   {
+    "event_id": "2686051263472345109",
+    "market_id": "219",
+    "outcome_id": "4",
+    "specifiers": "",
+    "k": "1.24"
+   }
+  ]
+ },
+ {
+  "id": "31661767974912",
+  "odds": "1.720",
+  "stake": "2.00 $",
+  "pot_win": "3.44 $",
+  "player": "***oze",
+  "type": "single",
+  "selections": [
+   {
+    "event_id": "2686026542634643504",
+    "market_id": "219",
+    "outcome_id": "4",
+    "specifiers": "",
+    "k": "1.72"
+   }
+  ]
+ },
+ {
+  "id": "31661767974913",
+  "odds": "1.630",
+  "stake": "2.00 $",
+  "pot_win": "3.26 $",
+  "player": "***oze",
+  "type": "single",
+  "selections": [
+   {
+    "event_id": "2686121554550591494",
+    "market_id": "223",
+    "outcome_id": "1714",
+    "specifiers": "hcp=-37.5",
+    "k": "1.63"
+   }
+  ]
+ },
+ {
+  "id": "31661763780969",
+  "odds": "4.100",
+  "stake": "59.00 $",
+  "pot_win": "241.90 $",
+  "player": "****l39",
+  "type": "single",
+  "selections": [
+   {
+    "event_id": "2706241129107558420",
+    "market_id": "330",
+    "outcome_id": "4",
+    "specifiers": "mapnr=1",
+    "k": "4.1"
+   }
+  ]
+ },
+ {
+  "id": "31576048988997",
+  "odds": "2.140",
+  "stake": "50.01 $",
+  "pot_win": "107.02 $",
+  "player": "***ast",
+  "type": "single",
+  "selections": [
+   {
+    "event_id": "2707411710381264916",
+    "market_id": "210",
+    "outcome_id": "4",
+    "specifiers": "setnr=2|gamenr=3",
+    "k": "2.14"
+   }
+  ]
+ },
+ {
+  "id": "31576048988927",
+  "odds": "1.160",
+  "stake": "253124.90 €",
+  "pot_win": "293624.88 €",
+  "player": "****006",
+  "type": "single",
+  "selections": [
+   {
+    "event_id": "2705810434275024913",
+    "market_id": "18",
+    "outcome_id": "12",
+    "specifiers": "total=2.5",
+    "k": "1.16"
+   }
+  ]
+ },
+ {
+  "id": "31576053182534",
+  "odds": "2.780",
+  "stake": "7.92 $",
+  "pot_win": "22.02 $",
+  "player": "****tla",
+  "type": "single",
+  "selections": [
+   {
+    "event_id": "2705912531721007138",
+    "market_id": "16",
+    "outcome_id": "1715",
+    "specifiers": "hcp=-1",
+    "k": "2.78"
+   }
+  ]
+ },
+ {
+  "id": "31576053182510",
+  "odds": "2.380",
+  "stake": "50.00 ₹",
+  "pot_win": "119.00 ₹",
+  "player": "****510",
+  "type": "single",
+  "selections": [
+   {
+    "event_id": "2705715015478030351",
+    "market_id": "1",
+    "outcome_id": "3",
+    "specifiers": "",
+    "k": "2.38"
+   }
+  ]
+ },
+ {
+  "id": "31576048988857",
+  "odds": "19.740",
+  "stake": "25.00 $",
+  "pot_win": "493.50 $",
+  "player": "****44n",
+  "type": "combo",
+  "selections": [
+   {
+    "event_id": "2706297248194637847",
+    "market_id": "186",
+    "outcome_id": "5",
+    "specifiers": "",
+    "k": "2.1"
+   },
+   {
+    "event_id": "2706241129107558420",
+    "market_id": "186",
+    "outcome_id": "5",
+    "specifiers": "",
+    "k": "2.35"
+   },
+   {
+    "event_id": "2707711761750044683",
+    "market_id": "60030",
+    "outcome_id": "282",
+    "specifiers": "",
+    "k": "4.0"
+   }
+  ]
+ },
+ {
+  "id": "31576048988597",
+  "odds": "9.463",
+  "stake": "100.00 $",
+  "pot_win": "946.28 $",
+  "player": "****lim",
+  "type": "combo",
+  "selections": [
+   {
+    "event_id": "2705912531721007138",
+    "market_id": "18",
+    "outcome_id": "12",
+    "specifiers": "total=3.5",
+    "k": "1.97"
+   },
+   {
+    "event_id": "2705312831800221706",
+    "market_id": "18",
+    "outcome_id": "12",
+    "specifiers": "total=3.5",
+    "k": "1.95"
+   },
+   {
+    "event_id": "2704260867746312219",
+    "market_id": "18",
+    "outcome_id": "12",
+    "specifiers": "total=2.5",
+    "k": "1.53"
+   },
+   {
+    "event_id": "2707283297750356007",
+    "market_id": "18",
+    "outcome_id": "12",
+    "specifiers": "total=3.5",
+    "k": "1.61"
+   }
+  ]
+ },
+ {
+  "id": "31576048988170",
+  "odds": "3.900",
+  "stake": "60.00 $",
+  "pot_win": "234.00 $",
+  "player": "***t01",
+  "type": "single",
+  "selections": [
+   {
+    "event_id": "2706143428332367903",
+    "market_id": "18",
+    "outcome_id": "12",
+    "specifiers": "total=5.5",
+    "k": "3.9"
+   }
+  ]
+ },
+ {
+  "id": "31395052183790",
+  "odds": "1.220",
+  "stake": "44628.12 €",
+  "pot_win": "54446.31 €",
+  "player": "****006",
+  "type": "single",
+  "selections": [
+   {
+    "event_id": "2706117315828789275",
+    "market_id": "68",
+    "outcome_id": "13",
+    "specifiers": "total=2.5",
+    "k": "1.22"
+   }
+  ]
+ },
+ {
+  "id": "31395047989899",
+  "odds": "1.350",
+  "stake": "1518.00 $",
+  "pot_win": "2049.30 $",
+  "player": "****yZz",
+  "type": "single",
+  "selections": [
+   {
+    "event_id": "2705312831800221706",
+    "market_id": "16",
+    "outcome_id": "1714",
+    "specifiers": "hcp=2.5",
+    "k": "1.35"
+   }
+  ]
+ },
+ {
+  "id": "31395047989602",
+  "odds": "40.791",
+  "stake": "100.00 $",
+  "pot_win": "4079.12 $",
+  "player": "****lim",
+  "type": "combo",
+  "selections": [
+   {
+    "event_id": "2705312831800221706",
+    "market_id": "68",
+    "outcome_id": "12",
+    "specifiers": "total=2",
+    "k": "3.2"
+   },
+   {
+    "event_id": "2704260867746312219",
+    "market_id": "68",
+    "outcome_id": "12",
+    "specifiers": "total=1.5",
+    "k": "2.22"
+   },
+   {
+    "event_id": "2707283297750356007",
+    "market_id": "68",
+    "outcome_id": "12",
+    "specifiers": "total=1.5",
+    "k": "1.74"
+   },
+   {
+    "event_id": "2705912531721007138",
+    "market_id": "68",
+    "outcome_id": "12",
+    "specifiers": "total=2",
+    "k": "3.3"
+   }
+  ]
+ },
+ {
+  "id": "31395047989543",
+  "odds": "11.500",
+  "stake": "45.00 $",
+  "pot_win": "517.50 $",
+  "player": "****401",
+  "type": "single",
+  "selections": [
+   {
+    "event_id": "2705312831800221706",
+    "market_id": "50031",
+    "outcome_id": "dst:playerprops:277413:4662:379539:50154841",
+    "specifiers": "variant=dst:playerprops:277413:4662:379539",
+    "k": "11.5"
+   }
+  ]
+ },
+ {
+  "id": "31304333583272",
+  "odds": "2.400",
+  "stake": "1590.00 ₹",
+  "pot_win": "3816.00 ₹",
+  "player": "****ero",
+  "type": "single",
+  "selections": [
+   {
+    "event_id": "2706297248194637847",
+    "market_id": "186",
+    "outcome_id": "5",
+    "specifiers": "",
+    "k": "2.4"
+   }
+  ]
+ },
+ {
+  "id": "31304333583237",
+  "odds": "7.078",
+  "stake": "50.00 $",
+  "pot_win": "353.90 $",
+  "player": "***qw1",
+  "type": "combo",
+  "selections": [
+   {
+    "event_id": "2705312831800221706",
+    "market_id": "1",
+    "outcome_id": "3",
+    "specifiers": "",
+    "k": "1.46"
+   },
+   {
+    "event_id": "2705912531721007138",
+    "market_id": "16",
+    "outcome_id": "1715",
+    "specifiers": "hcp=-1.5",
+    "k": "2.02"
+   },
+   {
+    "event_id": "2706297248194637847",
+    "market_id": "186",
+    "outcome_id": "5",
+    "specifiers": "",
+    "k": "2.4"
+   }
+  ]
+ },
+ {
+  "id": "31304333582788",
+  "odds": "5.200",
+  "stake": "2.00 $",
+  "pot_win": "10.40 $",
+  "player": "****und",
+  "type": "single",
+  "selections": [
+   {
+    "event_id": "2707151936846704666",
+    "market_id": "204",
+    "outcome_id": "13",
+    "specifiers": "setnr=1|total=9.5",
+    "k": "5.2"
+   }
+  ]
+ },
+ {
+  "id": "31213107470707",
+  "odds": "1.670",
+  "stake": "27.36 $",
+  "pot_win": "45.69 $",
+  "player": "***ast",
+  "type": "single",
+  "selections": [
+   {
+    "event_id": "2707411710381264915",
+    "market_id": "210",
+    "outcome_id": "4",
+    "specifiers": "setnr=2|gamenr=7",
+    "k": "1.67"
+   }
+  ]
+ },
+ {
+  "id": "31213107470914",
+  "odds": "2.900",
+  "stake": "1.93 $",
+  "pot_win": "5.60 $",
+  "player": "****rir",
+  "type": "single",
+  "selections": [
+   {
+    "event_id": "2706297248194637847",
+    "market_id": "330",
+    "outcome_id": "4",
+    "specifiers": "mapnr=2",
+    "k": "2.9"
+   }
+  ]
+ },
+ {
+  "id": "31117196321705",
+  "odds": "1.450",
+  "stake": "39.80 €",
+  "pot_win": "57.71 €",
+  "player": "****231",
+  "type": "single",
+  "selections": [
+   {
+    "event_id": "2706297248194637847",
+    "market_id": "330",
+    "outcome_id": "5",
+    "specifiers": "mapnr=2",
+    "k": "1.45"
+   }
+  ]
+ },
+ {
+  "id": "31117196321703",
+  "odds": "2.900",
+  "stake": "600.00 $",
+  "pot_win": "1740.00 $",
+  "player": "***SIA",
+  "type": "single",
+  "selections": [
+   {
+    "event_id": "2706297248194637847",
+    "market_id": "330",
+    "outcome_id": "4",
+    "specifiers": "mapnr=2",
+    "k": "2.9"
+   }
+  ]
+ },
+ {
+  "id": "31117196321669",
+  "odds": "6.311",
+  "stake": "10.00 €",
+  "pot_win": "63.11 €",
+  "player": "****",
+  "type": "combo",
+  "selections": [
+   {
+    "event_id": "2707717158674239532",
+    "market_id": "1",
+    "outcome_id": "1",
+    "specifiers": "",
+    "k": "2.25"
+   },
+   {
+    "event_id": "2707719290798354432",
+    "market_id": "1",
+    "outcome_id": "1",
+    "specifiers": "",
+    "k": "1.65"
+   },
+   {
+    "event_id": "2707703041871720476",
+    "market_id": "219",
+    "outcome_id": "4",
+    "specifiers": "",
+    "k": "1.7"
+   }
+  ]
+ },
+ {
+  "id": "31117196321163",
+  "odds": "1.040",
+  "stake": "163637.10 €",
+  "pot_win": "170182.58 €",
+  "player": "****006",
+  "type": "single",
+  "selections": [
+   {
+    "event_id": "2705912531721007137",
+    "market_id": "18",
+    "outcome_id": "13",
+    "specifiers": "total=5.5",
+    "k": "1.04"
+   }
+  ]
+ },
+ {
+  "id": "31117196321148",
+  "odds": "19.921",
+  "stake": "100.00 $",
+  "pot_win": "1992.06 $",
+  "player": "**ndu",
+  "type": "combo",
+  "selections": [
+   {
+    "event_id": "2705912531721007138",
+    "market_id": "1",
+    "outcome_id": "1",
+    "specifiers": "",
+    "k": "1.35"
+   },
+   {
+    "event_id": "2705312831800221706",
+    "market_id": "29",
+    "outcome_id": "74",
+    "specifiers": "",
+    "k": "1.52"
+   },
+   {
+    "event_id": "2704260867746312219",
+    "market_id": "1",
+    "outcome_id": "3",
+    "specifiers": "",
+    "k": "1.66"
+   },
+   {
+    "event_id": "2705912531721007137",
+    "market_id": "18",
+    "outcome_id": "13",
+    "specifiers": "total=5.5",
+    "k": "1.04"
+   },
+   {
+    "event_id": "2704260867746312199",
+    "market_id": "1",
+    "outcome_id": "1",
+    "specifiers": "",
+    "k": "1.42"
+   },
+   {
+    "event_id": "2706297248194637847",
+    "market_id": "186",
+    "outcome_id": "5",
+    "specifiers": "",
+    "k": "2.4"
+   },
+   {
+    "event_id": "2707711761750044683",
+    "market_id": "60030",
+    "outcome_id": "278",
+    "specifiers": "",
+    "k": "1.65"
+   }
+  ]
+ },
+ {
+  "id": "31117196321181",
+  "odds": "1.450",
+  "stake": "5.55 $",
+  "pot_win": "8.05 $",
+  "player": "****sht",
+  "type": "single",
+  "selections": [
+   {
+    "event_id": "2706297248194637847",
+    "market_id": "330",
+    "outcome_id": "5",
+    "specifiers": "mapnr=2",
+    "k": "1.45"
+   }
+  ]
+ },
+ {
+  "id": "30946395874218",
+  "odds": "12.376",
+  "stake": "10.00 $",
+  "pot_win": "123.76 $",
+  "player": "****e01",
+  "type": "combo",
+  "selections": [
+   {
+    "event_id": "2704260867746312219",
+    "market_id": "166",
+    "outcome_id": "12",
+    "specifiers": "total=8.5",
+    "k": "1.38"
+   },
+   {
+    "event_id": "2705912531721007138",
+    "market_id": "18",
+    "outcome_id": "12",
+    "specifiers": "total=2.5",
+    "k": "1.4"
+   },
+   {
+    "event_id": "2704260867746312199",
+    "market_id": "18",
+    "outcome_id": "12",
+    "specifiers": "total=2.5",
+    "k": "1.5"
+   },
+   {
+    "event_id": "2705312831800221706",
+    "market_id": "1",
+    "outcome_id": "3",
+    "specifiers": "",
+    "k": "1.46"
+   },
+   {
+    "event_id": "2706568087825686562",
+    "market_id": "1",
+    "outcome_id": "3",
+    "specifiers": "",
+    "k": "1.55"
+   },
+   {
+    "event_id": "2706320270221783086",
+    "market_id": "1",
+    "outcome_id": "1",
+    "specifiers": "",
+    "k": "1.13"
+   },
+   {
+    "event_id": "2704263723815669762",
+    "market_id": "1",
+    "outcome_id": "3",
+    "specifiers": "",
+    "k": "1.67"
+   }
+  ]
+ },
+ {
+  "id": "30946395874192",
+  "odds": "28.390",
+  "stake": "7.00 $",
+  "pot_win": "198.73 $",
+  "player": "****zoo",
+  "type": "combo",
+  "selections": [
+   {
+    "event_id": "2707711761750044683",
+    "market_id": "327",
+    "outcome_id": "1714",
+    "specifiers": "hcp=-1.5",
+    "k": "17.0"
+   },
+   {
+    "event_id": "2706297248194637847",
+    "market_id": "186",
+    "outcome_id": "4",
+    "specifiers": "",
+    "k": "1.67"
+   }
+  ]
+ },
+ {
+  "id": "30946395873833",
+  "odds": "2.800",
+  "stake": "0.18 $",
+  "pot_win": "0.50 $",
+  "player": "****tan",
+  "type": "single",
+  "selections": [
+   {
+    "event_id": "2707230906933981193",
+    "market_id": "68",
+    "outcome_id": "12",
+    "specifiers": "total=1.5",
+    "k": "2.8"
+   }
+  ]
+ },
+ {
+  "id": "30946395873971",
+  "odds": "13.790",
+  "stake": "50.00 $",
+  "pot_win": "689.50 $",
+  "player": "****401",
+  "type": "combo",
+  "selections": [
+   {
+    "event_id": "2705912531721007138",
+    "market_id": "18",
+    "outcome_id": "12",
+    "specifiers": "total=3.5",
+    "k": "1.97"
+   },
+   {
+    "event_id": "2705312831800221706",
+    "market_id": "50031",
+    "outcome_id": "dst:playerprops:277413:4662:178662:50154785",
+    "specifiers": "variant=dst:playerprops:277413:4662:178662",
+    "k": "7.0"
+   }
+  ]
+ },
+ {
+  "id": "30946395873381",
+  "odds": "23.724",
+  "stake": "67.82 $",
+  "pot_win": "1608.95 $",
+  "player": "****lim",
+  "type": "combo",
+  "selections": [
+   {
+    "event_id": "2707485096679706626",
+    "market_id": "189",
+    "outcome_id": "12",
+    "specifiers": "total=39.5",
+    "k": "1.95"
+   },
+   {
+    "event_id": "2707541330199973922",
+    "market_id": "189",
+    "outcome_id": "12",
+    "specifiers": "total=35.5",
+    "k": "1.9"
+   },
+   {
+    "event_id": "2707513180996907019",
+    "market_id": "186",
+    "outcome_id": "4",
+    "specifiers": "",
+    "k": "2.9"
+   },
+   {
+    "event_id": "2707485096679706624",
+    "market_id": "186",
+    "outcome_id": "5",
+    "specifiers": "",
+    "k": "1.92"
+   }
+  ]
+ },
+ {
+  "id": "30863981990200",
+  "odds": "13.000",
+  "stake": "10.00 $",
+  "pot_win": "130.00 $",
+  "player": "****zoo",
+  "type": "single",
+  "selections": [
+   {
+    "event_id": "2707711761750044683",
+    "market_id": "327",
+    "outcome_id": "1714",
+    "specifiers": "hcp=-1.5",
+    "k": "13.0"
+   }
+  ]
+ },
+ {
+  "id": "30863981990193",
+  "odds": "1.720",
+  "stake": "9.70 $",
+  "pot_win": "16.68 $",
+  "player": "****",
+  "type": "single",
+  "selections": [
+   {
+    "event_id": "2707667799790194720",
+    "market_id": "60040",
+    "outcome_id": "12",
+    "specifiers": "mapnr=3|player=od:player:3163352:14367:64|total=24.5",
+    "k": "1.72"
+   }
+  ]
+ },
+ {
+  "id": "30863981990312",
+  "odds": "4.491",
+  "stake": "516.00 €",
+  "pot_win": "2317.25 €",
+  "player": "****usa",
+  "type": "combo",
+  "selections": [
+   {
+    "event_id": "2705312831800221706",
+    "market_id": "68",
+    "outcome_id": "12",
+    "specifiers": "total=1.5",
+    "k": "2.06"
+   },
+   {
+    "event_id": "2704260867746312219",
+    "market_id": "68",
+    "outcome_id": "12",
+    "specifiers": "total=1.5",
+    "k": "2.18"
+   }
+  ]
+ },
+ {
+  "id": "30863981990143",
+  "odds": "1.620",
+  "stake": "15.10 $",
+  "pot_win": "24.46 $",
+  "player": "****lex",
+  "type": "single",
+  "selections": [
+   {
+    "event_id": "2706297248194637847",
+    "market_id": "330",
+    "outcome_id": "5",
+    "specifiers": "mapnr=2",
+    "k": "1.62"
+   }
+  ]
+ },
+ {
+  "id": "30763230617775",
+  "odds": "7.384",
+  "stake": "100.00 $",
+  "pot_win": "738.39 $",
+  "player": "****lim",
+  "type": "combo",
+  "selections": [
+   {
+    "event_id": "2707283297750356007",
+    "market_id": "68",
+    "outcome_id": "12",
+    "specifiers": "total=1.5",
+    "k": "1.74"
+   },
+   {
+    "event_id": "2705312831800221706",
+    "market_id": "68",
+    "outcome_id": "12",
+    "specifiers": "total=1.5",
+    "k": "2.06"
+   },
+   {
+    "event_id": "2705912531721007138",
+    "market_id": "68",
+    "outcome_id": "12",
+    "specifiers": "total=1.5",
+    "k": "2.06"
+   }
+  ]
+ },
+ {
+  "id": "30763226423564",
+  "odds": "21.450",
+  "stake": "12.00 $",
+  "pot_win": "257.40 $",
+  "player": "****zoo",
+  "type": "combo",
+  "selections": [
+   {
+    "event_id": "2704260867746312219",
+    "market_id": "1",
+    "outcome_id": "3",
+    "specifiers": "",
+    "k": "1.65"
+   },
+   {
+    "event_id": "2707711761750044683",
+    "market_id": "327",
+    "outcome_id": "1714",
+    "specifiers": "hcp=-1.5",
+    "k": "13.0"
+   }
+  ]
+ },
+ {
+  "id": "30763226423331",
+  "odds": "2.680",
+  "stake": "5555.00 $",
+  "pot_win": "14887.40 $",
+  "player": "****asy",
+  "type": "single",
+  "selections": [
+   {
+    "event_id": "2705312831800221706",
+    "market_id": "29",
+    "outcome_id": "76",
+    "specifiers": "",
+    "k": "2.68"
+   }
+  ]
+ },
+ {
+  "id": "30658016501767",
+  "odds": "3.000",
+  "stake": "15.00 $",
+  "pot_win": "45.00 $",
+  "player": "****a55",
+  "type": "single",
+  "selections": [
+   {
+    "event_id": "2706143428332367903",
+    "market_id": "1",
+    "outcome_id": "3",
+    "specifiers": "",
+    "k": "3.0"
+   }
+  ]
+ },
+ {
+  "id": "30563783078562",
+  "odds": "2.460",
+  "stake": "73.00 $",
+  "pot_win": "179.58 $",
+  "player": "****ppa",
+  "type": "single",
+  "selections": [
+   {
+    "event_id": "2706036055265652757",
+    "market_id": "186",
+    "outcome_id": "5",
+    "specifiers": "",
+    "k": "2.46"
+   }
+  ]
+ },
+ {
+  "id": "30563783078282",
+  "odds": "15.865",
+  "stake": "76.66 $",
+  "pot_win": "1216.19 $",
+  "player": "****312",
+  "type": "combo",
+  "selections": [
+   {
+    "event_id": "2705182635201798180",
+    "market_id": "18",
+    "outcome_id": "12",
+    "specifiers": "total=3.5",
+    "k": "1.67"
+   },
+   {
+    "event_id": "2705178205224054797",
+    "market_id": "18",
+    "outcome_id": "12",
+    "specifiers": "total=2.5",
+    "k": "1.77"
+   },
+   {
+    "event_id": "2706977865982947355",
+    "market_id": "18",
+    "outcome_id": "12",
+    "specifiers": "total=3.5",
+    "k": "2.14"
+   },
+   {
+    "event_id": "2706479251238035468",
+    "market_id": "18",
+    "outcome_id": "12",
+    "specifiers": "total=4.5",
+    "k": "1.52"
+   },
+   {
+    "event_id": "2707448315049553937",
+    "market_id": "18",
+    "outcome_id": "12",
+    "specifiers": "total=4.5",
+    "k": "1.65"
+   }
+  ]
+ }
+]

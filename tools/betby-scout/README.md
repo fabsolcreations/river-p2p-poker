@@ -1,9 +1,11 @@
 # Betby Scout
 
-Analytics for BETBY-powered sportsbooks. It ingests the public bets feed and
-odds that your already-logged-in browser receives, stores everything
-historically, and — as later milestones land — ranks candidate +EV bets for you
-to review by hand.
+Analytics for BETBY-powered sportsbooks. It ingests the public bets feed and the
+odds your browser already receives, stores everything historically, and — as
+later milestones land — ranks candidate +EV bets for you to review by hand.
+
+On Duel the feed turns out to be a **public** endpoint: no login required to
+watch what other people are betting.
 
 **Duel is the first supported book. Everything sportsbook-specific lives in
 `src/adapters/`, so adding the next BETBY site is one file.**
@@ -43,7 +45,7 @@ on the site once it is running.
 
 ```bash
 npm run build      # collector + dashboard + server
-npm test           # 87 tests
+npm test           # 106 tests
 npm run typecheck
 ```
 
@@ -83,8 +85,12 @@ anything in `src/collector/`.
 
 ### The rule that shapes everything
 
-**We do not know BETBY's API.** Not the endpoint paths, not the hostnames, not
-the field names. So nothing in this codebase branches on a guessed URL.
+**Nothing branches on a guessed URL.** We now know a great deal about Duel's
+BETBY API — but every bit of it was *observed and written down with a date*, and
+it is confined to `duel.ts` where it only ever raises confidence in a verdict the
+shape analysis already reached. The generic layer still assumes it knows nothing,
+because the next BETBY book will differ and a guess that happens to be right
+today is still a guess.
 
 Classification is done on payload **structure**: how many objects are in the
 biggest array, what fraction carry a number in the decimal-odds band, whether
@@ -124,14 +130,14 @@ defaults to **forever**.
 
 ## Status
 
-**Milestone 1 is complete: instrumentation.** The tool can capture, classify,
-store, and display real traffic. It has not yet seen any.
+**Milestones 1 and 2 are complete.** The tool captures, classifies, stores and
+displays real traffic, and it has now been run against Duel's live sportsbook.
 
 | | |
 |---|---|
 | ✅ M1 | Project structure, collector, debug panel, server, live dashboard |
-| ⬜ M2 | **Capture real Duel/BETBY feed data** ← next, and it needs you in a browser |
-| ⬜ M3 | Normalize bets/events/markets into the schema (tables already exist) |
+| ✅ M2 | **Duel's BETBY API reverse-engineered from real traffic** — see below |
+| ⬜ M3 | Join feed legs to event/market names; persist normalized rows |
 | ⬜ M4–M5 | Realtime opportunity dashboard, odds history and line movement |
 | ⬜ M6–M7 | Bettor tracking, sharpness score |
 | ⬜ M8 | Signal engine |
@@ -142,17 +148,43 @@ The dashboard lists the unbuilt sections in its nav as disabled, labelled with
 the milestone that delivers them. There is no sample data anywhere — a screen
 with nothing in it says what is missing and what to do about it.
 
-### Why M2 needs you
+### What Duel's BETBY actually looks like
 
-Every fixture in `tests/adapters.test.ts` is an **invented shape**, and the file
-says so at the top. They prove the scoring machinery reasons correctly about
-structure. They do not prove it will read real BETBY traffic, and no amount of
-work at this desk can change that.
+Captured 2026-09-04 from `https://duel.com/sports`, logged out, by observing
+what the page itself requested. Real responses are checked in under
+`tests/fixtures/` and `tests/duel.test.ts` runs against them.
 
-Run the collector on Duel, click **Export raw capture**, and send the NDJSON
-back. Then the field names become real, `src/adapters/betby/duel.ts` stops being
-an empty override point, and the fixtures get replaced with captures that mean
-something.
+- **Duel proxies BETBY under its own domain**: `sports-proxy.duel.com`. There is
+  no cross-origin sportsbook iframe — the only frames on the page are
+  Cookiebot's. A userscript on `duel.com` is therefore sufficient.
+- **The bets feed is public**: `/api/v1/promo/bets_feed/brand/{brand}` answers
+  200 with 50 rows to a plain `curl`. No cookie, no token, no account.
+- **A feed row looks like this**, and every field name here was observed:
+
+  ```json
+  { "id": "31909500350537", "odds": "2.130", "stake": "5.00 $",
+    "pot_win": "10.65 $", "player": "****707", "type": "combo",
+    "selections": [ { "event_id": "2704263723815669762", "market_id": "68",
+                      "outcome_id": "12", "specifiers": "total=0.5", "k": "1.5" } ] }
+  ```
+
+  Numbers are strings; `stake` and `pot_win` carry a currency *symbol* (`$`,
+  `€`, `₹`), the line hides inside `specifiers`, leg odds are `k`, and **there is
+  no timestamp anywhere** — ordering has to come from observation time.
+- Live prices arrive over `wss://sports-proxy.duel.com/api/v1/ws_new`, and the
+  prematch/live trees are long-polled with an incrementing cursor.
+- Event, market and outcome are **ids only**. Names live in
+  `/api/v3/descriptions/.../markets/{lang}` and the prematch/live trees; joining
+  them is Milestone 3.
+
+On that captured sample the classifier returns `bets_feed` at **0.97**, and the
+reason it gives is the one that generalises to any BETBY book: *35 distinct
+masked handles across 50 rows* — a public feed, not one account's history.
+
+`duel.ts` records the observed endpoints, but only to **raise confidence in a
+verdict the shape analysis already reached**. Move the endpoint and the tool
+still finds the feed; put an unexpected payload on a known path and it keeps the
+shape verdict and says the endpoint may have changed. There is a test for each.
 
 ## Design philosophy
 

@@ -78,7 +78,7 @@ const K_BET_ID = ['betId', 'bet_id', 'ticketId', 'ticket_id', 'couponId', 'coupo
 const K_ODDS = ['odds', 'odd', 'price', 'coefficient', 'coef', 'koef', 'k', 'rate', 'value', 'factor', 'decimalOdds', 'decimal_odds', 'currentOdds', 'oddValue'];
 const K_TOTAL_ODDS = ['totalOdds', 'total_odds', 'totalCoefficient', 'totalKoef', 'combinedOdds', 'oddsTotal', 'totalPrice', 'totalRate'];
 const K_STAKE = ['stake', 'amount', 'sum', 'betAmount', 'bet_amount', 'wager', 'betSum', 'bet_sum', 'money', 'total'];
-const K_PAYOUT = ['payout', 'potentialWin', 'potential_win', 'possibleWin', 'possible_win', 'winAmount', 'win_amount', 'toReturn', 'maxWin', 'profit', 'possiblePayout'];
+const K_PAYOUT = ['payout', 'pot_win', 'potWin', 'potentialWin', 'potential_win', 'possibleWin', 'possible_win', 'winAmount', 'win_amount', 'toReturn', 'maxWin', 'profit', 'possiblePayout'];
 const K_TS = ['ts', 'time', 'timestamp', 'created', 'createdAt', 'created_at', 'date', 'dateTime', 'placedAt', 'placed_at', 'acceptedAt', 'time_placed'];
 const K_START = ['startTime', 'start_time', 'startsAt', 'starts_at', 'scheduled', 'scheduledAt', 'kickoff', 'eventDate', 'event_date', 'begin', 'startDate'];
 const K_USER = ['user', 'username', 'userName', 'user_name', 'player', 'playerName', 'nick', 'nickname', 'handle', 'login', 'displayName', 'maskedName', 'account'];
@@ -90,6 +90,8 @@ const K_MARKET_NAME = ['market', 'marketName', 'market_name', 'betType', 'bet_ty
 const K_SELECTION_NAME = ['selection', 'selectionName', 'outcome', 'outcomeName', 'pick', 'choice', 'name', 'caption'];
 const K_EVENT_NAME = ['event', 'eventName', 'event_name', 'match', 'matchName', 'fixture', 'game', 'name', 'title'];
 const K_LINE = ['line', 'handicap', 'hcp', 'spread', 'total', 'points', 'param', 'specialValue', 'argument'];
+// BETBY carries the line inside this string rather than a numeric field.
+const K_SPECIFIERS = ['specifiers', 'specifier', 'params', 'sv', 'special'];
 const K_STATUS = ['status', 'state', 'result', 'settlement', 'outcome_status', 'betStatus'];
 const K_HOME = ['home', 'homeTeam', 'home_team', 'team1', 'competitor1', 'homeName'];
 const K_AWAY = ['away', 'awayTeam', 'away_team', 'team2', 'competitor2', 'awayName'];
@@ -115,6 +117,109 @@ function num(v: unknown): number | null {
     return Number.isFinite(n) ? n : null;
   }
   return null;
+}
+
+/**
+ * Currency symbols BETBY renders into money strings, mapped to ISO codes.
+ *
+ * `$` is genuinely ambiguous (USD/CAD/AUD/...). We resolve it to USD because
+ * that is what the books we have observed mean by it, and an adapter can
+ * override `resolveCurrencySymbol` when that is wrong for its book. The
+ * assumption is recorded here rather than buried at the call site, because
+ * getting it wrong silently mis-scales every stake in the whale detector.
+ */
+const CURRENCY_SYMBOLS: Record<string, string> = {
+  $: 'USD',
+  '€': 'EUR',
+  '£': 'GBP',
+  '₹': 'INR',
+  '¥': 'JPY',
+  '₺': 'TRY',
+  '₽': 'RUB',
+  '₩': 'KRW',
+  '₴': 'UAH',
+  '₦': 'NGN',
+  R$: 'BRL',
+  'C$': 'CAD',
+  A$: 'AUD',
+};
+
+export interface Money {
+  amount: number;
+  /** ISO code when we could resolve one, else the raw symbol, else null. */
+  currency: string | null;
+}
+
+/**
+ * Reads the money strings BETBY feeds actually contain - "50.01 $",
+ * "253124.90 €", "1,234.50 ₹" - as well as plain numbers and "USD 5.00".
+ *
+ * This exists because the generic numeric reader deliberately refuses anything
+ * that is not purely numeric, and a stake is the single most important field in
+ * the feed: it drives whale detection and every stake percentile. Silently
+ * returning null for "5.00 $" made every real row look stakeless.
+ */
+export function parseMoney(v: unknown): Money | null {
+  if (typeof v === 'number' && Number.isFinite(v)) return { amount: v, currency: null };
+  if (typeof v !== 'string') return null;
+
+  const raw = v.trim();
+  if (!raw) return null;
+
+  // Grab the number first: optional sign, digits with , or space grouping,
+  // optional decimal part. Reject anything with no digits at all.
+  const numMatch = raw.match(/-?\d[\d\s,]*(?:\.\d+)?/);
+  if (!numMatch) return null;
+  const amount = Number(numMatch[0].replace(/[\s,]/g, ''));
+  if (!Number.isFinite(amount)) return null;
+
+  // Whatever is left, minus the number, is the currency marker.
+  const marker = raw.replace(numMatch[0], '').trim();
+  if (!marker) return { amount, currency: null };
+
+  const iso = marker.match(/\b[A-Z]{3,5}\b/);
+  if (iso) return { amount, currency: iso[0] };
+
+  const symbol = CURRENCY_SYMBOLS[marker] ?? CURRENCY_SYMBOLS[marker.replace(/\s+/g, '')];
+  // An unrecognised marker is kept verbatim rather than dropped: "we saw this
+  // and could not map it" is useful, "no currency" is misleading.
+  return { amount, currency: symbol ?? marker };
+}
+
+/**
+ * BETBY encodes a market's line inside a `specifiers` string rather than a
+ * numeric field: "total=2.5", "hcp=-1.5", "setnr=2|gamenr=3". Without reading
+ * it, every handicap and total in the feed has a null line, which makes two
+ * different lines on the same market collapse to one selection key.
+ */
+export function parseSpecifiers(v: unknown): { line: number | null; period: string | null; all: Record<string, string> } {
+  const out: Record<string, string> = {};
+  if (typeof v !== 'string' || !v.trim()) return { line: null, period: null, all: out };
+  for (const part of v.split('|')) {
+    const eq = part.indexOf('=');
+    if (eq === -1) continue;
+    const k = part.slice(0, eq).trim().toLowerCase();
+    const val = part.slice(eq + 1).trim();
+    if (k) out[k] = val;
+  }
+  // Line-bearing keys, in the order we prefer them.
+  let line: number | null = null;
+  for (const k of ['total', 'hcp', 'handicap', 'spread', 'goals', 'score']) {
+    const hit = out[k];
+    if (hit === undefined) continue;
+    const n = Number(hit);
+    if (Number.isFinite(n)) {
+      line = n;
+      break;
+    }
+  }
+  // Period-ish keys describe which part of the match the market covers.
+  const periodParts: string[] = [];
+  for (const k of ['setnr', 'gamenr', 'periodnr', 'inningnr', 'quarternr', 'mapnr', 'framenr']) {
+    const hit = out[k];
+    if (hit !== undefined) periodParts.push(`${k}=${hit}`);
+  }
+  return { line, period: periodParts.length ? periodParts.join('|') : null, all: out };
 }
 
 function str(v: unknown): string | null {
@@ -597,6 +702,7 @@ function parseLeg(
   consumed.markKeys(prefix, raw, K_MARKET_NAME);
   consumed.markKeys(prefix, raw, K_SELECTION_NAME);
   consumed.markKeys(prefix, raw, K_LINE);
+  consumed.markKeys(prefix, raw, K_SPECIFIERS);
   consumed.markKeys(prefix, raw, K_ODDS);
   consumed.markKeys(prefix, raw, K_STATUS);
   consumed.markKeys(prefix, raw, K_LIVE);
@@ -607,7 +713,10 @@ function parseLeg(
   const eventName = str(pick(raw, ...K_EVENT_NAME));
   const marketName = str(pick(raw, ...K_MARKET_NAME));
   const selectionName = str(pick(raw, ...K_SELECTION_NAME));
-  const line = num(pick(raw, ...K_LINE));
+  // A numeric line field wins when present; otherwise fall back to the BETBY
+  // specifier string, which is where every real handicap and total lives.
+  const spec = parseSpecifiers(pick(raw, ...K_SPECIFIERS));
+  const line = num(pick(raw, ...K_LINE)) ?? spec.line;
 
   const rawOdds = num(pick(raw, ...K_ODDS));
   let oddsAtBet: number | null = null;
@@ -627,7 +736,14 @@ function parseLeg(
     : null;
 
   const mkKey = evKey
-    ? makeMarketKey({ sportsbookId, eventKey: evKey, sourceMarketId: str(pick(raw, ...K_MARKET_ID)), name: marketName, line })
+    ? makeMarketKey({
+        sportsbookId,
+        eventKey: evKey,
+        sourceMarketId: str(pick(raw, ...K_MARKET_ID)),
+        name: marketName,
+        line,
+        period: spec.period,
+      })
     : null;
 
   const selKey =
@@ -670,6 +786,9 @@ function parseFeedBets(
   warnings: string[],
 ): NormalizedFeedBet[] {
   const out: NormalizedFeedBet[] = [];
+  // Counted and reported once. Some feeds - BETBY's among them - carry no
+  // timestamp at all, and one warning per row would bury every other warning.
+  let missingTs = 0;
 
   for (const raw of items) {
     const prefix = `${arrayPath}[]`;
@@ -687,12 +806,15 @@ function parseFeedBets(
     const label = handleOf(raw);
     const bKey = makeBettorKey(sportsbookId, label);
     const ts = toEpochMs(pick(raw, ...K_TS));
-    if (ts === null) {
-      warnings.push('a feed row had no parseable timestamp; it is recorded with ts 0 and must not be trusted for ordering');
-    }
+    if (ts === null) missingTs++;
 
-    const stake = num(pick(raw, ...K_STAKE));
-    const currency = looksLikeCurrencyCode(pick(raw, ...K_CURRENCY)) ? str(pick(raw, ...K_CURRENCY)) : null;
+    // Stake arrives as "50.01 $" on every BETBY book we have observed, so it
+    // goes through the money reader rather than the strict numeric one.
+    const stakeMoney = parseMoney(pick(raw, ...K_STAKE));
+    const payoutMoney = parseMoney(pick(raw, ...K_PAYOUT));
+    const stake = stakeMoney ? stakeMoney.amount : null;
+    const explicitCurrency = looksLikeCurrencyCode(pick(raw, ...K_CURRENCY)) ? str(pick(raw, ...K_CURRENCY)) : null;
+    const currency = explicitCurrency ?? stakeMoney?.currency ?? payoutMoney?.currency ?? null;
 
     const rawTotal = num(pick(raw, ...K_TOTAL_ODDS)) ?? num(pick(raw, ...K_ODDS));
     let totalOdds: number | null = null;
@@ -739,13 +861,20 @@ function parseFeedBets(
       currency,
       stakeUsd: null, // no FX rate source yet; never invent one
       totalOdds,
-      potentialWin: num(pick(raw, ...K_PAYOUT)),
+      potentialWin: payoutMoney ? payoutMoney.amount : null,
       type,
       legCount: legs.length,
       live: bool(pick(raw, ...K_LIVE)),
       status: toBetStatus(pick(raw, ...K_STATUS)),
       legs,
     });
+  }
+
+  if (missingTs > 0) {
+    warnings.push(
+      `${missingTs} of ${items.length} feed rows carry no timestamp field. Their ts is 0, so ordering must come from ` +
+        'observation time (when we captured the row), not from the payload. This is normal for BETBY feeds.',
+    );
   }
 
   return out;

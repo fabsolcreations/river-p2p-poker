@@ -1,9 +1,16 @@
 # Installing the collector
 
 The collector is the part that runs inside your browser and records the traffic
-the sportsbook page already makes. It ships in two shapes. **Use the extension**
-unless you have a reason not to — the userscript cannot see inside a
-cross-origin iframe, and BETBY widgets are usually embedded in one.
+the sportsbook page already makes. It ships in two shapes.
+
+**For Duel, either works — the userscript is the simpler choice.** Duel proxies
+BETBY under its own domain (`sports-proxy.duel.com`) and there is no
+cross-origin sportsbook iframe on the page at all, so a userscript running on
+`duel.com` sees every sportsbook request. Observed 2026-09-04; if that ever
+changes, frame discovery will show it.
+
+Use the **extension** for other BETBY books, which typically do embed a
+third-party widget frame that a userscript cannot reach.
 
 Build both first:
 
@@ -43,11 +50,11 @@ reload arrow on the extension card.
 3. Confirm.
 
 Limitation, stated plainly: a userscript only runs in the top frame and in
-same-origin frames. If the sportsbook is rendered inside an iframe served from a
-different host, the userscript will capture the shell page and **not the
-sportsbook data**. You will see this immediately: the panel fills with page
-traffic but nothing classifies as `bets_feed`. That is when you switch to the
-extension.
+same-origin frames. That is fine for Duel, whose sportsbook is not in a
+cross-origin frame — but on a BETBY book that *does* use one, the userscript
+will capture the shell page and **not the sportsbook data**. You will see this
+immediately: the panel fills with page traffic but nothing classifies as
+`bets_feed`. That is when you switch to the extension.
 
 ## Start the local side
 
@@ -63,22 +70,25 @@ Everything binds to loopback. Nothing is exposed to your network.
 
 ## What to do on the site
 
-1. Log into the sportsbook **normally, yourself**. The tool never automates
-   login and never stores credentials.
-2. Open the sportsbook section and let the bets feed load.
+1. You do **not** need to log in to capture the feed — Duel's bets feed is a
+   public endpoint. Log in only if you want your own betslip and balance traffic
+   captured too, and do it **yourself**: the tool never automates login and
+   never stores credentials.
+2. Open **Sports**, then the **Bets Feed** tab, and let it run.
 3. The debug panel appears at the left edge. Drag it wherever you like — it
    defaults to the left so it does not sit on top of the betslip.
-4. Click **Discover frames**. If the sportsbook is in a cross-origin iframe, its
-   origin now appears in the extension popup under "discovered".
-5. If an origin appears there, click **Allow** next to it. Chrome asks you to
-   confirm. The collector is then injected into that frame too, and real
-   sportsbook traffic starts arriving.
+4. Click **Discover frames**. On Duel this should report no sportsbook frame —
+   that is the expected result, not a failure. On another BETBY book, any widget
+   origin it finds appears in the extension popup under "discovered".
+5. If an origin does appear there, click **Allow** next to it. Chrome asks you
+   to confirm, and the collector is then injected into that frame too.
 6. Watch the panel — or the dashboard's **Live captures** page — and let it run
    for a few minutes with the feed visible. Scroll the feed, open an event, open
    a market. More interaction means more distinct endpoints captured.
 7. Check the dashboard's **Shapes** page. Each row is one distinct payload
-   structure. The bets feed will be a cluster with a high count and, if the
-   classifier did its job, a `bets_feed` chip.
+   structure. The bets feed shows up as a repeatedly-polled cluster carrying a
+   `Bets feed` chip — on the captured sample it classifies at 97% confidence,
+   on the strength of there being 35 distinct masked handles across 50 rows.
 8. Click **Export raw capture**. That downloads an NDJSON file of everything the
    collector holds.
 

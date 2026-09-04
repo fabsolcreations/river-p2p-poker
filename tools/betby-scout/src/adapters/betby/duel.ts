@@ -1,22 +1,35 @@
 /**
  * Duel adapter.
  *
- * Right now this is host matching and nothing else, and that is the honest
- * state of it. Every Duel-specific override below is empty because we have not
- * yet seen a single real BETBY payload from duel.com - the collector exists to
- * go and get them. Filling this file in before that happens would mean
- * inventing an API and then writing code that appears to work against our own
- * invention.
+ * PROVENANCE - everything in this file was OBSERVED, not guessed.
  *
- * What goes here at Milestone 2, once a capture export comes back:
- *   - overrides for field spellings that Duel uses and generic-betby misses
- *   - the currency Duel reports stakes in, so stakeUsd stops being null
- *   - any Duel-specific wrapper the payloads are nested inside
- *   - real fixtures in tests/adapters.test.ts, replacing the invented shapes
+ * Captured 2026-09-04 from https://duel.com/sports in a clean browser, logged
+ * out, by wrapping window.fetch and window.WebSocket and reading what the page
+ * itself requested. No authentication, no bypass, no endpoint invented. The
+ * real responses are checked in at tests/fixtures/duel-*.json and the tests run
+ * against them.
  *
- * Host matching is legitimate here in a way that endpoint guessing is not: we
- * know the user is on duel.com because they told us, and matching only picks
- * which parser to use. It never filters what gets captured.
+ * WHAT THIS TOLD US, and why each part matters:
+ *
+ * 1. Duel proxies BETBY under its OWN domain: `sports-proxy.duel.com`. There is
+ *    no cross-origin BETBY iframe on the page at all - the only iframes are
+ *    Cookiebot's. That inverts the install advice we started with: a
+ *    Tampermonkey userscript on duel.com is sufficient, because the sportsbook
+ *    XHRs are issued by the duel.com page itself. The extension's
+ *    grant-an-origin flow remains useful for other BETBY books, which do embed
+ *    a third-party frame.
+ *
+ * 2. The bets feed is PUBLIC. `/api/v1/promo/bets_feed/brand/{brand}` answers
+ *    200 with 50 rows to a plain curl - no cookie, no token, no account. We are
+ *    reading a public endpoint the page already polls, which is the weakest
+ *    possible claim on the sportsbook and exactly what the project set out to
+ *    do.
+ *
+ * 3. Feed rows carry no timestamp. Ordering has to come from observation time.
+ *
+ * The brand id below is a public identifier that appears in the page's own URLs.
+ * It is recorded so we can recognise Duel's traffic, never to authenticate as
+ * anyone.
  */
 
 import type { CaptureClassification, ClassifyInput, ParseInput, ParsePreview, SportsbookAdapter } from '../../shared/types.ts';
@@ -25,18 +38,95 @@ import { classifyGeneric, parseGeneric } from './generic-betby.ts';
 export const DUEL_ID = 'betby.duel';
 export const DUEL_SPORTSBOOK_ID = 'duel';
 
-/** Hosts that are unambiguously Duel's own. */
-function isDuelHost(host: string): boolean {
-  const h = host.toLowerCase().replace(/^\[|\]$/g, '');
-  return h === 'duel.com' || h.endsWith('.duel.com');
-}
+/** Public brand identifier, observed in duel.com's own request URLs. */
+export const DUEL_BRAND_ID = '2482975601191952386';
+
+/** The host Duel serves its BETBY API from. Discovered, not assumed. */
+export const DUEL_SPORTS_HOST = 'sports-proxy.duel.com';
+
+/**
+ * Endpoints observed on 2026-09-04. This map is used ONLY to label and to raise
+ * confidence in a verdict the shape analysis already reached - never to decide
+ * what gets captured, and never as the sole basis for a classification. If Duel
+ * moves an endpoint tomorrow, the shape rules still find it and this map simply
+ * stops contributing.
+ *
+ * `{brand}` stands in for DUEL_BRAND_ID, `{lang}` for a language code, and
+ * `{cursor}` for the incrementing long-poll cursor.
+ */
+export const DUEL_OBSERVED_ENDPOINTS: ReadonlyArray<{ pattern: RegExp; kind: string; note: string }> = [
+  {
+    pattern: /^\/api\/v1\/promo\/bets_feed\/brand\/\d+$/,
+    kind: 'bets_feed',
+    note: 'public bets feed, polled; 50 rows per response, no timestamps',
+  },
+  {
+    pattern: /^\/api\/v4\/prematch\/brand\/\d+\/[a-z-]+\/\d+$/,
+    kind: 'event_list',
+    note: 'prematch tree, long-polled with an incrementing cursor',
+  },
+  {
+    pattern: /^\/api\/v4\/live\/brand\/\d+\/[a-z-]+\/\d+$/,
+    kind: 'event_list',
+    note: 'live tree, long-polled with an incrementing cursor',
+  },
+  {
+    pattern: /^\/api\/v3\/descriptions\/brand\/\d+\/markets\/[a-z-]+$/,
+    kind: 'market_list',
+    note: 'market id -> name and outcome templates; needed to name a feed leg',
+  },
+  {
+    pattern: /^\/api\/v1\/descriptions\/statuses\/[a-z-]+$/,
+    kind: 'translation',
+    note: 'status code dictionary',
+  },
+  {
+    pattern: /^\/api\/v1\/top\/events\/\d+\/country\/[A-Z]+\/currency\/[A-Z]+\/lang\/[a-z-]+$/,
+    kind: 'event_list',
+    note: 'featured events',
+  },
+  {
+    pattern: /^\/api\/v1\/side\/brand\/\d+\/\d+$/,
+    kind: 'sport_tree',
+    note: 'sport/category sidebar tree',
+  },
+  {
+    pattern: /^\/api\/v2\/auth\/brand\/\d+\/settings$/,
+    kind: 'config',
+    note: 'widget auth settings',
+  },
+  { pattern: /^\/locales\/[a-z-]+\.json$/, kind: 'translation', note: 'i18n strings' },
+  { pattern: /^\/master\/[a-z0-9-]+\/theme\.json$/, kind: 'config', note: 'widget theme' },
+];
+
+/**
+ * The live push channel, observed as:
+ *   wss://sports-proxy.duel.com/api/v1/ws_new?brand_id={brand}&lang=en
+ * Recorded for documentation; the WebSocket hook captures it on shape alone.
+ */
+export const DUEL_WS_PATH = '/api/v1/ws_new';
 
 function hostOf(value: string): string {
   try {
-    return new URL(value).hostname;
+    return new URL(value).hostname.toLowerCase();
   } catch {
     return '';
   }
+}
+
+/** duel.com and any subdomain of it, which includes sports-proxy.duel.com. */
+function isDuelHost(host: string): boolean {
+  const h = host.replace(/^\[|\]$/g, '');
+  return h === 'duel.com' || h.endsWith('.duel.com');
+}
+
+/** Matches an observed endpoint, ignoring the query string. */
+function observedEndpoint(urlPath: string): { kind: string; note: string } | null {
+  const path = urlPath.split('?')[0] ?? urlPath;
+  for (const entry of DUEL_OBSERVED_ENDPOINTS) {
+    if (entry.pattern.test(path)) return { kind: entry.kind, note: entry.note };
+  }
+  return null;
 }
 
 export const duelAdapter: SportsbookAdapter = {
@@ -45,22 +135,63 @@ export const duelAdapter: SportsbookAdapter = {
   platform: 'betby',
 
   matches({ pageOrigin, frameOrigin, url }) {
-    // The page origin is what decides the book. A BETBY widget iframe is served
-    // from a different host, and we deliberately do NOT try to recognise that
-    // host - it is discovered by the frame reporter and shown to the user, not
-    // hardcoded here.
     return isDuelHost(hostOf(pageOrigin)) || isDuelHost(hostOf(frameOrigin)) || isDuelHost(hostOf(url));
   },
 
   classify(input: ClassifyInput): CaptureClassification {
     const base = classifyGeneric(input);
-    // No Duel-specific classification rules yet - see the file header. Only the
-    // adapter id changes, so the panel shows which adapter produced the verdict.
-    return { ...base, adapterId: DUEL_ID };
+    const verdict: CaptureClassification = { ...base, adapterId: DUEL_ID };
+
+    // Only consult the observed map for traffic from the host we observed it
+    // on. A payload from anywhere else is judged on its shape alone.
+    if (!isDuelHost(input.urlHost.toLowerCase())) return verdict;
+
+    const known = observedEndpoint(input.urlPath);
+    if (!known) return verdict;
+
+    verdict.reasons = [
+      ...verdict.reasons,
+      `path matches a Duel endpoint observed on 2026-09-04: ${known.note}`,
+    ];
+
+    if (known.kind === base.kind) {
+      // Shape and observation agree. Raise confidence, but never to certainty -
+      // an endpoint can change what it returns without changing its path.
+      verdict.confidence = Math.min(0.99, Math.max(base.confidence, 0.9));
+      return verdict;
+    }
+
+    // They disagree. Say so loudly and keep the SHAPE verdict, because the
+    // payload in front of us is evidence and the map is a memory of one
+    // afternoon. A silent override here is exactly how this tool would start
+    // lying about what it is looking at.
+    verdict.reasons = [
+      ...verdict.reasons,
+      `NOTE: this path was "${known.kind}" when observed, but the payload's shape reads as "${base.kind}". ` +
+        'Keeping the shape verdict - the endpoint may have changed. Worth a look.',
+    ];
+    verdict.confidence = Math.min(base.confidence, 0.5);
+    return verdict;
   },
 
   parse(input: ParseInput): ParsePreview {
     const base = parseGeneric(input);
-    return { ...base, adapterId: DUEL_ID };
+    const warnings = [...base.warnings];
+
+    // Duel's feed gives ids for events, markets and outcomes but no names -
+    // those live in the prematch/live trees and the market descriptions. Until
+    // those are joined (Milestone 3) a leg is correctly identified and
+    // unhelpfully labelled, and saying so beats leaving a blank cell.
+    if (base.kind === 'bets_feed' && base.bets.length > 0) {
+      const unnamed = base.bets.reduce((n, b) => n + b.legs.filter((l) => l.eventName === null).length, 0);
+      if (unnamed > 0) {
+        warnings.push(
+          `${unnamed} legs reference an event by id with no name in this payload. Duel's feed carries ids only; ` +
+            'names come from the prematch/live trees and the market descriptions, which are joined at Milestone 3.',
+        );
+      }
+    }
+
+    return { ...base, adapterId: DUEL_ID, warnings };
   },
 };
