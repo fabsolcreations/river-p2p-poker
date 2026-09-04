@@ -40,6 +40,13 @@ export const CATALOG = {
   "cow-body-pillow":        { name: "Duel Cow Body Pillow",   price: 88,    sizes: ONE_SIZE, colors: ["White"] },
   "duel-condoms":           { name: "Duel Dick Condoms",      price: 69.69, sizes: ONE_SIZE, colors: ["Navy"] },
 
+  // ---- Drop 005: Monarch's designs. No PRINTFUL_VARIANTS yet - these have
+  // no supplier mapping, so checkout refuses them and only "Want this made"
+  // works, which is the correct state until the blanks are chosen.
+  "mgga-cap":               { name: "Make Gambling Great Again Cap", price: 30, sizes: ONE_SIZE, colors: ["Navy","Camo"] },
+  "cat-gamble-cap":         { name: "Maybe Your Cat Cap",       price: 30, sizes: ONE_SIZE, colors: ["Navy"] },
+  "hotdog-hoodie":          { name: "Hot Dog Hoodie",           price: 74, sizes: APPAREL, colors: ["White"] },
+
   // Not actually for sale. It's a bit. Rejected at checkout on purpose.
   "the-entire-merch-store": { name: "The Entire Merch Store",  price: 1000000000, sizes: ONE_SIZE,
                               gag: "The Entire Merch Store isn't sold through checkout. DMs are open." },
