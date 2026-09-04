@@ -45,7 +45,7 @@ import {
   selectionKey as makeSelectionKey,
 } from '../../shared/ids.ts';
 import { isValidDecimalOdds } from '../../shared/odds.ts';
-import { resolveLeg, type BetbyReference } from './dictionary.ts';
+import { parseEventTree, resolveLeg, renderTemplate, type BetbyReference } from './dictionary.ts';
 import {
   findObjectArrays,
   flattenPaths,
@@ -221,6 +221,22 @@ export function parseSpecifiers(v: unknown): { line: number | null; period: stri
     if (hit !== undefined) periodParts.push(`${k}=${hit}`);
   }
   return { line, period: periodParts.length ? periodParts.join('|') : null, all: out };
+}
+
+/**
+ * The id of a BETBY market INSTANCE.
+ *
+ * `market_id` alone is the market *template* - 18 is "Total" for every line on
+ * every event. The instance is the pair (market_id, specifiers): "Total 2.5" and
+ * "Total 3.5" are different markets with different prices, and collapsing them
+ * makes one selection key carry several contradictory prices at the same
+ * instant, which quietly destroys every price history and every attempt to join
+ * a bet to the line it was taken at.
+ */
+export function betbyMarketSourceId(marketId: string | null, specifierKey: string | null | undefined): string | null {
+  if (marketId === null) return null;
+  const spec = (specifierKey ?? '').trim();
+  return spec ? `${marketId}|${spec}` : marketId;
 }
 
 function str(v: unknown): string | null {
@@ -783,7 +799,7 @@ function parseLeg(
     ? makeMarketKey({
         sportsbookId,
         eventKey: evKey,
-        sourceMarketId: str(pick(raw, ...K_MARKET_ID)),
+        sourceMarketId: betbyMarketSourceId(str(pick(raw, ...K_MARKET_ID)), specifierRaw),
         name: marketName,
         line,
         period: spec.period,
@@ -1093,6 +1109,149 @@ function parseEventList(
   return { events, markets, selections, snapshots };
 }
 
+
+/**
+ * Turns a BETBY event tree into normalized entities.
+ *
+ * The tree is the only payload that carries a price for every outcome at once,
+ * so this is where odds history comes from. Names are filled in from the market
+ * dictionary when it has been captured; without it the rows are still correct,
+ * just unlabelled.
+ */
+function parseTreeEntities(
+  json: unknown,
+  sportsbookId: string,
+  captureId: string | null,
+  now: number,
+  refs: BetbyReference | null,
+  warnings: string[],
+): {
+  events: NormalizedEvent[];
+  markets: NormalizedMarket[];
+  selections: NormalizedSelection[];
+  snapshots: OddsSnapshot[];
+} {
+  const events: NormalizedEvent[] = [];
+  const markets: NormalizedMarket[] = [];
+  const selections: NormalizedSelection[] = [];
+  const snapshots: OddsSnapshot[] = [];
+
+  const tree = parseEventTree(json);
+  if (!tree) return { events, markets, selections, snapshots };
+
+  let droppedPrices = 0;
+
+  for (const event of tree.events.values()) {
+    const competitors = event.competitors.map((c) => c.name);
+    const sport = event.sportId !== null ? (tree.sports.get(event.sportId) ?? null) : null;
+    const league = event.tournamentId !== null ? (tree.tournaments.get(event.tournamentId) ?? null) : null;
+
+    const evKey = makeEventKey({ sportsbookId, sourceEventId: event.id });
+    events.push({
+      key: evKey,
+      sportsbookId,
+      sourceEventId: event.id,
+      sport,
+      league,
+      competitors,
+      home: competitors[0] ?? null,
+      away: competitors[1] ?? null,
+      name: competitors.length >= 2 ? competitors.join(' vs ') : (competitors[0] ?? null),
+      startTime: event.scheduled,
+      live: null,
+      status: event.status !== null ? String(event.status) : null,
+    });
+
+    for (const [marketId, bySpec] of event.markets) {
+      const description = refs?.markets.get(marketId);
+      for (const [specifierKey, byOutcome] of bySpec) {
+        const spec = parseSpecifiers(specifierKey);
+        const tplCtx = { specifiers: spec.all, competitors };
+        const marketName = description ? renderTemplate(description.name, tplCtx) : null;
+
+        const sourceMarketId = betbyMarketSourceId(marketId, specifierKey);
+        const mkKey = makeMarketKey({
+          sportsbookId,
+          eventKey: evKey,
+          sourceMarketId,
+          name: marketName,
+          line: spec.line,
+          period: spec.period,
+        });
+        markets.push({
+          key: mkKey,
+          eventKey: evKey,
+          sportsbookId,
+          sourceMarketId,
+          type: description?.marketType ?? null,
+          name: marketName,
+          line: spec.line,
+          period: spec.period,
+          status: null,
+        });
+
+        for (const [outcomeId, priceRaw] of byOutcome) {
+          const price = num(priceRaw);
+          if (price === null || !isValidDecimalOdds(price)) {
+            droppedPrices += 1;
+            continue;
+          }
+
+          const template = description?.variants.get(specifierKey) ?? description?.variants.get('');
+          const outcomeName = template?.get(outcomeId);
+          const selName = outcomeName !== undefined ? renderTemplate(outcomeName, tplCtx) : null;
+
+          const selKey = makeSelectionKey({
+            sportsbookId,
+            eventKey: evKey,
+            marketKey: mkKey,
+            sourceSelectionId: outcomeId,
+            name: selName,
+            line: spec.line,
+          });
+          selections.push({
+            key: selKey,
+            marketKey: mkKey,
+            eventKey: evKey,
+            sportsbookId,
+            sourceSelectionId: outcomeId,
+            name: selName,
+            side: null,
+            line: spec.line,
+            decimalOdds: price,
+            status: null,
+          });
+          snapshots.push({
+            sportsbookId,
+            eventKey: evKey,
+            marketKey: mkKey,
+            selectionKey: selKey,
+            // Observation time, not payload time: the tree says what the price
+            // IS, never when it became that.
+            ts: now,
+            decimalOdds: price,
+            line: spec.line,
+            status: null,
+            captureId,
+          });
+        }
+      }
+    }
+  }
+
+  if (droppedPrices > 0) {
+    warnings.push(`${droppedPrices} outcome prices were outside the valid decimal-odds range and were dropped.`);
+  }
+  if (!refs || refs.markets.size === 0) {
+    warnings.push(
+      'No market dictionary captured yet, so markets and selections are stored with ids but no names. ' +
+        'They are filled in automatically once the descriptions endpoint is captured.',
+    );
+  }
+
+  return { events, markets, selections, snapshots };
+}
+
 export function parseGeneric(input: ParseInput): ParsePreview {
   const { classification, sportsbookId, ctx, captureId } = input;
   const kind = classification.kind;
@@ -1118,6 +1277,18 @@ export function parseGeneric(input: ParseInput): ParsePreview {
     if (preview.bets.length === 0) {
       warnings.push('classified as a bets feed but no row yielded a readable bet - the field names differ from every spelling we try');
     }
+  } else if ((kind === 'event_list' || kind === 'event_detail') && parseEventTree(input.json)) {
+    // BETBY ships its event catalogue as a map keyed by id, not as an array of
+    // records, so the array-shaped reader below never sees it. This branch
+    // handles the map form and is also where odds snapshots come from: the tree
+    // carries a current price for every outcome, which is the raw material for
+    // line movement and closing-line value.
+    const r = parseTreeEntities(input.json, sportsbookId, captureId, ctx.now, refs, warnings);
+    preview.events = r.events;
+    preview.markets = r.markets;
+    preview.selections = r.selections;
+    preview.oddsSnapshots = r.snapshots;
+    consumed.mark('events', 'sports', 'categories', 'tournaments');
   } else if ((kind === 'event_list' || kind === 'event_detail') && (biggest || isObj(input.json))) {
     const items = biggest ? biggest.items : [input.json as Record<string, unknown>];
     const path = biggest ? biggest.path : '$';

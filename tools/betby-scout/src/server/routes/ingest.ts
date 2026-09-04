@@ -13,7 +13,7 @@ import type { FastifyInstance } from 'fastify';
 import type { FrameReport, IngestBatch, RawCapture } from '../../shared/types.ts';
 import { PROTOCOL_VERSION } from '../../shared/types.ts';
 import { toIngestResult } from '../db/db.ts';
-import { classifyCapture } from '../../adapters/registry.ts';
+import { classifyCapture, parseCapture } from '../../adapters/registry.ts';
 import type { ScoutServerConfig } from '../config.ts';
 import type { ServerContext } from '../index.ts';
 
@@ -164,6 +164,44 @@ export function reclassify(batch: IngestBatch): number {
   return changed;
 }
 
+/**
+ * Parses accepted captures and persists the normalized rows.
+ *
+ * Failures here are logged and swallowed: normalization is derived data, and
+ * raw_captures is append-only and kept forever, so a bad parse costs a backfill
+ * rather than the capture itself. Losing an ingest because a parser threw would
+ * be trading the irreplaceable for the reproducible.
+ */
+export function normalizeAccepted(ctx: ServerContext, captures: readonly RawCapture[]): void {
+  if (captures.length === 0) return;
+  const refs = ctx.refs.get();
+  const entries: Array<{ preview: ReturnType<typeof parseCapture>; capture: RawCapture; observedAt: number }> = [];
+
+  for (const capture of captures) {
+    try {
+      const observedAt = capture.tsServer ?? Date.now();
+      const preview = parseCapture(capture, observedAt, refs);
+      if (
+        preview.bets.length > 0 ||
+        preview.events.length > 0 ||
+        preview.oddsSnapshots.length > 0 ||
+        preview.markets.length > 0
+      ) {
+        entries.push({ preview, capture, observedAt });
+      }
+    } catch {
+      // Next capture; the raw row is already safely stored.
+    }
+  }
+
+  if (entries.length === 0) return;
+  try {
+    ctx.db.writeNormalized(entries);
+  } catch {
+    // Left unparsed, so the backfill picks it up again.
+  }
+}
+
 export function registerIngestRoutes(app: FastifyInstance, ctx: ServerContext): void {
   const { db, hub, config, refs } = ctx;
 
@@ -187,9 +225,10 @@ export function registerIngestRoutes(app: FastifyInstance, ctx: ServerContext): 
     reclassify(validated.batch);
 
     const stored = db.insertCaptures(validated.batch, Date.now());
-    // Absorb any dictionary payloads before broadcasting, so a dashboard that
-    // re-parses on the back of this event already sees the new names.
+    // Absorb any dictionary payloads BEFORE normalizing, so bets in the same
+    // batch as their dictionary come out named on the first pass.
     for (const capture of stored.accepted) refs.observe(capture);
+    normalizeAccepted(ctx, stored.accepted);
     hub.broadcastCaptures(stored.accepted);
 
     await reply.send(toIngestResult(stored));

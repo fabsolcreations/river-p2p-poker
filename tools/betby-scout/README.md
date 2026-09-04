@@ -45,7 +45,7 @@ on the site once it is running.
 
 ```bash
 npm run build      # collector + dashboard + server
-npm test           # 118 tests
+npm test           # 127 tests
 npm run typecheck
 ```
 
@@ -122,6 +122,19 @@ It reduces exposure; it is not a guarantee. Skim an export before sharing it.
 
 ### Storage
 
+Parsed captures become rows in `events`, `markets`, `selections`,
+`odds_snapshots`, `bettors`, `feed_bets` and `feed_bet_legs`. Three properties
+make that history trustworthy, and each has a test:
+
+- **Idempotent.** The feed is polled every few seconds and returns the same 50
+  rows. Re-ingesting an identical poll writes *nothing* — otherwise every stake
+  and every sample count would inflate without bound.
+- **First-seen wins.** A bet's timestamp is when we first observed it and never
+  moves, because BETBY's feed carries no time of its own.
+- **Prices are stored on change, not on observation.** "Never discard historical
+  odds" means keeping every move; a row per poll per selection would add millions
+  of identical rows a day and bury the few that matter.
+
 Append-only where it counts. `odds_snapshots` and `feed_bet_status_history` are
 never rewritten — a resettlement is a new row, not an edit. That is what makes
 closing-line value computable after the fact, and it is the only real defence
@@ -137,9 +150,8 @@ displays real traffic, and it has now been run against Duel's live sportsbook.
 |---|---|
 | ✅ M1 | Project structure, collector, debug panel, server, live dashboard |
 | ✅ M2 | **Duel's BETBY API reverse-engineered from real traffic** — see below |
-| ✅ M3a | Feed legs joined to real event, market and outcome names |
-| ⬜ M3b | Persist normalized rows into the schema (tables already exist) |
-| ⬜ M4–M5 | Realtime opportunity dashboard, odds history and line movement |
+| ✅ M3 | Feed legs named, and normalized rows persisted with odds history |
+| ⬜ M4-M5 | Fair prices, line-movement detection, opportunity ranking |
 | ⬜ M6–M7 | Bettor tracking, sharpness score |
 | ⬜ M8 | Signal engine |
 | ⬜ M9 | Backtesting |

@@ -17,6 +17,7 @@ import { Shell } from './components/Shell.tsx';
 import { DEFAULT_ROUTE, parseHash, type ParsedRoute } from './components/Nav.tsx';
 import { useServerEvents } from './lib/ws.ts';
 import { LiveCaptures } from './pages/LiveCaptures.tsx';
+import { Bets } from './pages/Bets.tsx';
 import { Hosts } from './pages/Hosts.tsx';
 import { Shapes } from './pages/Shapes.tsx';
 import { Frames } from './pages/Frames.tsx';
@@ -86,6 +87,9 @@ export function App(): ReactNode {
 
   let page: ReactNode;
   switch (route.id) {
+    case 'bets':
+      page = <Bets now={now} />;
+      break;
     case 'hosts':
       page = <Hosts now={now} />;
       break;

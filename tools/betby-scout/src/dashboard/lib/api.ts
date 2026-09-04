@@ -509,3 +509,113 @@ export function decodeCaptureBody(capture: RawCapture): DecodedBody {
     return { text: capture.body, note: 'Binary frame that is not UTF-8 text. Shown as the base64 the collector recorded.' };
   }
 }
+
+
+/* ------------------------------------------------------------------ *
+ * Normalized bets
+ * ------------------------------------------------------------------ */
+
+export interface StoredLeg {
+  idx: number;
+  sport: string | null;
+  league: string | null;
+  eventName: string | null;
+  marketName: string | null;
+  selectionName: string | null;
+  line: number | null;
+  oddsAtBet: number | null;
+  currentOdds: number | null;
+  status: string;
+}
+
+export interface StoredBet {
+  betKey: string;
+  sourceBetId: string | null;
+  ts: number;
+  bettorKey: string;
+  bettorLabel: string | null;
+  stake: number | null;
+  currency: string | null;
+  totalOdds: number | null;
+  potentialWin: number | null;
+  type: string;
+  legCount: number;
+  status: string;
+  firstSeen: number;
+  lastSeen: number;
+  legs: StoredLeg[];
+}
+
+export interface BetPage {
+  bets: StoredBet[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface BetFilters {
+  type?: string;
+  sport?: string;
+  minStake?: number;
+  q?: string;
+  sort?: string;
+  limit?: number;
+}
+
+export interface StakeDistribution {
+  samples: number;
+  currency?: string;
+  min?: number;
+  p50?: number;
+  p90?: number;
+  p99?: number;
+  max?: number;
+  note?: string;
+}
+
+export async function listBets(filters: BetFilters = {}): Promise<BetPage> {
+  const params = new URLSearchParams();
+  for (const [k, v] of Object.entries(filters)) {
+    if (v === undefined || v === '' || v === null) continue;
+    params.set(k, String(v));
+  }
+  const payload = await request('/bets' + (params.toString() ? '?' + params.toString() : ''));
+  const root = isRecord(payload) ? payload : {};
+  return {
+    bets: Array.isArray(root['bets']) ? (root['bets'] as StoredBet[]) : [],
+    total: num(root['total']) ?? 0,
+    limit: num(root['limit']) ?? 0,
+    offset: num(root['offset']) ?? 0,
+  };
+}
+
+export async function getStakeDistribution(): Promise<StakeDistribution> {
+  const payload = await request('/bets/stakes');
+  const root = isRecord(payload) ? payload : {};
+  // `samples: 0` is the honest default: the server returns a note instead of a
+  // distribution when it has nothing comparable to measure against yet.
+  return {
+    samples: num(root['samples']) ?? 0,
+    currency: typeof root['currency'] === 'string' ? root['currency'] : undefined,
+    min: num(root['min']) ?? undefined,
+    p50: num(root['p50']) ?? undefined,
+    p90: num(root['p90']) ?? undefined,
+    p99: num(root['p99']) ?? undefined,
+    max: num(root['max']) ?? undefined,
+    note: typeof root['note'] === 'string' ? root['note'] : undefined,
+  };
+}
+
+export interface NormalizedCounts {
+  counts: Record<string, number>;
+  refs: Record<string, unknown>;
+}
+
+export async function getNormalized(): Promise<NormalizedCounts> {
+  const payload = await request('/normalized');
+  const root = isRecord(payload) ? payload : {};
+  return {
+    counts: isRecord(root['counts']) ? (root['counts'] as Record<string, number>) : {},
+    refs: isRecord(root['refs']) ? (root['refs'] as Record<string, unknown>) : {},
+  };
+}

@@ -38,12 +38,92 @@ import type {
   HostStat,
   IngestBatch,
   IngestResult,
+  ParsePreview,
   RawCapture,
   ShapeStat,
 } from '../../shared/types.ts';
 import { MIN_CLASSIFY_CONFIDENCE } from '../../shared/types.ts';
 import { topLevelKeys } from '../../shared/shape.ts';
 import { migrate, type MigrationReport } from './migrate.ts';
+import {
+  addNormalizeResults,
+  emptyNormalizeResult,
+  writeNormalized as writeNormalizedRows,
+  type NormalizeResult,
+} from './normalize.ts';
+
+/**
+ * Bumping this makes every stored capture eligible for re-parsing, which is how
+ * an adapter improvement reaches traffic captured weeks ago.
+ */
+export const PARSER_VERSION = 1;
+
+export interface FeedBetFilter {
+  sportsbookId?: string;
+  bettorKey?: string;
+  type?: string;
+  status?: string;
+  sport?: string;
+  minStake?: number;
+  since?: number;
+  q?: string;
+  limit?: number;
+  offset?: number;
+  sort?: string;
+  dir?: string;
+}
+
+export interface StoredFeedBetLeg {
+  idx: number;
+  eventKey: string | null;
+  sourceEventId: string | null;
+  sport: string | null;
+  league: string | null;
+  eventName: string | null;
+  marketName: string | null;
+  selectionKey: string | null;
+  selectionName: string | null;
+  line: number | null;
+  oddsAtBet: number | null;
+  currentOdds: number | null;
+  status: string;
+}
+
+export interface StoredFeedBet {
+  betKey: string;
+  sportsbookId: string;
+  sourceBetId: string | null;
+  ts: number;
+  bettorKey: string;
+  bettorLabel: string | null;
+  stake: number | null;
+  currency: string | null;
+  totalOdds: number | null;
+  potentialWin: number | null;
+  type: string;
+  legCount: number;
+  status: string;
+  firstSeen: number;
+  lastSeen: number;
+  legs: StoredFeedBetLeg[];
+}
+
+export interface FeedBetPage {
+  bets: StoredFeedBet[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface StakeDistribution {
+  samples: number;
+  currency: string;
+  min: number;
+  p50: number;
+  p90: number;
+  p99: number;
+  max: number;
+}
 
 /* ------------------------------------------------------------------ *
  * Allowed enum values. These are checked, not trusted.
@@ -131,6 +211,17 @@ function asNumberOrNull(v: unknown): number | null {
   if (typeof v === 'number') return Number.isFinite(v) ? v : null;
   if (typeof v === 'bigint') return Number(v);
   return null;
+}
+
+/** Integer coercion for COUNT(*) and id columns. */
+function asInt(v: unknown): number {
+  return Math.trunc(asNumber(v, 0));
+}
+
+/** Bounds a caller-supplied limit so a query can never ask for everything. */
+function clampInt(v: number, min: number, max: number): number {
+  if (!Number.isFinite(v)) return min;
+  return Math.min(max, Math.max(min, Math.trunc(v)));
 }
 
 function asBool(v: unknown): boolean {
@@ -1205,6 +1296,202 @@ export class ScoutDb {
    * that is the default, because CONTRACT.md rule 6 makes history append-only
    * and a deleted capture cannot be re-parsed by a better adapter later.
    */
+  /* ---------------- normalized entities ---------------- */
+
+  /**
+   * Persists a batch of parsed captures in one transaction.
+   *
+   * Batched deliberately: one bets-feed poll yields 50 bets with ~90 legs, and
+   * committing each row separately turns one fsync into a hundred. The batch is
+   * atomic, so a crash mid-write leaves no half-stored bet.
+   */
+  writeNormalized(
+    entries: ReadonlyArray<{ preview: ParsePreview; capture: RawCapture; observedAt: number }>,
+  ): NormalizeResult {
+    const total = emptyNormalizeResult();
+    if (entries.length === 0) return total;
+
+    this.db.exec('BEGIN');
+    try {
+      for (const entry of entries) {
+        addNormalizeResults(total, writeNormalizedRows(this.db, entry.preview, entry.capture, entry.observedAt));
+        this.markParsed(entry.capture.captureId, entry.observedAt);
+      }
+      this.db.exec('COMMIT');
+    } catch (err) {
+      this.db.exec('ROLLBACK');
+      throw err;
+    }
+    return total;
+  }
+
+  /** Records that a capture has been through the current parser. */
+  private markParsed(captureId: string, nowMs: number): void {
+    this.db
+      .prepare('UPDATE raw_captures SET parsed_at = ?, parser_version = ? WHERE capture_id = ?')
+      .run(nowMs, PARSER_VERSION, captureId);
+  }
+
+  /** Captures the current parser has never seen. Drives the backfill. */
+  unparsedCaptures(limit = 500): RawCapture[] {
+    const rows = this.db
+      .prepare(
+        'SELECT * FROM raw_captures WHERE parsed_at IS NULL OR parser_version < ? ORDER BY ts_server ASC LIMIT ?',
+      )
+      .all(PARSER_VERSION, clampInt(limit, 1, 5000));
+    return rows.map((r) => rowToCapture(r));
+  }
+
+  listFeedBets(filter: FeedBetFilter = {}): FeedBetPage {
+    const where: string[] = [];
+    const params: Array<string | number> = [];
+
+    if (filter.sportsbookId) {
+      where.push('b.sportsbook_id = ?');
+      params.push(filter.sportsbookId);
+    }
+    if (filter.bettorKey) {
+      where.push('b.bettor_key = ?');
+      params.push(filter.bettorKey);
+    }
+    if (filter.type) {
+      where.push('b.type = ?');
+      params.push(filter.type);
+    }
+    if (filter.status) {
+      where.push('b.status = ?');
+      params.push(filter.status);
+    }
+    if (typeof filter.minStake === 'number') {
+      where.push('b.stake >= ?');
+      params.push(filter.minStake);
+    }
+    if (typeof filter.since === 'number') {
+      where.push('b.ts >= ?');
+      params.push(filter.since);
+    }
+    if (filter.sport) {
+      where.push('EXISTS (SELECT 1 FROM feed_bet_legs l WHERE l.bet_key = b.bet_key AND l.sport = ?)');
+      params.push(filter.sport);
+    }
+    if (filter.q) {
+      where.push(
+        'EXISTS (SELECT 1 FROM feed_bet_legs l WHERE l.bet_key = b.bet_key AND (l.event_name LIKE ? OR l.selection_name LIKE ? OR l.league LIKE ?))',
+      );
+      const like = '%' + filter.q + '%';
+      params.push(like, like, like);
+    }
+
+    const clause = where.length ? 'WHERE ' + where.join(' AND ') : '';
+    const countRow = this.db.prepare('SELECT COUNT(*) AS n FROM feed_bets b ' + clause).get(...params) ?? {};
+    const total = asInt(countRow['n']);
+
+    const limit = clampInt(filter.limit ?? 100, 1, 500);
+    const offset = Math.max(0, filter.offset ?? 0);
+    // Sort key chosen from a fixed set - never interpolated from user input.
+    const sort = filter.sort === 'stake' ? 'b.stake' : filter.sort === 'odds' ? 'b.total_odds' : 'b.ts';
+    const dir = filter.dir === 'asc' ? 'ASC' : 'DESC';
+
+    const rows = this.db
+      .prepare(
+        'SELECT b.*, t.label AS bettor_label FROM feed_bets b LEFT JOIN bettors t ON t.bettor_key = b.bettor_key ' +
+          clause +
+          ' ORDER BY ' +
+          sort +
+          ' ' +
+          dir +
+          ' LIMIT ? OFFSET ?',
+      )
+      .all(...params, limit, offset);
+
+    return { bets: rows.map((r) => this.hydrateBet(r)), total, limit, offset };
+  }
+
+  private hydrateBet(row: Record<string, unknown>): StoredFeedBet {
+    const betKey = asText(row['bet_key']);
+    const legs = this.db
+      .prepare('SELECT * FROM feed_bet_legs WHERE bet_key = ? ORDER BY idx ASC')
+      .all(betKey)
+      .map((l) => ({
+        idx: asInt(l['idx']),
+        eventKey: asTextOrNull(l['event_key']),
+        sourceEventId: asTextOrNull(l['source_event_id']),
+        sport: asTextOrNull(l['sport']),
+        league: asTextOrNull(l['league']),
+        eventName: asTextOrNull(l['event_name']),
+        marketName: asTextOrNull(l['market_name']),
+        selectionKey: asTextOrNull(l['selection_key']),
+        selectionName: asTextOrNull(l['selection_name']),
+        line: asNumberOrNull(l['line']),
+        oddsAtBet: asNumberOrNull(l['odds_at_bet']),
+        currentOdds: asNumberOrNull(l['current_odds']),
+        status: asText(l['status'] ?? 'unknown'),
+      }));
+
+    return {
+      betKey,
+      sportsbookId: asText(row['sportsbook_id']),
+      sourceBetId: asTextOrNull(row['source_bet_id']),
+      ts: asInt(row['ts']),
+      bettorKey: asText(row['bettor_key']),
+      bettorLabel: asTextOrNull(row['bettor_label']),
+      stake: asNumberOrNull(row['stake']),
+      currency: asTextOrNull(row['currency']),
+      totalOdds: asNumberOrNull(row['total_odds']),
+      potentialWin: asNumberOrNull(row['potential_win']),
+      type: asText(row['type'] ?? 'unknown'),
+      legCount: asInt(row['leg_count']),
+      status: asText(row['status'] ?? 'unknown'),
+      firstSeen: asInt(row['first_seen']),
+      lastSeen: asInt(row['last_seen']),
+      legs,
+    };
+  }
+
+  /**
+   * Stake distribution over a window, so the UI can say how unusual a stake is.
+   *
+   * Reported as percentiles and a sample count, never as a verdict. A big bet is
+   * a fact; "big bet therefore good bet" is the single most seductive error this
+   * project exists to avoid.
+   *
+   * USD only, deliberately: without an FX rate, mixing currencies would rank a
+   * 5000 INR stake alongside a 5000 USD one and call both whales.
+   */
+  stakeDistribution(sportsbookId: string, sinceMs: number): StakeDistribution | null {
+    const values = this.db
+      .prepare(
+        "SELECT stake FROM feed_bets WHERE sportsbook_id = ? AND ts >= ? AND stake IS NOT NULL AND currency = 'USD' ORDER BY stake ASC",
+      )
+      .all(sportsbookId, sinceMs)
+      .map((r) => asNumberOrNull(r['stake']))
+      .filter((n): n is number => n !== null);
+
+    if (values.length === 0) return null;
+    const at = (p: number): number =>
+      values[Math.min(values.length - 1, Math.floor((p / 100) * values.length))] ?? 0;
+    return {
+      samples: values.length,
+      currency: 'USD',
+      min: values[0] ?? 0,
+      p50: at(50),
+      p90: at(90),
+      p99: at(99),
+      max: values[values.length - 1] ?? 0,
+    };
+  }
+
+  normalizedCounts(): Record<string, number> {
+    // Fixed list - a table name never comes from a caller.
+    const tables = ['events', 'markets', 'selections', 'odds_snapshots', 'bettors', 'feed_bets', 'feed_bet_legs'];
+    const out: Record<string, number> = {};
+    for (const t of tables) {
+      const row = this.db.prepare('SELECT COUNT(*) AS n FROM ' + t).get() ?? {};
+      out[t] = asInt(row['n']);
+    }
+    return out;
+  }
+
   pruneCaptures(days: number, nowMs: number): { deleted: number; cutoff: number } {
     if (!Number.isFinite(days) || days <= 0) return { deleted: 0, cutoff: 0 };
     const cutoff = nowMs - Math.trunc(days) * 86_400_000;

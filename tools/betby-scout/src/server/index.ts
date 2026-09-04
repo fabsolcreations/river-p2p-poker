@@ -46,11 +46,18 @@ import { openDb, toIngestResult, type ScoutDb } from './db/db.ts';
 import { Hub, parseCollectorMessage, parseIdentity, type HubSocket } from './hub.ts';
 import { ReferenceStore } from './refs.ts';
 import { registerHealthRoutes } from './routes/health.ts';
-import { registerIngestRoutes, reclassify, validateIngestBatch, validateFrameReport } from './routes/ingest.ts';
+import {
+  normalizeAccepted,
+  registerIngestRoutes,
+  reclassify,
+  validateIngestBatch,
+  validateFrameReport,
+} from './routes/ingest.ts';
 import { registerCaptureRoutes } from './routes/captures.ts';
 import { registerStatsRoutes } from './routes/stats.ts';
 import { registerConfigRoutes } from './routes/config.ts';
 import { registerExportRoutes } from './routes/export.ts';
+import { registerBetRoutes } from './routes/bets.ts';
 
 /** Everything a route module needs. Passed explicitly rather than via decorators. */
 export interface ServerContext {
@@ -246,6 +253,7 @@ export async function buildServer(options: BuildOptions = {}): Promise<FastifyIn
   registerStatsRoutes(app, ctx);
   registerConfigRoutes(app, ctx);
   registerExportRoutes(app, ctx);
+  registerBetRoutes(app, ctx);
   registerWebsockets(app, ctx);
   registerDashboard(app, ctx);
 
@@ -322,6 +330,7 @@ function registerWebsockets(app: FastifyInstance, ctx: ServerContext): void {
             reclassify(validated.batch);
             const stored = db.insertCaptures(validated.batch, Date.now());
             for (const capture of stored.accepted) ctx.refs.observe(capture);
+            normalizeAccepted(ctx, stored.accepted);
             hub.broadcastCaptures(stored.accepted);
             socket.send(JSON.stringify({ type: 'ingest-result', result: toIngestResult(stored) }));
             break;

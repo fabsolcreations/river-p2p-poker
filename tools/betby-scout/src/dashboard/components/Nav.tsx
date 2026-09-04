@@ -15,11 +15,11 @@ import type { ReactNode } from 'react';
  * dashboard could do - a reader cannot tell a fake +EV table from a real one.
  */
 
-export type RouteId = 'captures' | 'hosts' | 'shapes' | 'frames' | 'settings';
+export type RouteId = 'captures' | 'bets' | 'hosts' | 'shapes' | 'frames' | 'settings';
 
 export const DEFAULT_ROUTE: RouteId = 'captures';
 
-const ROUTE_IDS: readonly RouteId[] = ['captures', 'hosts', 'shapes', 'frames', 'settings'];
+const ROUTE_IDS: readonly RouteId[] = ['captures', 'bets', 'hosts', 'shapes', 'frames', 'settings'];
 
 export interface ParsedRoute {
   id: RouteId;
@@ -65,6 +65,10 @@ export const PAGE_META: Record<RouteId, PageMeta> = {
     title: 'Live captures',
     subtitle: 'Everything the collector saw, newest first. This is where you find the bets feed.',
   },
+  bets: {
+    title: 'Bets',
+    subtitle: "Other people's bets, parsed and named. Stake percentiles are facts about size, not verdicts about value.",
+  },
   hosts: {
     title: 'Hosts',
     subtitle: 'Which origins served data rather than assets. Host names are discovered, never assumed.',
@@ -103,8 +107,9 @@ const FUTURE_ITEMS: FutureItem[] = [
   },
   {
     label: 'Whale Bets',
-    milestone: 'Milestone 3',
-    blocker: 'Needs parsed feed bets with stake and currency. No capture has been mapped to a bet yet.',
+    milestone: 'Milestone 5',
+    blocker:
+      'Bets and stakes are parsed and stored - see Bets. A whale view additionally needs a stake distribution with enough history to make a percentile mean something.',
   },
   {
     label: 'Sharp Bettors',
@@ -114,7 +119,8 @@ const FUTURE_ITEMS: FutureItem[] = [
   {
     label: 'Steam Moves',
     milestone: 'Milestone 5',
-    blocker: 'Needs an odds snapshot history to compare a price against its own past.',
+    blocker:
+      'Odds snapshots are now recorded whenever a price moves. This needs that history to span enough time to tell a move from noise.',
   },
   {
     label: 'Price Edges',
@@ -124,7 +130,7 @@ const FUTURE_ITEMS: FutureItem[] = [
   {
     label: 'Popular Legs',
     milestone: 'Milestone 5',
-    blocker: 'Needs legs extracted from many feed bets, so it waits on the same parser as Whale Bets.',
+    blocker: 'Legs are extracted and stored. This needs enough distinct feed polls for a repeat to mean something.',
   },
   {
     label: 'Backtesting',
@@ -138,7 +144,7 @@ const FUTURE_ITEMS: FutureItem[] = [
   },
 ];
 
-const DISCOVERY: RouteId[] = ['captures', 'hosts', 'shapes', 'frames'];
+const DISCOVERY: RouteId[] = ['captures', 'bets', 'hosts', 'shapes', 'frames'];
 
 export function Nav({ current }: { current: RouteId }): ReactNode {
   return (
