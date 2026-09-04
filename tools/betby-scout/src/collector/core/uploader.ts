@@ -99,9 +99,19 @@ function isCollectorCommand(v: unknown): v is CollectorCommand {
 }
 
 /** The server's reply to an ingest batch, recognised structurally. */
+/**
+ * The server replies `{type:'ingest-result', result:{ok, accepted, ...}}`. The
+ * HTTP path returns the bare result instead, so both shapes are accepted here -
+ * matching only the bare one would leave every websocket batch unconfirmed,
+ * which the reaper eventually re-queues, producing a permanent resend loop that
+ * the server silently dedupes and nobody ever notices.
+ */
 function isIngestResult(v: unknown): boolean {
   if (v === null || typeof v !== 'object') return false;
-  const o = v as { ok?: unknown; accepted?: unknown };
+  const envelope = v as { type?: unknown; result?: unknown };
+  const body = envelope.type === 'ingest-result' && envelope.result !== undefined ? envelope.result : v;
+  if (body === null || typeof body !== 'object') return false;
+  const o = body as { ok?: unknown; accepted?: unknown };
   return typeof o.ok === 'boolean' && typeof o.accepted === 'number';
 }
 
@@ -250,10 +260,12 @@ export function createUploader(deps: UploaderDeps): {
       attempt = 0;
       lastError = null;
       lastTransport = 'ws';
-      // Announce ourselves with an empty batch so the server can list connected
-      // collectors before any capture exists.
+      // Announce ourselves so the server can list connected collectors before
+      // any capture exists. The socket protocol is envelope-based - every frame
+      // carries a `type` and the server drops anything without one - so this is
+      // a 'hello', not a bare batch.
       try {
-        ws.send(JSON.stringify(emptyBatch()));
+        ws.send(JSON.stringify({ type: 'hello', identity: deps.identity() }));
       } catch {
         /* the flush loop will retry */
       }
@@ -321,13 +333,6 @@ export function createUploader(deps: UploaderDeps): {
   /* -------------------------------------------------------------- *
    * Batching
    * -------------------------------------------------------------- */
-
-  const emptyBatch = (): IngestBatch => ({
-    v: PROTOCOL_VERSION,
-    identity: deps.identity(),
-    captures: [],
-    dropped: deps.ring.stats().dropped,
-  });
 
   const confirm = (ids: string[]): void => {
     deps.ring.ackUpload(ids);
@@ -441,7 +446,10 @@ export function createUploader(deps: UploaderDeps): {
 
       if (socket !== null && socket.readyState === 1) {
         try {
-          socket.send(JSON.stringify(batch));
+          // Envelope, not a bare batch: /ws/collector multiplexes ingest,
+          // frames and hello over one socket, and a frame with no `type` is
+          // discarded server-side without a word.
+          socket.send(JSON.stringify({ type: 'ingest', batch }));
           wsOutstanding.push({ ids, at: Date.now() });
           lastTransport = 'ws';
           return;

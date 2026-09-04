@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Betby Scout — collector harness</title>
+<style>
+  body { background:#070b23; color:#a4aac6; font:14px system-ui,sans-serif; margin:0; padding:24px 24px 24px 420px; }
+  h1 { color:#e6e9f5; font-size:16px; margin:0 0 4px; }
+  p { max-width:60ch; line-height:1.5; }
+  button { background:#4558ff; color:#fff; border:0; border-radius:8px; padding:8px 14px; font:13px system-ui; cursor:pointer; margin:4px 6px 4px 0; }
+  button.alt { background:#1f2546; color:#a4aac6; }
+  pre { background:#0c102b; border:1px solid #1f2546; border-radius:8px; padding:12px; max-height:240px; overflow:auto; font-size:12px; }
+</style>
+</head>
+<body>
+<h1>Betby Scout — collector harness</h1>
+<p>
+  A local page for exercising the collector without touching a sportsbook. The
+  fixtures it fetches are <strong>invented shapes</strong> written for this
+  harness — they are not BETBY payloads, and a classification here says nothing
+  about how real BETBY traffic will classify.
+</p>
+<div>
+  <button id="feed">fetch feed-shaped</button>
+  <button id="events">fetch event-list-shaped</button>
+  <button id="tree">fetch taxonomy-shaped</button>
+  <button id="xhr" class="alt">XHR</button>
+  <button id="ws" class="alt">WebSocket frames</button>
+  <button id="leak" class="alt">credential-shaped (redaction probe)</button>
+  <button id="burst" class="alt">burst ×20</button>
+</div>
+<pre id="log">ready
+</pre>
+<script src="./hook.js"></script>
+<script>
+const log = (m) => { const el=document.getElementById('log'); el.textContent = m + '\n' + el.textContent; };
+
+async function get(path) {
+  const r = await fetch(path + '?t=' + Date.now());
+  const j = await r.json();
+  // Proves the page's own read of the body still works after our hook cloned it.
+  log('fetch ' + path + ' -> ' + r.status + ' (' + JSON.stringify(j).length + ' bytes readable by the page)');
+}
+
+document.getElementById('feed').onclick = () => get('./fixtures/feed.json');
+document.getElementById('events').onclick = () => get('./fixtures/events.json');
+document.getElementById('tree').onclick = () => get('./fixtures/tree.json');
+document.getElementById('leak').onclick = () => get('./fixtures/session.json');
+
+document.getElementById('xhr').onclick = () => {
+  const x = new XMLHttpRequest();
+  // Listener attached by the "page": it must still fire after we wrap XHR.
+  x.addEventListener('load', () => log('xhr load fired, status ' + x.status + ', ' + x.responseText.length + ' bytes'));
+  x.open('GET', './fixtures/events.json?t=' + Date.now());
+  x.send();
+};
+
+document.getElementById('ws').onclick = () => {
+  const ws = new WebSocket('ws://127.0.0.1:8791');
+  ws.onopen = () => { log('ws open'); ws.send(JSON.stringify({ type: 'subscribe', channel: 'odds' })); };
+  ws.onmessage = (e) => log('ws message received by the page: ' + String(e.data).slice(0, 80));
+  ws.onerror = () => log('ws error (is the echo server on 8791 up?)');
+};
+
+document.getElementById('burst').onclick = async () => {
+  for (let i = 0; i < 20; i++) await get('./fixtures/feed.json');
+};
+</script>
+</body>
+</html>

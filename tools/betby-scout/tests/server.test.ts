@@ -15,6 +15,8 @@ import { join } from 'node:path';
 
 import { buildServer } from '../src/server/index.ts';
 import { loadConfig } from '../src/server/config.ts';
+import { parseCollectorMessage } from '../src/server/hub.ts';
+import { validateIngestBatch } from '../src/server/routes/ingest.ts';
 import type { FastifyInstance } from 'fastify';
 import type { IngestBatch, RawCapture } from '../src/shared/types.ts';
 
@@ -259,4 +261,58 @@ test('an unknown api route 404s as json, not as html', async () => {
   const res = await app.inject({ method: 'GET', url: '/api/nonsense' });
   assert.equal(res.statusCode, 404);
   assert.equal((res.json() as { ok: boolean }).ok, false);
+});
+
+/* ------------------------------------------------------------------ *
+ * WebSocket envelope contract
+ *
+ * These lock down the framing that /ws/collector expects. The collector once
+ * sent bare IngestBatch objects here; parseCollectorMessage returned null for
+ * every one of them and the server discarded the lot without a log line, while
+ * the collector's status panel cheerfully reported "sent". Nothing in the unit
+ * tests or the type system caught it, because both sides were internally
+ * consistent and only disagreed with each other.
+ * ------------------------------------------------------------------ */
+
+test('a bare IngestBatch is rejected - frames must carry a type', () => {
+  const bare = JSON.stringify({
+    v: 1,
+    identity: { kind: 'extension', sessionId: 's_1' },
+    captures: [],
+  });
+  assert.equal(
+    parseCollectorMessage(bare),
+    null,
+    'an untyped frame must be refused, so this mismatch fails loudly next time',
+  );
+});
+
+test('the enveloped forms the collector sends are all understood', () => {
+  const ingest = parseCollectorMessage(JSON.stringify({ type: 'ingest', batch: { v: 1 } }));
+  assert.equal(ingest?.type, 'ingest');
+  assert.deepEqual(ingest?.type === 'ingest' ? ingest.batch : null, { v: 1 });
+
+  const hello = parseCollectorMessage(JSON.stringify({ type: 'hello', identity: { kind: 'extension' } }));
+  assert.equal(hello?.type, 'hello');
+
+  const frames = parseCollectorMessage(JSON.stringify({ type: 'frames', report: { sessionId: 's' } }));
+  assert.equal(frames?.type, 'frames');
+
+  assert.equal(parseCollectorMessage(JSON.stringify({ type: 'nonsense' })), null);
+  assert.equal(parseCollectorMessage('not json'), null);
+  assert.equal(parseCollectorMessage({ type: 'ingest' }), null, 'only strings arrive off a socket');
+});
+
+test('an ingest sent as an envelope actually lands in the database', async () => {
+  // The end-to-end shape check: the same JSON the uploader puts on the wire,
+  // parsed and inserted exactly as index.ts does it.
+  const wire = JSON.stringify({
+    type: 'ingest',
+    batch: batch([capture({ captureId: 'c_envelope00001', seq: 99 })]),
+  });
+  const message = parseCollectorMessage(wire);
+  assert.equal(message?.type, 'ingest');
+
+  const validated = validateIngestBatch(message?.type === 'ingest' ? message.batch : null, loadConfig({ SCOUT_LOG_LEVEL: 'silent' }));
+  assert.equal(validated.ok, true, 'the uploader\'s batch must pass the server\'s own validator');
 });

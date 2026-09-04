@@ -43,9 +43,26 @@ on the site once it is running.
 
 ```bash
 npm run build      # collector + dashboard + server
-npm test           # 84 tests
+npm test           # 87 tests
 npm run typecheck
 ```
+
+### Exercising the collector without a sportsbook
+
+```bash
+npm run build:collector && node harness/serve.mjs   # then open http://127.0.0.1:8790
+```
+
+A local page that loads the real built collector and fires fetch, XHR and
+WebSocket traffic at it, so the whole path — hook, ring, classifier, redactor,
+uploader, server, dashboard — runs end to end against fixtures instead of a live
+book. Its fixtures are **invented shapes**, clearly labelled as such on the page;
+a classification there says nothing about how real BETBY traffic will classify.
+
+It exists because it caught four integration bugs that every unit test passed
+straight through — the two sides of an interface can each be internally
+consistent and still disagree with each other. Use it before and after touching
+anything in `src/collector/`.
 
 ## How it works
 

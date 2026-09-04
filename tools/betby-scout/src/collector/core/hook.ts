@@ -25,7 +25,7 @@
  * the book's.
  */
 
-import { classifyCapture } from '../../adapters/registry.ts';
+import { classifyPayload } from '../../adapters/registry.ts';
 import { captureId as makeCaptureId } from '../../shared/ids.ts';
 import { redactBody, redactHeaders, redactUrl, skipUrl } from '../../shared/redact.ts';
 import { shapeFingerprint } from '../../shared/shape.ts';
@@ -49,16 +49,17 @@ export interface HookDeps {
 }
 
 /**
- * The registry is authored alongside this file, and its adapter-selection step
- * needs the page/frame origin that `SportsbookAdapter.matches` takes, which
- * `ClassifyInput` does not carry. We therefore call it through a tolerant local
- * signature: a one-parameter implementation ignores the extra argument, a
- * two-parameter one gets the context it needs. Either way the call is wrapped
- * in try/catch below and degrades to kind 'unknown' rather than throwing into
- * a page hook.
+ * `classifyPayload` is the registry entry point that takes an already-decoded
+ * ClassifyInput plus the origins `SportsbookAdapter.matches` needs.
+ *
+ * It is deliberately NOT `classifyCapture`, which takes a whole RawCapture and
+ * decodes the body itself. Calling that with a ClassifyInput type-checks only
+ * behind a cast, and then fails silently at runtime: the input has `text`/`json`
+ * but no `body`, so every payload decodes to null and every verdict comes back
+ * "body is not JSON" while the stored body is perfectly good JSON. The result
+ * looks like a classifier that cannot recognise anything.
  */
-type ClassifyFn = (input: ClassifyInput, ...rest: unknown[]) => CaptureClassification;
-const classifyFn = classifyCapture as unknown as ClassifyFn;
+const classifyFn = classifyPayload;
 
 /* ------------------------------------------------------------------ *
  * Small utilities
@@ -434,6 +435,7 @@ export function installHooks(deps: HookDeps): { uninstall(): void; ensureInstall
         classification = classifyFn(classifyInput, {
           pageOrigin: deps.pageOrigin,
           frameOrigin: frameOriginOf(),
+          url: safeUrl,
         });
         // Trust but verify: a malformed verdict must not poison the panel.
         if (!classification || typeof classification.kind !== 'string') {
