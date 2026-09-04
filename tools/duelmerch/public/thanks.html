@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Order received — Duelmerch</title>
+<meta name="robots" content="noindex">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23121731'/%3E%3Ctext x='32' y='46' font-family='Times New Roman,serif' font-weight='700' font-size='40' fill='white' text-anchor='middle'%3ED%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;800&family=Tinos:wght@700&display=swap" rel="stylesheet">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  :root{
+    --bg:#0c102b; --panel:#121731; --panel-2:#1f2546;
+    --line:rgba(255,255,255,.1); --text:#fff; --muted:#8d97c9;
+    --blue:#4558ff; --blue-light:#5e6eff; --green:#20d095;
+  }
+  body{
+    background:var(--bg); color:var(--text);
+    font-family:'Inter',system-ui,sans-serif;
+    min-height:100vh; display:flex; align-items:center; justify-content:center;
+    padding:24px; line-height:1.55;
+  }
+  .box{width:100%;max-width:540px;background:var(--panel);border:1px solid var(--line);padding:34px}
+  .tick{width:38px;height:38px;border:2px solid var(--green);display:flex;align-items:center;
+        justify-content:center;color:var(--green);font-size:19px;font-weight:700;margin-bottom:20px}
+  h1{font-family:'Tinos','Times New Roman',serif;font-weight:700;
+     font-size:clamp(32px,6vw,46px);line-height:1.05;margin-bottom:12px}
+  p{color:var(--muted);font-size:15px;font-weight:500}
+  p b,p strong{color:var(--text)}
+  .ref{margin:22px 0;padding:12px 14px;background:var(--panel-2);border:1px solid var(--line);
+       font-size:13px;color:var(--muted)}
+  .ref b{display:block;margin-top:3px;color:var(--text);font-size:15px;
+         font-variant-numeric:tabular-nums;word-break:break-all}
+  ol{margin:22px 0;padding-left:18px;color:var(--muted);font-size:14px}
+  ol li{margin-bottom:9px}
+  ol li b{color:var(--text)}
+  .foot{margin-top:24px;padding-top:18px;border-top:1px solid var(--line);
+        font-size:12px;color:var(--muted)}
+  a.btn{display:inline-block;margin-top:20px;font-weight:700;font-size:14px;color:#fff;
+        text-decoration:none;background:var(--blue);padding:13px 24px;border-radius:4px}
+  a.btn:hover{background:var(--blue-light)}
+  a{color:var(--blue-light)}
+</style>
+</head>
+<body>
+<div class="box">
+  <div class="tick">&#10003;</div>
+  <h1>Payment received.</h1>
+  <p>The print job has been released. You won't hear from us again until it ships.</p>
+
+  <div class="ref" id="refBox" hidden>Order reference<b id="ref"></b></div>
+
+  <ol>
+    <li>Your payment is confirmed on-chain. <b>Crypto payments are final</b> &mdash; there is no
+      card issuer to reverse this.</li>
+    <li>The garment gets printed to order by the print partner. Nothing was in stock beforehand.</li>
+    <li>They post it to the address you gave at checkout and email you the tracking.</li>
+  </ol>
+
+  <p><b>We did not keep your details.</b> Your name, email and address went straight to the
+  print partner and were never written to our storage. That also means we cannot look your
+  order up for you &mdash; keep the reference above.</p>
+
+  <a class="btn" href="/">Back to the store</a>
+
+  <p class="foot">Something wrong with the order? The reference above is the only way to
+  trace it. Duelmerch is an independent fan project, not affiliated with or endorsed by Duel.</p>
+</div>
+<script>
+  // the order id arrives as ?order=... from the payment redirect
+  var id = new URLSearchParams(location.search).get("order");
+  if (id && /^[A-Za-z0-9_-]{1,64}$/.test(id)) {
+    document.getElementById("ref").textContent = id;
+    document.getElementById("refBox").hidden = false;
+  }
+</script>
+</body>
+</html>

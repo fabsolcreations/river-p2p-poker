@@ -201,6 +201,165 @@ His other winning move was **spec tables** — Material / Thickness / Width, val
 right-aligned. Product `meta` entries are now `"Key — value"` pairs and render as
 `.spec-row`s in the detail panel. Keep that format when adding products.
 
+## Garment mockups -- how they are lit
+
+The SVGs are flat-lays, but they have to read as products, not technical drawings.
+Four things do that work, in `garmentShading()` and each garment function:
+
+1. **One shared light source.** The gradients use `gradientUnits="userSpaceOnUse"`
+   spanning the whole 400x460 viewBox. This matters: with the default
+   objectBoundingBox, every path gets its OWN gradient across its OWN bbox, so a
+   narrow sleeve compresses the full light-to-dark ramp into its width and reads as
+   a cutout pasted onto the torso. Every garment part must share one light.
+2. **Fabric weave** -- a 3px `<pattern>` of fine diagonal lines at ~.03 opacity.
+   Deliberately NOT `feTurbulence`: 15 of these render per page and turbulence is far
+   too expensive on mobile. Keep the opacity low; at .055 it read as diagonal stripes,
+   worst on navy.
+3. **Topstitching** -- dashed strokes (`stroke-dasharray="3.5 3"`) at hems, cuffs,
+   collar, pocket and hood edge. This is the single detail that most says "real
+   garment" rather than "icon".
+4. **Contact shadow** under the garment.
+
+Verify changes by rasterising, never by eyeballing the code -- scratchpad
+`render.mjs` brace-matches the garment functions out of index.html, renders them
+with resvg and writes a side-by-side contact sheet. Gradients and patterns are
+correct on product art; the no-gradient rule from the reskin applies to UI chrome only.
+
+## Shareable product links
+
+Every design has its own URL: `duelmerch.org/?p=<product-id>`. Opening a card
+pushes that URL, closing clears it, and the back button closes the modal instead of
+leaving the site. Landing on one opens straight into that product. There is a
+"Copy link" button next to "Want this made".
+
+This exists because the audience shares things by pasting a URL into Discord, and
+until now there was no way to link a single design.
+
+`functions/_middleware.js` rewrites `og:title`/`og:description`/`og:url` and
+`<title>` per product so the paste unfurls with the design's real name. Names come
+from `CATALOG` — one source of truth, never duplicate them in the middleware.
+
+Two traps, both of which cost a deploy:
+
+- **HTMLRewriter handler objects must not carry non-function fields named
+  `element`, `text` or `comments`.** The first version stored the title on
+  `this.text`; HTMLRewriter read that as a text-node callback, got a string, and
+  threw `Incorrect type for the 'text' field` — a hard 500 on the whole page.
+- **Do not pre-escape attribute values.** HTMLRewriter escapes what you pass to
+  `setAttribute`; escaping first double-encodes it.
+
+The rewrite is wrapped in try/catch and falls through to the unmodified page, with
+the reason in an `x-og-rewrite` response header. Nicer social cards are never worth
+taking the site down for. Check it with a cache-buster — Cloudflare caches these:
+
+```bash
+curl -s "https://duelmerch.org/?p=lousy-tee&cb=$RANDOM" | grep -o "<title>[^<]*</title>"
+```
+
+## The post-payment page
+
+`functions/api/checkout.js` sends buyers to `${origin}/thanks?order=<id>` after payment.
+That page did not exist until 2026-08-30 -- anyone who paid would have hit a 404 the
+moment `SELLING` was flipped on. It exists now at `public/thanks.html` (Pages serves it
+at `/thanks`). It renders the order reference from the query string, gated behind a
+`^[A-Za-z0-9_-]{1,64}$` test so nothing can be injected through the URL.
+
+It has to state the awkward parts, because they are true: crypto payments are final,
+and since we deliberately store no buyer PII we genuinely cannot look an order up --
+the reference is the only handle the buyer has. If you change the privacy model, change
+this page too.
+
+Check it after any change to the money path:
+
+```bash
+curl -o /dev/null -w "%{http_code}
+" "https://duelmerch.org/thanks?order=TEST"
+```
+
+## Product depth: size charts and provenance
+
+Each concept opens a real product page, not a thumbnail. Two things carry it:
+
+**Size guide.** `SIZE_CHARTS` holds real garment measurements, pulled from
+Printful's PUBLIC size endpoint -- no API key needed:
+
+```bash
+curl "https://api.printful.com/products/71/sizes?unit=inches"
+```
+
+71 = Bella + Canvas 3001, 146 = Gildan 18500, 1419 / 1482 = the all-over-print
+blanks. Regenerate with scratchpad `sizes.mjs`. **Never hand-type these** -- the
+only reason a size chart is worth having is that it is accurate.
+
+Two traps: the AOP tables label columns `A`/`B`/`C` (= width / length / sleeve),
+and the site sizes apparel `S-XXL` while Printful keys the same row `2XL`. Without
+the alias in `renderSizeChart`, the largest size silently disappears from every
+chart. The chart is looked up from the `Blank -- ...` line in a product's `meta`,
+so it follows the garment automatically if a blank changes.
+
+**Provenance.** A product may carry `from:{name,date}` pointing at a row in
+`RECEIPTS`; the modal then shows the actual message that spawned the design. This
+is the one thing a competitor structurally cannot copy -- it needs the community
+history. **Only link a receipt whose message genuinely matches the design.** The
+On The Team Tee was nearly linked to Plank's receipt, but his only quote on the
+wall is about the store not shipping, not the line printed on that tee -- so it
+has no link. Misattributing a real person's words would undermine the entire
+premise of the receipts wall.
+
+## Watch out: the modal controls are delegated
+
+Size buttons, colour swatches and the Lousy Tee's amount presets have no inline
+handlers -- one delegated listener on `#modal` drives all three, plus
+`[data-close-modal]`. All three were found completely dead in 2026-08-30 (clicking
+a size did nothing; the Lousy Tee could not change its number, which is that
+product's whole gimmick). If you restructure the modal, click every control
+afterwards -- a missing handler here is invisible in the markup and throws no error.
+
+## Writing rules -- read before touching any copy
+
+The site was called "AI generated" three times. The third time it was the prose, not
+the design. Rules that came out of fixing it:
+
+- **No tricolons.** If you write "no X, no Y, no Z", cut it to two. There were four
+  of these on the page at once and it was the loudest tell on the site.
+- **Not every sentence gets to land.** Product blurbs must contain at least one
+  sentence that is only information -- a blank, a weight, a print size. Fact, fact,
+  joke is fine. Joke, joke, joke is what a generator writes.
+- **Never reuse a frame across products.** Four blurbs opened "The only piece here
+  that..." and three closed on "Wear the <noun>." Humans repeat themselves messily;
+  models repeat structure.
+- **No winks.** "because of course it is", "Different management.", "let natural
+  selection do its thing" -- all cut.
+- **No antithesis taglines.** "gamble responsibly, dress irresponsibly" became "18+."
+- **Audience vocabulary only.** "immortalised" and "the philosophy, immortalized on
+  heavyweight fleece" are not words anyone in that Discord types.
+- **Cutting beats rewriting.** The fix removed 218 words and added almost none.
+
+The same applies to CSS: no numbered section eyebrows with tracked-out uppercase and a
+trailing hairline, no `letter-spacing` under 1.5px, no half-pixel font sizes.
+
+## The wall is a ranking
+
+Concepts are ordered by votes, highest first, with the authored order in `PRODUCTS`
+breaking ties. That means a wall with no votes looks exactly as written, and popular
+designs rise on their own. `sortWall(counts)` does it; the tally request is started
+BEFORE the grid renders so the reorder lands while the wall is still below the hero.
+
+Three things to keep true if you touch this:
+
+- **`card-no` is a position, not an identity.** Cards show 01-15; after any sort
+  `renumberWall()` must run or the numbers read 05, 12, 01. Never derive it from
+  the product index.
+- **Voting must not re-sort.** `bumpCount()` updates the number in place and
+  deliberately leaves the order alone -- re-sorting on click yanks the wall out from
+  under the person who just clicked. The order settles on the next load.
+- **The wall must render without the tally.** The grid is written synchronously and
+  sorted later; if `/api/want` fails, `wantCounts` resolves null and the wall simply
+  stays in authored order. `sortWall(null)` is a no-op by design. Never make the
+  first paint depend on the tally.
+
+One request serves both the sort and the counts -- don't add a second `fetch`.
+
 ## The interest tally
 
 Every concept shows how many people hit "want this made", and the leader gets a

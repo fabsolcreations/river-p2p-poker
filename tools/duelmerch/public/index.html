@@ -70,7 +70,7 @@
     font-family:var(--display);
     font-weight:700;
     font-size:26px;
-    letter-spacing:.2px;
+    
     display:flex;align-items:center;gap:9px;
   }
   .wordmark em{
@@ -78,7 +78,7 @@
     font-family:var(--body);
     font-weight:700;
     font-size:11px;
-    letter-spacing:.8px;
+    
     background:var(--blue);
     color:#fff;
     padding:4px 8px;
@@ -88,7 +88,7 @@
   nav{display:flex;gap:4px;align-items:center}
   nav a{
     font-weight:600;
-    font-size:13.5px;
+    font-size:13px;
     color:var(--muted);
     padding:8px 12px;
     border-radius:8px;
@@ -97,7 +97,7 @@
   nav a:hover{color:#fff;background:var(--panel-2)}
   .cart-btn{
     font-weight:700;
-    font-size:13.5px;
+    font-size:13px;
     background:var(--blue);
     padding:9px 16px;
     border-radius:4px;
@@ -131,7 +131,7 @@
   }
   .eyebrow{
     font-weight:600;
-    font-size:13.5px;
+    font-size:13px;
     color:var(--muted);
     margin-bottom:18px;
   }
@@ -166,7 +166,7 @@
   .hero-ctas{display:flex;gap:12px;margin-top:32px;flex-wrap:wrap}
   .btn{
     font-weight:700;
-    font-size:14.5px;
+    font-size:15px;
     padding:14px 26px;
     border-radius:4px;
     display:inline-flex;align-items:center;gap:9px;
@@ -196,20 +196,13 @@
     color:#fff;
   }
   .stat span{
-    font-size:12.5px;
+    font-size:12px;
     color:var(--muted);
   }
 
   /* ---------- sections ---------- */
   section{max-width:1240px;margin:0 auto;padding:62px 20px 0}
   .sec-head{display:flex;align-items:baseline;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:10px}
-  .sec-label{
-    display:flex;align-items:center;gap:10px;
-    font-weight:800;font-size:11px;letter-spacing:2.4px;text-transform:uppercase;
-    color:var(--muted);margin-bottom:14px;
-  }
-  .sec-label i{font-style:normal;color:var(--blue-light);font-variant-numeric:tabular-nums}
-  .sec-label:after{content:"";flex:1;height:1px;background:var(--line);max-width:140px}
   .sec-head h2{
     font-family:var(--display);
     font-weight:700;
@@ -220,10 +213,10 @@
   .sec-head .tag{
     font-weight:700;
     font-size:12px;
-    letter-spacing:.4px;
+    
     color:var(--muted);
     text-transform:uppercase;
-    letter-spacing:1.2px;
+    
     border-bottom:1px solid var(--line-strong);
     padding-bottom:3px;
   }
@@ -256,25 +249,25 @@
   }
   .avatar svg,.avatar img{width:100%;height:100%;display:block;object-fit:cover}
   .receipt-namerow{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
-  .receipt-name{font-weight:700;font-size:14.5px}
+  .receipt-name{font-weight:700;font-size:15px}
   .rbadge{
     font-size:10px;
     font-weight:800;
-    letter-spacing:.4px;
+    
     padding:2px 6px;
     border-radius:4px;
     color:#0c102b;
     white-space:nowrap;
   }
-  .receipt-date{font-size:11.5px;color:var(--muted);font-weight:500}
-  .receipt-msg{font-size:14.5px;color:#d7ddf5}
+  .receipt-date{font-size:11px;color:var(--muted);font-weight:500}
+  .receipt-msg{font-size:15px;color:#d7ddf5}
   .stamp{
     align-self:flex-end;
     margin:auto 4px 0 0;
     font-family:var(--display);
     font-weight:700;
     font-size:17px;
-    letter-spacing:.4px;
+    
     color:var(--red);
     border:2.5px solid var(--red);
     border-radius:6px;
@@ -295,7 +288,7 @@
     border:1px solid var(--line-strong);
     background:var(--panel);
     color:var(--muted);
-    font-weight:700;font-size:12.5px;
+    font-weight:700;font-size:12px;
     padding:11px 22px;border-radius:4px;
     transition:color .15s,border-color .15s;
   }
@@ -326,14 +319,12 @@
   }
   .card-art svg{
     width:76%;height:auto;
-    transition:transform .25s ease;
   }
-  .card:hover .card-art svg{transform:scale(1.02)}
   .card-tagchip{
     position:absolute;top:12px;left:12px;
-    font-size:10.5px;
+    font-size:11px;
     font-weight:800;
-    letter-spacing:.5px;
+    
     background:rgba(9,12,34,.75);
     color:#fff;
     border:1px solid rgba(255,255,255,.14);
@@ -344,25 +335,53 @@
   .card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
   .card-top{
     position:absolute;left:12px;bottom:12px;
-    font-weight:800;font-size:10px;letter-spacing:1.2px;
+    font-weight:800;font-size:10px;
     background:var(--blue);color:#fff;padding:4px 8px;border-radius:3px;
   }
   .card-no{
     position:absolute;top:12px;right:12px;
     font-family:var(--body);font-weight:800;font-size:11px;
-    color:rgba(255,255,255,.4);letter-spacing:1px;
+    color:rgba(255,255,255,.4);
   }
+  /* provenance: the receipt a design came from */
+  .prov{margin-top:16px;border:1px solid var(--line);border-left:2px solid var(--blue);padding:12px 14px;background:var(--panel-2)}
+  .prov-h{font-size:11px;color:var(--muted);margin-bottom:7px}
+  .prov-msg{font-size:14px;line-height:1.45}
+  .prov-who{margin-top:7px;font-size:12px;color:var(--muted)}
+  .prov-who b{color:var(--text)}
+  /* size guide */
+  .sizes-wrap{margin-top:16px;border-top:1px solid var(--line);padding-top:12px}
+  .sizes-wrap summary{cursor:pointer;font-size:13px;font-weight:700;list-style:none}
+  .sizes-wrap summary::-webkit-details-marker{display:none}
+  .sizes-wrap summary:after{content:"+";float:right;color:var(--muted)}
+  .sizes-wrap[open] summary:after{content:"\2212"}
+  .size-tbl{width:100%;border-collapse:collapse;margin-top:10px;font-size:13px}
+  .size-tbl th,.size-tbl td{padding:6px 4px;text-align:right;border-bottom:1px solid var(--line)}
+  .size-tbl th:first-child,.size-tbl td:first-child{text-align:left;font-weight:700}
+  .size-tbl th{color:var(--muted);font-weight:600;font-size:11px}
+  .size-tbl tr.on td{color:var(--blue-light)}
+  .size-note{margin-top:8px;font-size:11px;color:var(--muted);line-height:1.5}
+  .modal-actions{display:flex;gap:8px;align-items:stretch;margin-top:24px}
+  .modal-actions .modal-add{flex:1;margin-top:0}
+  .modal-share{
+    background:transparent;color:var(--muted);border:1px solid var(--line);
+    border-radius:4px;padding:0 16px;font-weight:700;font-size:13px;
+    font-family:inherit;cursor:pointer;white-space:nowrap;
+  }
+  .modal-share:hover{color:var(--text);border-color:var(--blue-light)}
+  .modal-share.done{color:var(--green);border-color:var(--green)}
+  @media(max-width:520px){ .modal-share{padding:12px 14px} }
   .want-count{margin-left:auto;color:var(--blue-light);font-weight:700;white-space:nowrap}
   .card-spec{
     display:flex;gap:14px;margin-top:10px;padding-top:10px;
     border-top:1px solid var(--line);
-    font-size:11.5px;color:var(--muted);font-weight:600;
+    font-size:11px;color:var(--muted);font-weight:600;
   }
   .card-actions{display:flex;gap:8px;margin-top:12px}
   .card-want{
     flex:1;min-height:44px;
     background:var(--blue);color:#fff;
-    font-weight:700;font-size:12.5px;padding:11px;border-radius:4px;
+    font-weight:700;font-size:12px;padding:11px;border-radius:4px;
     transition:background .15s,opacity .15s;
   }
   .card-want:hover{background:var(--blue-light)}
@@ -371,15 +390,15 @@
     min-height:44px;
     border:1px solid var(--line-strong);
     color:var(--muted);
-    font-weight:700;font-size:12.5px;padding:11px 16px;border-radius:4px;
+    font-weight:700;font-size:12px;padding:11px 16px;border-radius:4px;
     transition:color .15s,border-color .15s;
   }
   .card-view:hover{color:#fff;border-color:var(--blue-light)}
   .card-name{
     font-weight:700;
-    font-size:14.5px;
+    font-size:15px;
   }
-  .card-lore{font-size:12.5px;color:var(--muted);margin-top:2px}
+  .card-lore{font-size:12px;color:var(--muted);margin-top:2px}
   .card-price{
     font-weight:800;
     font-size:15px;
@@ -405,7 +424,7 @@
     font-size:clamp(24px,3.2vw,34px);
     line-height:1.08;
   }
-  .notify-box .notify-sub{color:var(--muted);margin-top:8px;font-size:14.5px}
+  .notify-box .notify-sub{color:var(--muted);margin-top:8px;font-size:15px}
   .notify-form{display:flex;gap:10px}
   .notify-form input[type="text"]{
     flex:1;min-width:0;
@@ -426,7 +445,7 @@
     background:var(--green);
     color:#052b1f;
     font-weight:800;
-    font-size:13.5px;
+    font-size:13px;
     padding:13px 22px;
     border-radius:4px;
     transition:filter .15s,opacity .15s;
@@ -464,7 +483,7 @@
     font-size:clamp(24px,3.2vw,34px);
     line-height:1.08;
   }
-  .submit-copy p{color:var(--muted);margin-top:8px;font-size:14.5px}
+  .submit-copy p{color:var(--muted);margin-top:8px;font-size:15px}
   .submit-form{display:flex;flex-direction:column;gap:10px}
   #ideaInput{
     width:100%;
@@ -473,7 +492,7 @@
     border-radius:12px;
     color:#fff;
     font-family:var(--body);
-    font-size:14.5px;
+    font-size:15px;
     line-height:1.5;
     padding:14px 16px;
     outline:none;
@@ -503,7 +522,7 @@
     background:var(--blue);
     color:#fff;
     font-weight:800;
-    font-size:13.5px;
+    font-size:13px;
     padding:12px 22px;
     border-radius:4px;
     transition:background .15s,opacity .15s;
@@ -516,7 +535,7 @@
   }
   .char-count{font-size:12px;color:var(--muted);font-weight:600}
   .char-count.low{color:var(--gold)}
-  .submit-msg{font-size:12.5px;font-weight:700;text-align:right}
+  .submit-msg{font-size:12px;font-weight:700;text-align:right}
   .submit-msg.ok{color:var(--green)}
   .submit-msg.err{color:var(--red)}
 
@@ -554,7 +573,7 @@
     display:flex;justify-content:space-between;align-items:center;gap:16px;
     padding:18px 0;
     font-weight:600;
-    font-size:15.5px;
+    font-size:15px;
     cursor:pointer;
   }
   summary::-webkit-details-marker{display:none}
@@ -566,7 +585,7 @@
     flex:none;
   }
   details[open] summary::after{content:"–"}
-  .faq-body{padding:0 0 20px;color:var(--muted);max-width:640px;font-size:14.5px}
+  .faq-body{padding:0 0 20px;color:var(--muted);max-width:640px;font-size:15px}
   .faq-body a{color:var(--blue-light)}
   .faq-body a:hover{text-decoration:underline}
   .faq-body em{color:#fff;font-style:normal;font-weight:600}
@@ -591,11 +610,11 @@
     display:flex;justify-content:space-between;gap:24px;flex-wrap:wrap;
     margin-top:26px;
     font-weight:600;
-    font-size:12.5px;
+    font-size:12px;
     color:var(--muted);
   }
   .foot-row a:hover{color:#fff}
-  .foot-note{margin-top:14px;font-size:12.5px;color:var(--muted);max-width:640px}
+  .foot-note{margin-top:14px;font-size:12px;color:var(--muted);max-width:640px}
 
   /* ---------- cart drawer ---------- */
   .backdrop{
@@ -630,7 +649,7 @@
   .drawer-body{flex:1;overflow-y:auto;padding:8px 22px}
   .cart-empty{
     padding:60px 0;text-align:center;color:var(--muted);
-    font-weight:600;font-size:13.5px;line-height:2;
+    font-weight:600;font-size:13px;line-height:2;
   }
   .line-item{
     display:flex;gap:14px;
@@ -645,7 +664,7 @@
   }
   .li-art svg{width:82%;height:auto}
   .li-main{flex:1;min-width:0}
-  .li-name{font-weight:700;font-size:13.5px}
+  .li-name{font-weight:700;font-size:13px}
   .li-size{font-size:12px;color:var(--muted);margin-top:1px}
   .li-controls{display:flex;align-items:center;gap:9px;margin-top:9px}
   .qty-btn{
@@ -658,9 +677,9 @@
   }
   .qty-btn:hover{border-color:var(--blue-light);color:var(--blue-light)}
   .li-qty{font-weight:700;font-size:13px;min-width:16px;text-align:center}
-  .li-remove{font-size:11.5px;font-weight:600;color:var(--muted);margin-left:auto}
+  .li-remove{font-size:11px;font-weight:600;color:var(--muted);margin-left:auto}
   .li-remove:hover{color:var(--red)}
-  .li-price{font-weight:800;font-size:13.5px;color:var(--green);flex:none}
+  .li-price{font-weight:800;font-size:13px;color:var(--green);flex:none}
   .drawer-foot{
     border-top:1px solid var(--line-strong);
     padding:16px 22px 20px;
@@ -669,20 +688,20 @@
   .subtotal{
     display:flex;justify-content:space-between;align-items:baseline;
     font-weight:600;
-    font-size:13.5px;
+    font-size:13px;
     color:var(--muted);
     margin-bottom:4px;
   }
   .subtotal b{color:var(--green);font-weight:800;font-size:17px}
   .subtotal-note{
-    font-size:11.5px;color:var(--muted);margin-bottom:12px;
+    font-size:11px;color:var(--muted);margin-bottom:12px;
   }
   .checkout-btn{
     width:100%;
     background:var(--blue);
     color:#fff;
     font-weight:800;
-    font-size:14.5px;
+    font-size:15px;
     padding:14px;
     border-radius:4px;
     transition:background .15s;
@@ -691,7 +710,7 @@
   .checkout-note{
     display:none;
     margin-top:12px;
-    font-size:12.5px;
+    font-size:12px;
     color:var(--muted);
     border:1px dashed var(--line-strong);
     border-radius:10px;
@@ -702,7 +721,7 @@
   .checkout-note a{color:var(--green);font-weight:700}
 
   .back-to-cart{
-    font-weight:600;font-size:12.5px;color:var(--muted);
+    font-weight:600;font-size:12px;color:var(--muted);
     padding:6px 0;margin:4px 0 10px;
   }
   .back-to-cart:hover{color:#fff}
@@ -734,7 +753,7 @@
     margin-top:12px;font-size:12px;line-height:1.5;color:var(--muted);
     border-left:2px solid var(--green);padding-left:10px;
   }
-  .ship-msg{display:none;margin-top:10px;font-size:12.5px;font-weight:700;color:var(--red)}
+  .ship-msg{display:none;margin-top:10px;font-size:12px;font-weight:700;color:var(--red)}
   .ship-msg.show{display:block}
   .subtotal-row{
     display:flex;justify-content:space-between;
@@ -793,10 +812,10 @@
     font-size:18px;color:var(--green);
     margin-top:8px;
   }
-  .modal-desc{color:var(--muted);margin-top:14px;font-size:14.5px}
+  .modal-desc{color:var(--muted);margin-top:14px;font-size:15px}
   .modal-desc em{color:#fff;font-style:normal;font-weight:600}
   .size-label{
-    font-weight:700;font-size:11.5px;letter-spacing:.6px;
+    font-weight:700;font-size:11px;
     text-transform:uppercase;color:var(--muted);
     margin:22px 0 10px;
   }
@@ -832,7 +851,7 @@
     font-weight:700;font-size:12px;
     padding:6px 12px;
     color:var(--muted);
-    transition:all .12s;
+    transition:background .12s,border-color .12s;
   }
   .amount-presets button:hover{color:#fff;border-color:var(--green)}
   .amount-presets button.sel{background:var(--green);color:#052b1f;border-color:transparent}
@@ -843,8 +862,8 @@
     border:1px solid var(--line-strong);
     border-radius:4px;
     padding:7px 12px 7px 8px;
-    font-weight:700;font-size:12.5px;color:var(--muted);
-    transition:all .12s;
+    font-weight:700;font-size:12px;color:var(--muted);
+    transition:background .12s,border-color .12s;
   }
   .swatch i{width:14px;height:14px;border-radius:3px;border:1px solid rgba(255,255,255,.25);display:block}
   .swatch:hover{color:#fff;border-color:var(--blue-light)}
@@ -858,7 +877,7 @@
     font-weight:700;font-size:13px;
     padding:9px 12px;
     color:#fff;
-    transition:all .12s;
+    transition:background .12s,border-color .12s;
   }
   .size-btn:hover{border-color:var(--blue-light)}
   .size-btn.sel{
@@ -871,7 +890,7 @@
     background:var(--blue);
     color:#fff;
     font-weight:800;
-    font-size:14.5px;
+    font-size:15px;
     padding:14px;
     border-radius:4px;
     transition:background .15s,opacity .15s;
@@ -884,7 +903,7 @@
     display:flex;align-items:baseline;justify-content:space-between;gap:12px;
     padding:9px 0;
     border-bottom:1px solid var(--line);
-    font-size:12.5px;
+    font-size:12px;
   }
   .spec-row span{color:var(--muted);font-weight:600;white-space:nowrap}
   .spec-row b{color:#fff;font-weight:600;text-align:right}
@@ -927,12 +946,12 @@
     .card-name{font-size:13px}
     .card-lore{font-size:11px}
     .card-price{font-size:13px}
-    .card-spec{gap:8px;font-size:10.5px;flex-wrap:wrap}
+    .card-spec{gap:8px;font-size:11px;flex-wrap:wrap}
     .card-actions{flex-direction:column;gap:6px}
     .card-want,.card-view{width:100%;min-height:44px;font-size:12px}
     .card-top{
     position:absolute;left:12px;bottom:12px;
-    font-weight:800;font-size:10px;letter-spacing:1.2px;
+    font-weight:800;font-size:10px;
     background:var(--blue);color:#fff;padding:4px 8px;border-radius:3px;
   }
   .card-no{font-size:10px}
@@ -973,8 +992,8 @@
       Designed&nbsp;2026.
     </h1>
     <p class="hero-sub">
-      Duel has been promising a merch store since 2025. Nobody made one, so the designs got made
-      instead — <strong>finished artwork, print files and all.</strong> Somebody just has to press go.
+      Duel has been promising a merch store since 2025. Nobody made one, so I made the designs.
+      <strong>Finished artwork and print files.</strong> Someone just has to press go.
     </p>
     <div class="hero-ctas">
       <a class="btn btn-solid" href="#concepts">See the concepts</a>
@@ -990,23 +1009,22 @@
 
 <!-- the concept wall -->
 <section id="concepts">
-  <p class="sec-label"><i>01</i> The wall</p>
   <div class="sec-head">
     <h2>The Concept Wall</h2>
     <span class="tag">nothing ships yet</span>
   </div>
-  <p class="sec-sub">Designs, not stock. Tell us which ones deserve to exist and those get made first.</p>
+  <p class="sec-sub">Nothing here is made yet. Hit "want this made" on the ones you’d actually wear.
+    The wall is ordered by what people want most.</p>
   <div class="grid" id="productGrid"></div>
 </section>
 
 <!-- receipts -->
 <section id="receipts">
-  <p class="sec-label"><i>02</i> Evidence</p>
   <div class="sec-head">
     <h2>The Receipts</h2>
     <span class="tag">#GENERAL, 2025 — 2026</span>
   </div>
-  <p class="sec-sub">Every "any day now" we could screenshot, back to December 2025. Timestamped, immortalised, and still lazy, dollartree1.</p>
+  <p class="sec-sub">Every "any day now" we could screenshot, back to December 2025.</p>
   <div class="receipts-grid" id="receiptsGrid"></div>
   <button class="show-more" id="showMoreReceipts">Show all 12 receipts</button>
 </section>
@@ -1016,7 +1034,7 @@
   <div class="notify-box">
     <div>
       <h3>Get pinged when these get made</h3>
-      <p class="notify-sub">One message when the first run is real — no spam, no "any day now." Crypto checkout, no accounts.</p>
+      <p class="notify-sub">One message when the first run is real. Crypto checkout, no accounts.</p>
     </div>
     <form class="notify-form" id="notifyForm" novalidate>
       <input type="text" id="notifyInput" placeholder="Email or Discord @" autocomplete="email" maxlength="200" aria-label="Email or Discord handle">
@@ -1033,11 +1051,10 @@
     <h3>Why this exists</h3>
     <div>
       <p><strong>The merch store was scheduled for 2029 by the people who actually work there.</strong>
-      It was promised, memed, re-promised, delegated, forgotten, and re-memed. Freefall wanted to reship hoodies
-      out of an EU warehouse. Sean said troll the company. Monarch said "someone go make merch store."</p>
-      <p>So an outsider did. Designs by the server, receipts by the server, site by darci —
-      no salary, no mandate, no meetings. If the company wants to buy the whole thing —
-      <strong>DMs are open.</strong></p>
+      Freefall wanted to reship hoodies out of an EU warehouse. Sean said troll the company.
+      Monarch said "someone go make merch store." Nobody did anything about it.</p>
+      <p>So I did. Designs and receipts came from the server, site's mine. Nobody's paying me for this.
+      If Duel wants to buy it, <strong>DMs are open.</strong></p>
     </div>
   </div>
 </section>
@@ -1068,7 +1085,6 @@
 
 <!-- faq -->
 <section id="faq">
-  <p class="sec-label"><i>03</i> Questions</p>
   <div class="sec-head">
     <h2>FAQ</h2>
     <span class="tag">ASKED CONSTANTLY</span>
@@ -1076,40 +1092,35 @@
   <div class="faq">
     <details>
       <summary>Is this the official Duel merch store?</summary>
-      <p class="faq-body">No. This is independent — built by darci, unaffiliated, nobody's permission asked.
-      It's just what the merch store looks like when someone who actually wants the merch builds it
-      instead of scheduling it. If Duel wants it to be official, <em>DMs are open.</em></p>
+      <p class="faq-body">No. Built by darci, not affiliated with Duel. It's what the store would look like if anyone
+      made it. If Duel wants it to be official, <em>DMs are open.</em></p>
     </details>
     <details>
       <summary>When can I actually buy one?</summary>
-      <p class="faq-body">Not yet — and we're not going to pretend otherwise. Everything here is a finished
-      design with real print files behind it, waiting on a production partner. Hit <em>want this made</em> on
-      the ones you'd actually wear; those get made first. No pre-orders, no countdown timers, no fake dates.
-      We've had enough of those.</p>
+      <p class="faq-body">Not yet. Everything here is a finished design with real print files behind it, waiting on a
+      production partner. Hit <em>want this made</em> on the ones you'd wear and those go first.
+      No pre-orders and no fake dates.</p>
     </details>
     <details>
       <summary>Why should I trust a merch store that took this long?</summary>
-      <p class="faq-body">The store spent <span id="faqDays">256</span> days <em>not</em> existing. This site took one night.
-      Different management.</p>
+      <p class="faq-body">The store spent <span id="faqDays">256</span> days <em>not</em> existing. This site took one night.</p>
     </details>
     <details>
       <summary>What do you do with my address?</summary>
       <p class="faq-body">Hand it to the printer and forget it. Your name, email and address
       go straight to the print partner who makes and ships the garment — <em>this site stores
-      none of it.</em> There's no customer database here, so there's nothing to sell, leak,
-      or hand over. The order record kept on our side is just what was ordered and what it cost.</p>
+      none of it.</em> There's no customer database here, so there's nothing to leak. The order record on our side
+      is just what was ordered and what it cost.</p>
     </details>
     <details>
       <summary>How will payment work?</summary>
-      <p class="faq-body"><em>Crypto only</em>, when it opens. No cards, no PayPal, no account to make,
-      no ID to upload. Card processing would mean registering a business and filing paperwork nobody
-      here wants to file, and you people were never going to pay for a hoodie any other way.</p>
+      <p class="faq-body"><em>Crypto only</em>, when it opens. No cards and no account needed. Card processing would mean
+      registering a business and filing paperwork nobody here wants to file.</p>
     </details>
     <details>
       <summary>Can I get my quote on a shirt?</summary>
-      <p class="faq-body">Already happening — the <a href="#drop">Lousy T-Shirt</a> was a concept someone
-      sent in, and it's in this drop. <a href="#submit">Send yours here</a> and let natural
-      selection do its thing.</p>
+      <p class="faq-body">Already happening — the <a href="#concepts">Lousy T-Shirt</a> was sent in by someone in the
+      server and it’s on the wall. <a href="#submit">Send yours here.</a> If it’s good it goes up.</p>
     </details>
   </div>
 </section>
@@ -1119,15 +1130,13 @@
   <div class="foot-inner">
     <div class="foot-mark">Duelmerch</div>
     <div class="foot-row">
-      <span>Est. 2029 — shipped early</span>
+      <span>Est. 2026</span>
       <span><a href="#receipts">Receipts</a> &nbsp;/&nbsp; <a href="#concepts">Concepts</a>
     &nbsp;/&nbsp; <a href="#top">Top</a></span>
       <span>Built by darci</span>
     </div>
     <p class="foot-note">
-      Duelmerch is an independent fan project. Not affiliated with, endorsed by, or operated by Duel —
-      they are welcome to change that. Garments are apparel, not financial advice.
-      18+ — gamble responsibly, dress irresponsibly.
+      Duelmerch is an independent fan project. Not affiliated with or endorsed by Duel. 18+.
     </p>
   </div>
 </footer>
@@ -1156,9 +1165,14 @@
       </div>
       <p class="size-label" id="sizeLabel" style="display:none">Size</p>
       <div class="sizes" id="sizeRow" style="display:none"></div>
-      <button class="modal-add" id="modalAdd">Want this made</button>
+      <div class="modal-actions">
+        <button class="modal-add" id="modalAdd">Want this made</button>
+        <button class="modal-share" id="modalShare" title="Copy a link to this design">Copy link</button>
+      </div>
       <p class="modal-note">Not for sale yet — this tells us to make it.</p>
       <p class="modal-meta" id="modalMeta"></p>
+      <div id="modalSource"></div>
+      <div id="modalSizes"></div>
     </div>
   </div>
 </div>
@@ -1178,6 +1192,10 @@ const INK = "#141414";
 const NAVY = "#202a47";
 const COLORWAYS = { Black: INK, Navy: NAVY, White: "#FDFDFB" };
 const MONO_INK = { Black: "#262626", Navy: "#2e3d64" };
+// Swatch chips only. A patterned colourway has no single garment fill, so the
+// picker needs a representative colour that COLORWAYS deliberately doesn't
+// carry - otherwise Camo falls back to near-black and reads as a black cap.
+const SWATCH_HINT = { Camo: "#5f6446" };
 let monoSeq = 0;
 // tileable DM monogram, used as an SVG fill so the whole garment carries it
 function monogramFill(color){
@@ -1205,20 +1223,38 @@ function garmentShading(body){
   const id = "sh" + (++shadeSeq);
   const dark = String(body).startsWith("url(") ? "#0d0d10" : body;
   return { id, defs: `<defs>
-    <linearGradient id="${id}light" x1="0.15" y1="0" x2="0.9" y2="1">
+    <linearGradient id="${id}light" gradientUnits="userSpaceOnUse" x1="70" y1="55" x2="350" y2="430">
       <stop offset="0" stop-color="#ffffff" stop-opacity=".085"/>
       <stop offset="0.35" stop-color="#ffffff" stop-opacity=".015"/>
       <stop offset="0.72" stop-color="#000000" stop-opacity=".16"/>
       <stop offset="1" stop-color="#000000" stop-opacity=".42"/>
     </linearGradient>
-    <radialGradient id="${id}pool" cx="0.5" cy="0.42" r="0.62">
+    <radialGradient id="${id}pool" gradientUnits="userSpaceOnUse" cx="196" cy="205" r="235">
       <stop offset="0" stop-color="#ffffff" stop-opacity=".055"/>
       <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
     </radialGradient>
     <filter id="${id}soft" x="-20%" y="-20%" width="140%" height="140%">
       <feGaussianBlur stdDeviation="3"/>
     </filter>
+    <pattern id="${id}weave" width="3" height="3" patternUnits="userSpaceOnUse" patternTransform="rotate(38)">
+      <line x1="0" y1="0" x2="0" y2="3" stroke="#ffffff" stroke-opacity=".028" stroke-width=".7"/>
+      <line x1="1.5" y1="0" x2="1.5" y2="3" stroke="#000000" stroke-opacity=".034" stroke-width=".7"/>
+    </pattern>
   </defs>` };
+}
+
+let camoSeq = 0;
+// Woven camo as an SVG pattern fill, so the cap body carries it the way the
+// monogram garments carry theirs - no raster, stays crisp at any tile size.
+function camoFill(){
+  const id = "camo" + (++camoSeq);
+  const blob = (x,y,r,f)=>`<ellipse cx="${x}" cy="${y}" rx="${r}" ry="${r*0.72}" fill="${f}"/>`;
+  return { id, defs:`<defs><pattern id="${id}" width="72" height="72" patternUnits="userSpaceOnUse">`
+    + `<rect width="72" height="72" fill="#5f6446"/>`
+    + blob(14,16,13,"#3f4530") + blob(52,10,15,"#7d7f5c") + blob(64,44,12,"#3f4530")
+    + blob(30,40,16,"#8a7b56") + blob(8,58,12,"#7d7f5c") + blob(46,62,13,"#3f4530")
+    + blob(68,70,9,"#8a7b56") + blob(24,68,8,"#7d7f5c")
+    + `</pattern></defs>` };
 }
 
 function seams(body){
@@ -1231,6 +1267,7 @@ function seams(body){
     seam: isDark ? "rgba(255,255,255,.18)" : "rgba(9,12,34,.16)",
     string: isDark ? "rgba(255,255,255,.4)" : "rgba(9,12,34,.4)",
     rib: isDark ? "rgba(255,255,255,.1)" : "rgba(9,12,34,.08)",
+    stitch: isDark ? "rgba(255,255,255,.32)" : "rgba(9,12,34,.3)",
   };
 }
 
@@ -1241,7 +1278,9 @@ function hoodieSVG(body, print, defs=""){
     ${shadow(432, 130)}
     <!-- sleeves -->
     <path d="M128 142 L68 176 L56 328 Q55 344 70 344 L98 344 Q110 344 111 331 L120 214 Z" fill="${body}" stroke="${c.edge}" stroke-width="2" stroke-linejoin="round"/>
+    <path d="M128 142 L68 176 L56 328 Q55 344 70 344 L98 344 Q110 344 111 331 L120 214 Z" fill="url(#${sh.id}light)"/><path d="M128 142 L68 176 L56 328 Q55 344 70 344 L98 344 Q110 344 111 331 L120 214 Z" fill="url(#${sh.id}weave)"/>
     <path d="M272 142 L332 176 L344 328 Q345 344 330 344 L302 344 Q290 344 289 331 L280 214 Z" fill="${body}" stroke="${c.edge}" stroke-width="2" stroke-linejoin="round"/>
+    <path d="M272 142 L332 176 L344 328 Q345 344 330 344 L302 344 Q290 344 289 331 L280 214 Z" fill="url(#${sh.id}light)"/><path d="M272 142 L332 176 L344 328 Q345 344 330 344 L302 344 Q290 344 289 331 L280 214 Z" fill="url(#${sh.id}weave)"/>
     <!-- cuff rib lines -->
     <path d="M58 322 L112 322" stroke="${c.seam}" stroke-width="2" fill="none"/>
     <path d="M288 322 L342 322" stroke="${c.seam}" stroke-width="2" fill="none"/>
@@ -1249,6 +1288,7 @@ function hoodieSVG(body, print, defs=""){
     <path d="M126 138 Q200 116 274 138 L281 392 Q281 410 264 410 L136 410 Q119 410 119 392 Z" fill="${body}" stroke="${c.edge}" stroke-width="2" stroke-linejoin="round"/>
     <path d="M126 138 Q200 116 274 138 L281 392 Q281 410 264 410 L136 410 Q119 410 119 392 Z" fill="url(#${sh.id}light)"/>
     <path d="M126 138 Q200 116 274 138 L281 392 Q281 410 264 410 L136 410 Q119 410 119 392 Z" fill="url(#${sh.id}pool)"/>
+    <path d="M126 138 Q200 116 274 138 L281 392 Q281 410 264 410 L136 410 Q119 410 119 392 Z" fill="url(#${sh.id}weave)"/>
     <g opacity=".28" filter="url(#${sh.id}soft)" stroke="#000" fill="none" stroke-width="3">
       <path d="M152 260 Q160 330 154 398"/>
       <path d="M250 258 Q244 332 250 398"/>
@@ -1259,12 +1299,22 @@ function hoodieSVG(body, print, defs=""){
     <path d="M121 392 L279 392" stroke="${c.seam}" stroke-width="2" fill="none"/>
     <!-- hood -->
     <path d="M140 136 Q146 66 200 62 Q254 66 260 136 Q228 154 200 155 Q172 154 140 136 Z" fill="${body}" stroke="${c.edge}" stroke-width="2"/>
+    <path d="M140 136 Q146 66 200 62 Q254 66 260 136 Q228 154 200 155 Q172 154 140 136 Z" fill="url(#${sh.id}light)"/>
+    <path d="M140 136 Q146 66 200 62 Q254 66 260 136 Q228 154 200 155 Q172 154 140 136 Z" fill="url(#${sh.id}weave)"/>
     <path d="M156 130 Q162 88 200 84 Q238 88 244 130 Q222 144 200 145 Q178 144 156 130 Z" fill="rgba(0,0,0,.5)" stroke="${c.seam}" stroke-width="2"/>
     <!-- drawstrings -->
     <line x1="188" y1="152" x2="183" y2="200" stroke="${c.string}" stroke-width="3" stroke-linecap="round"/>
     <line x1="212" y1="152" x2="217" y2="200" stroke="${c.string}" stroke-width="3" stroke-linecap="round"/>
     <!-- kangaroo pocket -->
     <path d="M150 328 L250 328 L244 390 L156 390 Z" fill="none" stroke="${c.seam}" stroke-width="2" stroke-linejoin="round"/>
+    <!-- topstitching: pocket, hem, cuffs, hood edge -->
+    <g fill="none" stroke="${c.stitch}" stroke-width="1.1" stroke-dasharray="3.5 3">
+      <path d="M154 332 L246 332 L240 386 L160 386 Z"/>
+      <path d="M124 386 L276 386"/>
+      <path d="M60 316 L110 316"/>
+      <path d="M290 316 L340 316"/>
+      <path d="M146 132 Q152 74 200 70 Q248 74 254 132"/>
+    </g>
     ${print}
   </svg>`;
 }
@@ -1279,6 +1329,7 @@ function teeSVG(body, print, defs=""){
       fill="${body}" stroke="${c.edge}" stroke-width="2" stroke-linejoin="round"/>
     <path d="M118 128 L58 190 L76 248 L120 228 L120 386 Q120 404 138 404 L262 404 Q280 404 280 386 L280 228 L324 248 L342 190 L282 128 Q252 112 230 110 Q200 136 170 110 Q148 112 118 128 Z" fill="url(#${sh.id}light)"/>
     <path d="M118 128 L58 190 L76 248 L120 228 L120 386 Q120 404 138 404 L262 404 Q280 404 280 386 L280 228 L324 248 L342 190 L282 128 Q252 112 230 110 Q200 136 170 110 Q148 112 118 128 Z" fill="url(#${sh.id}pool)"/>
+    <path d="M118 128 L58 190 L76 248 L120 228 L120 386 Q120 404 138 404 L262 404 Q280 404 280 386 L280 228 L324 248 L342 190 L282 128 Q252 112 230 110 Q200 136 170 110 Q148 112 118 128 Z" fill="url(#${sh.id}weave)"/>
     <g opacity=".30" filter="url(#${sh.id}soft)" stroke="#000" fill="none" stroke-width="3">
       <path d="M150 250 Q158 316 150 392"/>
       <path d="M250 246 Q244 318 252 392"/>
@@ -1289,6 +1340,13 @@ function teeSVG(body, print, defs=""){
     <path d="M280 132 L278 226" stroke="${c.seam}" stroke-width="2" fill="none"/>
     <!-- collar rib -->
     <path d="M170 110 Q200 136 230 110 Q200 152 170 110 Z" fill="${c.rib}" stroke="${c.seam}" stroke-width="2"/>
+    <!-- topstitching: hem, sleeve openings, collar -->
+    <g fill="none" stroke="${c.stitch}" stroke-width="1.1" stroke-dasharray="3.5 3">
+      <path d="M126 384 Q126 398 140 398 L260 398 Q274 398 274 384"/>
+      <path d="M64 193 L81 244"/>
+      <path d="M336 193 L319 244"/>
+      <path d="M172 116 Q200 140 228 116"/>
+    </g>
     ${print}
   </svg>`;
 }
@@ -1308,22 +1366,38 @@ function teeBackSVG(body, print, defs=""){
 
 function longsleeveSVG(body, print, defs=""){
   const c = seams(body);
-  return `<svg viewBox="0 0 400 460" xmlns="http://www.w3.org/2000/svg">${defs}
+  const sh = garmentShading(body);
+  return `<svg viewBox="0 0 400 460" xmlns="http://www.w3.org/2000/svg">${defs}${sh.defs}
     ${shadow(430, 132)}
     <!-- sleeves (behind torso, angled out) -->
     <path d="M124 134 L62 180 L48 336 Q47 352 62 352 L90 352 Q103 352 104 339 L116 214 Z" fill="${body}" stroke="${c.edge}" stroke-width="2" stroke-linejoin="round"/>
+    <path d="M124 134 L62 180 L48 336 Q47 352 62 352 L90 352 Q103 352 104 339 L116 214 Z" fill="url(#${sh.id}light)"/><path d="M124 134 L62 180 L48 336 Q47 352 62 352 L90 352 Q103 352 104 339 L116 214 Z" fill="url(#${sh.id}weave)"/>
     <path d="M276 134 L338 180 L352 336 Q353 352 338 352 L310 352 Q297 352 296 339 L284 214 Z" fill="${body}" stroke="${c.edge}" stroke-width="2" stroke-linejoin="round"/>
+    <path d="M276 134 L338 180 L352 336 Q353 352 338 352 L310 352 Q297 352 296 339 L284 214 Z" fill="url(#${sh.id}light)"/><path d="M276 134 L338 180 L352 336 Q353 352 338 352 L310 352 Q297 352 296 339 L284 214 Z" fill="url(#${sh.id}weave)"/>
     <!-- cuff rib lines -->
     <path d="M50 330 L105 330" stroke="${c.seam}" stroke-width="2" fill="none"/>
     <path d="M295 330 L350 330" stroke="${c.seam}" stroke-width="2" fill="none"/>
     <!-- torso with neckline -->
     <path d="M124 132 Q148 114 170 110 Q200 136 230 110 Q252 114 276 132 L280 386 Q280 404 262 404 L138 404 Q120 404 120 386 Z"
       fill="${body}" stroke="${c.edge}" stroke-width="2" stroke-linejoin="round"/>
+    <path d="M124 132 Q148 114 170 110 Q200 136 230 110 Q252 114 276 132 L280 386 Q280 404 262 404 L138 404 Q120 404 120 386 Z" fill="url(#${sh.id}light)"/>
+    <path d="M124 132 Q148 114 170 110 Q200 136 230 110 Q252 114 276 132 L280 386 Q280 404 262 404 L138 404 Q120 404 120 386 Z" fill="url(#${sh.id}pool)"/>
+    <path d="M124 132 Q148 114 170 110 Q200 136 230 110 Q252 114 276 132 L280 386 Q280 404 262 404 L138 404 Q120 404 120 386 Z" fill="url(#${sh.id}weave)"/>
+    <g opacity=".26" filter="url(#${sh.id}soft)" stroke="#000" fill="none" stroke-width="3">
+      <path d="M152 250 Q160 320 152 396"/>
+      <path d="M248 248 Q242 322 250 396"/>
+    </g>
     <!-- shoulder seams -->
     <path d="M125 136 L121 214" stroke="${c.seam}" stroke-width="2" fill="none"/>
     <path d="M275 136 L279 214" stroke="${c.seam}" stroke-width="2" fill="none"/>
     <!-- collar rib -->
     <path d="M170 110 Q200 136 230 110 Q200 152 170 110 Z" fill="${c.rib}" stroke="${c.seam}" stroke-width="2"/>
+    <g fill="none" stroke="${c.stitch}" stroke-width="1.1" stroke-dasharray="3.5 3">
+      <path d="M126 384 Q126 398 140 398 L260 398 Q274 398 274 384"/>
+      <path d="M52 324 L103 324"/>
+      <path d="M297 324 L348 324"/>
+      <path d="M172 116 Q200 140 228 116"/>
+    </g>
     <!-- sleeve prints -->
     <text x="80" y="246" font-family="Inter,Arial,sans-serif" font-size="13" font-weight="800" fill="rgba(255,255,255,.92)" transform="rotate(83 80 246)" letter-spacing="2">ANY DAY NOW</text>
     <text x="322" y="246" font-family="Inter,Arial,sans-serif" font-size="13" font-weight="800" fill="rgba(255,255,255,.92)" transform="rotate(97 322 246)" letter-spacing="2">ANY DAY NOW</text>
@@ -1331,9 +1405,9 @@ function longsleeveSVG(body, print, defs=""){
   </svg>`;
 }
 
-function capSVG(body, print){
+function capSVG(body, print, defs=""){
   const c = seams(body);
-  return `<svg viewBox="0 0 400 340" xmlns="http://www.w3.org/2000/svg">
+  return `<svg viewBox="0 0 400 340" xmlns="http://www.w3.org/2000/svg">${defs}
     ${shadow(300, 120)}
     <!-- side-profile dad cap, bill pointing right -->
     <!-- bill -->
@@ -1376,6 +1450,38 @@ const printGamblingEasy = `<g transform="translate(200.0,257.0) scale(0.8344) tr
   <text x="200" y="238" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-weight="800" font-size="26" fill="#ffffff" letter-spacing="1">GAMBLING</text>
   <text x="200" y="268" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-weight="800" font-size="26" fill="#ffffff" letter-spacing="1">IS EASY</text>
   <text x="200" y="292" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-size="12" font-weight="700" fill="#ffc100">(even i can do it)</text></g>`;
+
+
+/* Political-sign parody: boxed rule, star bar, condensed caps. */
+const printMGGA = `<g transform="translate(182,170)">
+  <rect x="-68" y="-30" width="136" height="60" fill="none" stroke="#ffffff" stroke-width="2"/>
+  <path d="M-58 -22 L58 -22" stroke="#ffffff" stroke-width="1.6" stroke-dasharray="1.5 4" stroke-linecap="round"/>
+  <text x="0" y="-4" text-anchor="middle" font-family="Tinos,Times New Roman,serif" font-weight="700" font-size="17" fill="#ffffff">Duel.com</text>
+  <text x="0" y="6" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-size="7" fill="#ffffff" letter-spacing="1.6">★★★★★★★★★★★</text>
+  <text x="0" y="17" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-weight="800" font-size="10" fill="#ffffff" letter-spacing=".3">MAKE GAMBLING</text>
+  <text x="0" y="27" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-weight="800" font-size="10" fill="#ffffff" letter-spacing=".3">GREAT AGAIN</text>
+  <path d="M-58 30 L58 30" stroke="#ffffff" stroke-width="1.6" stroke-dasharray="1.5 4" stroke-linecap="round"/>
+</g>`;
+
+/* Long serif line across the crown, paw prints walking off the bill. */
+const pawPrint = (x,y,sc)=>`<g transform="translate(${x},${y}) scale(${sc})" fill="#ffffff">
+  <ellipse cx="0" cy="2.4" rx="3" ry="2.4"/><circle cx="-3.1" cy="-1.9" r="1.15"/>
+  <circle cx="-0.9" cy="-3.2" r="1.15"/><circle cx="1.4" cy="-3" r="1.15"/><circle cx="3.3" cy="-1.5" r="1.05"/></g>`;
+const printCatGamble = `<g>
+  <text x="182" y="158" text-anchor="middle" font-family="Tinos,Times New Roman,serif" font-weight="700" font-size="15" fill="#ffffff">Maybe your cat</text>
+  <text x="182" y="176" text-anchor="middle" font-family="Tinos,Times New Roman,serif" font-weight="700" font-size="15" fill="#ffffff">is meowing because</text>
+  <text x="182" y="194" text-anchor="middle" font-family="Tinos,Times New Roman,serif" font-weight="700" font-size="15" fill="#ffffff">it wants to gamble?</text>
+  ${pawPrint(286,214,1)}${pawPrint(300,209,1)}${pawPrint(314,213,1)}${pawPrint(328,208,1)}
+</g>`;
+
+/* Bun, sausage, and the wordmark squeezed out in mustard. */
+const printHotDog = `<g transform="translate(200,250)">
+  <ellipse cx="0" cy="0" rx="66" ry="27" fill="#d9a13f" stroke="#8a5a1c" stroke-width="2.5"/>
+  <path d="M-60 -4 Q0 -20 60 -4 Q0 12 -60 -4 Z" fill="#b8471f" stroke="#7d2d12" stroke-width="2"/>
+  <ellipse cx="0" cy="4" rx="60" ry="18" fill="none" stroke="rgba(255,255,255,.18)" stroke-width="2"/>
+  <text x="0" y="9" text-anchor="middle" font-family="Tinos,Times New Roman,serif" font-weight="700" font-size="30"
+        fill="#ffd75e" stroke="#5c3a08" stroke-width="2.4" paint-order="stroke" letter-spacing="-1">Duel</text>
+</g>`;
 
 const printCow = `
   <g>
@@ -1534,6 +1640,31 @@ function deedSVG(){
 }
 
 /* ---------- catalog ---------- */
+const SIZE_CHARTS = {
+  "Bella + Canvas 3001": { cols:["Length","Width"], rows:{
+    S:["28","18"], M:["29","20"], L:["30","22"], XL:["31","24"], "2XL":["32","26"] } },
+  "Gildan 18500": { cols:["Length","Width","Sleeve"], rows:{
+    S:["27","20","33.5"], M:["28","22","34.5"], L:["29","24","35.5"],
+    XL:["30","26","36.5"], "2XL":["31","28","37.5"] } },
+  "all-over print cotton hoodie": { cols:["Length","Width","Sleeve"], rows:{
+    S:["26.77","20.08","22.44"], M:["27.56","20.87","22.83"], L:["28.15","22.64","23.62"],
+    XL:["28.74","24.13","24.41"], "2XL":["29.13","25.79","25.00"] } },
+  "all-over print cotton tee": { cols:["Length","Width","Sleeve"], rows:{
+    S:["26.38","21.26","9.61"], M:["26.77","22.05","9.84"], L:["27.56","23.62","10.31"],
+    XL:["28.35","25.20","10.79"], "2XL":["29.13","26.77","11.26"] } },
+};
+// the chart follows the blank, so it stays right if a product changes garment
+function chartFor(p){
+  const blank = (p.meta||[]).find(m=>m.startsWith("Blank \u2014 "));
+  return blank ? SIZE_CHARTS[blank.slice(8)] : null;
+}
+// a design that traces to a real timestamped message beats any spec sheet;
+// only set `from` where the quote is genuinely on the receipts wall
+function receiptFor(p){
+  if(!p.from) return null;
+  return RECEIPTS.find(r=>r.name===p.from.name && r.date===p.from.date) || null;
+}
+
 const APPAREL_SIZES = ["S","M","L","XL","XXL"];
 const ONE_SIZE = ["ONE SIZE"];
 
@@ -1550,6 +1681,49 @@ function daysWaited(){
 
 const PRODUCTS = [
   {
+    id:"mgga-cap",
+    colors:["Navy","Camo"],
+    tile:"#1b2038",
+    name:"Make Gambling Great Again Cap",
+    lore:"the campaign nobody asked for",
+    price:30,
+    chip:"EMBROIDERED",
+    sizes:ONE_SIZE,
+    desc:`A campaign hat for a platform of one policy. Structured six-panel, white embroidery, and yes there is a camo one.`,
+    meta:["Blank — Otto 19-061","Finish — white embroidery, front + side","Size — one size, adjustable"],
+    art:(a,c)=>{
+      if (c !== "Camo") return capSVG(COLORWAYS[c]||NAVY, printMGGA);
+      const f = camoFill();
+      return capSVG(`url(#${f.id})`, printMGGA, f.defs);
+    },
+  },
+  {
+    id:"cat-gamble-cap",
+    colors:["Navy"],
+    tile:"#1b2038",
+    name:"Maybe Your Cat Cap",
+    lore:"a question for the household",
+    price:30,
+    chip:"EMBROIDERED",
+    sizes:ONE_SIZE,
+    desc:`<em>"Maybe your cat is meowing because it wants to gamble?"</em> Serif across the crown, paw prints walking off the bill.`,
+    meta:["Blank — Otto 19-061","Finish — white embroidery, paw prints on bill","Size — one size, adjustable"],
+    art:(a,c)=>capSVG(COLORWAYS[c]||NAVY, printCatGamble),
+  },
+  {
+    id:"hotdog-hoodie",
+    colors:["White"],
+    tile:"#1b2038",
+    name:"Hot Dog Hoodie",
+    lore:"the wordmark, in mustard",
+    price:74,
+    chip:"HEAVYWEIGHT",
+    sizes:APPAREL_SIZES,
+    desc:`The wordmark squeezed out in mustard across a bun. There is no explanation and it does not need one.`,
+    meta:["Blank — Gildan 18500","Weight — 8oz cotton/poly fleece","Print — front graphic","Fit — unisex, runs roomy"],
+    art:(a,c)=>hoodieSVG("#EFEFEC", printHotDog),
+  },
+  {
     id:"gambling-easy-hoodie",
     colors:["Black","Navy"],
     tile:"#1b2038",
@@ -1558,7 +1732,7 @@ const PRODUCTS = [
     price:72,
     chip:"HEAVYWEIGHT",
     sizes:APPAREL_SIZES,
-    desc:`The philosophy, immortalized on heavyweight fleece. Front reads <em>"GAMBLING IS EASY (even i can do it)."</em> That's it. That's the hoodie. Spotted in Dubai before it even existed.`,
+    desc:`Front reads <em>"GAMBLING IS EASY (even i can do it)."</em> Cuttle said it in the server. White ink on 8oz fleece.`,
     meta:["Blank — Gildan 18500","Weight — 8oz cotton/poly fleece","Print — front, white ink","Fit — unisex, runs roomy"],
     art:(a,c)=>hoodieSVG(COLORWAYS[c]||INK, printGamblingEasy),
   },
@@ -1571,12 +1745,13 @@ const PRODUCTS = [
     price:34,
     chip:"THE COW ONE",
     sizes:APPAREL_SIZES,
-    desc:`Ivan wanted the cow one. This is the cow one. We don't fully know why there's a cow either — that's what makes it <em>lore.</em>`,
+    desc:`Ivan wanted the cow one. This is the cow one. Nobody really knows why there's a cow.`,
     meta:["Blank — Bella + Canvas 3001","Fabric — 100% ring-spun cotton","Print — front graphic","Fit — unisex"],
     art:(a,c)=>teeSVG("#FDFDFB", printCow),
   },
   {
     id:"coming-2029-tee",
+    from:{name:"Monarch", date:"5/24/2026"},
     colors:["Black","Navy"],
     tile:"#1b2038",
     name:"Coming 2029 Tee",
@@ -1584,7 +1759,7 @@ const PRODUCTS = [
     price:34,
     chip:"THE ORIGINAL",
     sizes:APPAREL_SIZES,
-    desc:`Monarch said 2029. Ventful said 2029. The timeline has been <em>amended.</em> Wear the correction.`,
+    desc:`Monarch said 2029. Ventful said 2029. This one says 2026.`,
     meta:["Blank — Bella + Canvas 3001","Fabric — 100% ring-spun cotton","Print — front type","Fit — unisex"],
     art:(a,c)=>teeSVG(COLORWAYS[c]||INK, print2029),
   },
@@ -1597,7 +1772,7 @@ const PRODUCTS = [
     price:28,
     chip:"WOVEN PATCH",
     sizes:ONE_SIZE,
-    desc:`The only guaranteed positive expected value in this entire community. Keeps your head warm while your bankroll does whatever it's doing.`,
+    desc:`Ventful's plusev colours. Orange embroidery, one size.`,
     meta:["Blank — Yupoong 1501KC","Finish — orange embroidery","Size — one size"],
     art:(a,c)=>beanieSVG(COLORWAYS[c]||INK, printEV),
   },
@@ -1611,7 +1786,7 @@ const PRODUCTS = [
     chip:"YOUR NUMBER",
     sizes:APPAREL_SIZES,
     custom:{ label:"How much did you lose?", def:LOUSY_DEFAULT, amounts:[69,420,1000,4000,10000,100000], presets:[69,420,1000,4000,10000,100000] },
-    desc:`Sent in by the server, printed without edits. <em>Put your own number on it</em> — the real one, not the one you told your girlfriend. 100% RTP, allegedly.`,
+    desc:`Someone in the server sent this in. <em>Put your own number on it</em> — the real one, not the one you told your girlfriend.`,
     meta:["Blank — Bella + Canvas 3001","Print — front, your amount","Fit — unisex"],
     art:(amount,c)=>teeSVG(COLORWAYS[c]||INK, printLousy(amount)),
   },
@@ -1625,7 +1800,7 @@ const PRODUCTS = [
     price:34,
     chip:"DROP 002",
     sizes:APPAREL_SIZES,
-    desc:`Plank posted this at me in the server. <em>He's right — I don't work there.</em> Wearing the insult is cheaper than arguing with it.`,
+    desc:`Plank posted this at me in the server. <em>He's right, I don't work there.</em>`,
     meta:["Blank — Bella + Canvas 3001","Fabric — 100% ring-spun cotton","Print — front type","Fit — unisex"],
     art:(a,c)=>teeSVG(COLORWAYS[c]||INK, printOnTheTeam),
   },
@@ -1639,7 +1814,7 @@ const PRODUCTS = [
     price:74,
     chip:"DROP 002",
     sizes:APPAREL_SIZES,
-    desc:`The number they advertise, with the footnote they don't. <em>*not on my account.</em> The only piece here you could wear somewhere nobody knows what Duel is.`,
+    desc:`The number they advertise, with the footnote they don't. <em>*not on my account.</em>`,
     meta:["Blank — Gildan 18500","Weight — 8oz cotton/poly fleece","Print — front, white ink","Fit — unisex, runs roomy"],
     art:(a,c)=>hoodieSVG(COLORWAYS[c]||INK, printRTP),
   },
@@ -1653,7 +1828,7 @@ const PRODUCTS = [
     price:30,
     chip:"EMBROIDERED",
     sizes:ONE_SIZE,
-    desc:`Somebody asked in the server whether Duel is trademarked. Nobody answered. <em>Wear the question.</em>`,
+    desc:`Somebody asked in the server whether Duel is trademarked. Nobody answered. Embroidered front.`,
     meta:["Blank — Yupoong 6245CM dad hat","Finish — gold embroidery","Size — adjustable, one size"],
     art:(a,c)=>capSVG(COLORWAYS[c]||INK, printTrademarked),
   },
@@ -1667,7 +1842,7 @@ const PRODUCTS = [
     price:128,
     chip:"ALL-OVER",
     sizes:APPAREL_SIZES,
-    desc:`The DM monogram, tonal, across every panel — body, sleeves, hood, pocket. <em>Printed, not stitched on.</em> The only piece here that says nothing at all.`,
+    desc:`DM monogram across every panel — body, sleeves, hood, pocket. Printed edge to edge, not stitched.`,
     meta:["Blank — all-over print cotton hoodie","Print — tonal monogram, every panel","Fit — oversized"],
     art:(a,c)=>{ const m=monogramFill(c||"Black"); return hoodieSVG(`url(#${m.id})`, "", m.defs); },
   },
@@ -1681,7 +1856,7 @@ const PRODUCTS = [
     price:68,
     chip:"ALL-OVER",
     sizes:APPAREL_SIZES,
-    desc:`Same monogram, lighter weight. <em>Wearable somewhere nobody knows what any of this means.</em>`,
+    desc:`Same monogram, lighter weight. Oversized cut.`,
     meta:["Blank — all-over print cotton tee","Print — tonal monogram, all panels","Fit — oversized"],
     art:(a,c)=>{ const m=monogramFill(c||"Black"); return teeSVG(`url(#${m.id})`, "", m.defs); },
   },
@@ -1695,7 +1870,7 @@ const PRODUCTS = [
     price:34,
     chip:"LEFT CHEST",
     sizes:APPAREL_SIZES,
-    desc:`No slogan, no punchline — just the mark, small, where a brand puts it. <em>The one you can wear to work.</em>`,
+    desc:`Wordmark, 4in, left chest. That’s the whole design.`,
     meta:["Blank — Bella + Canvas 3001","Print — left chest, 4in","Fit — unisex"],
     art:(a,c)=>teeSVG(COLORWAYS[c]||INK, printChestWordmark),
   },
@@ -1709,7 +1884,7 @@ const PRODUCTS = [
     price:34,
     chip:"LEFT CHEST",
     sizes:APPAREL_SIZES,
-    desc:`Q1 2025, struck out. 2029, struck out. <em>2026, ticked.</em> The whole argument in three lines, small enough to be deniable.`,
+    desc:`Q1 2025, struck out. 2029, struck out. <em>2026, ticked.</em> Left chest, 4in.`,
     meta:["Blank — Bella + Canvas 3001","Print — left chest, 4in","Fit — unisex"],
     art:(a,c)=>teeSVG(COLORWAYS[c]||INK, printChestDates),
   },
@@ -1722,7 +1897,7 @@ const PRODUCTS = [
     price:88,
     chip:"50 × 160CM",
     sizes:ONE_SIZE,
-    desc:`Shuffle sell a waifu body pillow for $888.88. This is the same idea with a cow on it, for a tenth of the price. <em>She has never lost a hand.</em> Double-sided, because of course it is.`,
+    desc:`Shuffle sell a waifu body pillow for $888.88. This is the same idea with a cow on it, for a tenth of the price. Double-sided.`,
     meta:["Size — 50 × 160cm","Includes — case + inner pillow","Print — double-sided"],
     art:()=>pillowSVG(),
   },
@@ -1741,13 +1916,14 @@ const PRODUCTS = [
   },
   {
     id:"the-entire-merch-store",
+    from:{name:"Sean", date:"4/28/2026"},
     tile:"#1b2038",
     name:"The Entire Merch Store",
     lore:"for Monarch. DMs are open.",
     price:1000000000,
     chip:"1 OF 1",
     sizes:ONE_SIZE,
-    desc:`Sean said <em>"a billion dollars and you can't open up a merch store."</em> Correct — it took one guy and a domain. Now it's for sale: the site, the stock, the lore, the receipts. The whole operation. <em>Serious inquiries only.</em>`,
+    desc:`Sean said <em>"a billion dollars and you can't open up a merch store."</em> Correct — it took one guy and a domain. Now it's for sale — the site, the designs, the domain. <em>Serious inquiries only.</em>`,
     meta:["Edition — 1 of 1","Includes — all lore, past and future","Delivery — buyer collects"],
     art:()=>deedSVG(),
   },
@@ -1977,6 +2153,14 @@ const RECEIPTS = [
 })();
 
 /* ---------- render products ---------- */
+
+// in flight during render — the wall is below the hero, so the reorder is done
+// before anyone scrolls to it
+const wantCounts = fetch("/api/want")
+  .then(r=>r.json())
+  .then(d=>(d && d.ok && d.counts) ? d.counts : null)
+  .catch(()=>null);
+
 (function(){
   const card = (p,i)=>`
     <div class="card" data-id="${p.id}">
@@ -2007,6 +2191,32 @@ const RECEIPTS = [
   document.getElementById("productGrid").innerHTML = PRODUCTS.map((p,i)=>card(p,i)).join("");
 })();
 
+// Order the wall by what people actually want made. Curated order breaks ties, so
+// with no votes at all the wall looks exactly as authored, and popular designs
+// rise as votes come in.
+function sortWall(counts){
+  const grid = document.getElementById("productGrid");
+  if(!grid || !counts) return;
+  const curated = new Map(PRODUCTS.map((p,i)=>[p.id,i]));
+  const cards = Array.from(grid.querySelectorAll(".card"));
+  cards.sort((a,b)=>{
+    const ia = a.getAttribute("data-id"), ib = b.getAttribute("data-id");
+    const diff = (counts[ib]||0) - (counts[ia]||0);
+    return diff !== 0 ? diff : (curated.get(ia) - curated.get(ib));
+  });
+  const frag = document.createDocumentFragment();
+  cards.forEach(c=>frag.appendChild(c));
+  grid.appendChild(frag);
+  renumberWall();
+}
+
+// card-no is the position on the wall, not an identity — always follows the sort
+function renumberWall(){
+  document.querySelectorAll("#productGrid .card .card-no").forEach((el,i)=>{
+    el.textContent = String(i+1).padStart(2,"0");
+  });
+}
+
 /* ---------- cart state ---------- */
 /* ---------- concept detail ---------- */
 const backdrop = document.getElementById("backdrop");
@@ -2016,9 +2226,51 @@ let modalSize = null;
 let modalAmount = null;
 let modalColor = null;
 
-function openModal(id){
+function renderSource(p){
+  const el = document.getElementById("modalSource");
+  const r = receiptFor(p);
+  if(!r){ el.innerHTML = ""; return; }
+  el.innerHTML = `<div class="prov">
+    <div class="prov-h">Where this came from</div>
+    <div class="prov-msg">\u201c${r.msg}\u201d</div>
+    <div class="prov-who"><b style="color:${r.color}">${r.name}</b> \u00b7 ${r.date}
+      \u00b7 <a href="#receipts" data-close-modal>see the receipt</a></div>
+  </div>`;
+}
+
+function renderSizeChart(p){
+  const el = document.getElementById("modalSizes");
+  const chart = chartFor(p);
+  if(!chart || p.sizes.length < 2){ el.innerHTML = ""; return; }
+  const head = `<tr><th>Size</th>${chart.cols.map(c=>`<th>${c}</th>`).join("")}</tr>`;
+  const key = sz => chart.rows[sz] ? sz : (sz === "XXL" ? "2XL" : sz);
+  const body = p.sizes.filter(sz=>chart.rows[key(sz)]).map(sz=>
+    `<tr data-size-row="${sz}"><td>${sz}</td>${chart.rows[key(sz)].map(v=>`<td>${v}</td>`).join("")}</tr>`
+  ).join("");
+  el.innerHTML = `<details class="sizes-wrap"><summary>Size guide</summary>
+    <table class="size-tbl"><thead>${head}</thead><tbody>${body}</tbody></table>
+    <p class="size-note">Garment measurements in inches, from the blank manufacturer.
+    Supplier tolerance is about 2\u2033. Length is collar to hem, width is armpit to armpit.</p>
+  </details>`;
+  markSizeRow();
+}
+
+// keep the chart in step with the size the buyer has actually picked
+function markSizeRow(){
+  document.querySelectorAll("[data-size-row]").forEach(tr=>
+    tr.classList.toggle("on", tr.getAttribute("data-size-row") === modalSize));
+}
+
+// the modal is a page as far as sharing and the back button are concerned
+function syncUrl(id){
+  const url = id ? (location.pathname + "?p=" + encodeURIComponent(id)) : location.pathname;
+  if (location.pathname + location.search !== url) history.pushState({p:id||null}, "", url);
+}
+
+function openModal(id, opts){
   const p = PRODUCTS.find(x=>x.id===id);
   if(!p) return;
+  if(!(opts && opts.fromUrl)) syncUrl(id);
   modalProduct = p;
   modalSize = p.sizes[0];
   modalAmount = p.custom ? p.custom.def : null;
@@ -2045,24 +2297,58 @@ function openModal(id){
     const [k,v] = i > -1 ? [m.slice(0,i), m.slice(i+3)] : [m, ""];
     return `<div class="spec-row"><span>${k}</span><b>${v || "✓"}</b></div>`;
   }).join("");
+  renderSource(p);
+  renderSizeChart(p);
   document.getElementById("sizeLabel").textContent = p.sizes.length===1 ? "Size" : "Select size";
   const cw = document.getElementById("colorRowWrap");
   if(p.colors && p.colors.length > 1){
     cw.style.display = "";
     document.getElementById("colorRow").innerHTML = p.colors.map(c=>
-      `<button type="button" class="swatch${c===modalColor?" sel":""}" data-color="${c}"><i style="background:${COLORWAYS[c]||"#141414"}"></i>${c}</button>`).join("");
+      `<button type="button" class="swatch${c===modalColor?" sel":""}" data-color="${c}"><i style="background:${SWATCH_HINT[c]||COLORWAYS[c]||"#141414"}"></i>${c}</button>`).join("");
   } else { cw.style.display = "none"; }
   const row = document.getElementById("sizeRow");
   row.innerHTML = p.sizes.map(s=>
-    `<button class="size-btn${p.sizes.length===1 ? " sel" : ""}" data-size="${s}">${s}</button>`).join("");
+    `<button class="size-btn${s===modalSize ? " sel" : ""}" data-size="${s}">${s}</button>`).join("");
   updateModalAdd();
   modal.classList.add("show");
   backdrop.classList.add("show");
 }
-function closeModal(){
+function closeModal(opts){
   modal.classList.remove("show");
   backdrop.classList.remove("show");
+  if(!(opts && opts.fromUrl)) syncUrl(null);
 }
+
+// back button closes the modal instead of leaving the site
+addEventListener("popstate", e=>{
+  const id = (e.state && e.state.p) || new URLSearchParams(location.search).get("p");
+  if(id && PRODUCTS.some(x=>x.id===id)) openModal(id, {fromUrl:true});
+  else closeModal({fromUrl:true});
+});
+
+// land straight on a shared design
+(function openFromUrl(){
+  const id = new URLSearchParams(location.search).get("p");
+  if(id && PRODUCTS.some(x=>x.id===id)){
+    openModal(id, {fromUrl:true});
+    history.replaceState({p:id}, "", location.pathname + "?p=" + encodeURIComponent(id));
+  }
+})();
+
+document.getElementById("modalShare").addEventListener("click", async ()=>{
+  if(!modalProduct) return;
+  const btn = document.getElementById("modalShare");
+  const url = location.origin + location.pathname + "?p=" + encodeURIComponent(modalProduct.id);
+  try{
+    await navigator.clipboard.writeText(url);
+  }catch(e){
+    // clipboard is blocked in some embedded views; fall back to a selectable prompt
+    window.prompt("Copy this link", url);
+    return;
+  }
+  btn.textContent = "Copied \u2713"; btn.classList.add("done");
+  setTimeout(()=>{ btn.textContent = "Copy link"; btn.classList.remove("done"); }, 1800);
+});
 function updateModalAdd(){
   const btn = document.getElementById("modalAdd");
   const done = wantedAlready(modalProduct && modalProduct.id);
@@ -2080,6 +2366,41 @@ document.getElementById("modalAdd").addEventListener("click", async ()=>{
 });
 
 document.getElementById("modalClose").addEventListener("click", closeModal);
+
+// every interactive control inside the modal, delegated
+document.getElementById("modal").addEventListener("click", e=>{
+  const pick = (sel, el) => {
+    document.querySelectorAll(sel).forEach(b=>b.classList.remove("sel"));
+    el.classList.add("sel");
+  };
+
+  const sizeBtn = e.target.closest(".size-btn[data-size]");
+  if(sizeBtn){
+    modalSize = sizeBtn.getAttribute("data-size");
+    pick("#sizeRow .size-btn", sizeBtn);
+    markSizeRow();
+    return;
+  }
+
+  const swatch = e.target.closest(".swatch[data-color]");
+  if(swatch && modalProduct){
+    modalColor = swatch.getAttribute("data-color");
+    pick("#colorRow .swatch", swatch);
+    document.getElementById("modalArt").innerHTML = modalProduct.art(modalAmount, modalColor);
+    return;
+  }
+
+  const amt = e.target.closest("#amountPresets button[data-amt]");
+  if(amt && modalProduct){
+    modalAmount = Number(amt.getAttribute("data-amt"));
+    document.getElementById("customInput").value = String(modalAmount);
+    pick("#amountPresets button", amt);
+    document.getElementById("modalArt").innerHTML = modalProduct.art(modalAmount, modalColor);
+    return;
+  }
+
+  if(e.target.closest("[data-close-modal]")) closeModal();
+});
 document.addEventListener("keydown", e=>{ if(e.key==="Escape") closeModal(); });
 backdrop.addEventListener("click", closeModal);
 
@@ -2093,6 +2414,7 @@ async function registerWant(id, btn){
     if(d.ok){
       const l = wantedList(); l.push(id); localStorage.setItem(WANT_KEY, JSON.stringify(l));
       markWanted();
+      bumpCount(id);
 
 
       const p = PRODUCTS.find(x=>x.id===id);
@@ -2101,6 +2423,15 @@ async function registerWant(id, btn){
     }
   }catch(e){}
   btn.disabled = false; btn.textContent = label;
+}
+
+// reflect the vote immediately; deliberately does NOT re-sort, so the wall never
+// moves under someone who just clicked
+function bumpCount(id){
+  const el = document.querySelector(`[data-count="${id}"]`);
+  if(!el) return;
+  const n = (parseInt(el.textContent, 10) || 0) + 1;
+  el.textContent = `${n} want${n===1?"s":""} this`;
 }
 
 function markWanted(){
@@ -2149,7 +2480,7 @@ document.getElementById("notifyForm").addEventListener("submit", async e=>{
     });
     const data = await res.json();
     if(data.ok){
-      msg.textContent = "On the list. You'll hear about it before the haters do.";
+      msg.textContent = "On the list.";
       msg.classList.add("ok","show");
       e.target.reset();
     } else {
@@ -2202,7 +2533,7 @@ document.getElementById("notifyForm").addEventListener("submit", async e=>{
       });
       const data = await res.json();
       if(data.ok){
-        msg.textContent = "Got it. If it's good, you'll see it on a shirt.";
+        msg.textContent = "Got it.";
         msg.classList.add("ok");
         form.reset();
         updateCount();
@@ -2222,9 +2553,10 @@ document.getElementById("notifyForm").addEventListener("submit", async e=>{
 /* live interest tally — what people actually want made */
 (async function paintWantCounts(){
   try{
-    const res = await fetch("/api/want");
-    const d = await res.json();
-    if(!d.ok || !d.counts) return;
+    const counts = await wantCounts;
+    if(!counts) return;
+    const d = { counts };
+    sortWall(counts);
     let top = null;
     document.querySelectorAll("[data-count]").forEach(el=>{
       const n = d.counts[el.getAttribute("data-count")] || 0;
