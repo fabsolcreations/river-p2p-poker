@@ -884,7 +884,15 @@ export class PokerTable {
     const attachment = this.attachmentOf(ws);
     const seat = attachment?.seat ?? null;
     if (seat === null) return;
-    const midHand = Boolean(this.hand && this.hand.street !== "complete" && this.hand.inHand[seat] && !this.hand.folded[seat]);
+    // The trustless deal runs BEFORE blinds are posted - startTrustlessHand
+    // only runs once the phase reaches "betting" - so during dealing a player
+    // already holds their hole cards while this.hand is still null. Guarding
+    // on this.hand alone would let them look, dislike what they see, and quit
+    // at no cost: a free look at a card they never paid for. The stall timer
+    // still aborts and refunds if they simply vanish instead.
+    const midHand =
+      Boolean(this.hand && this.hand.street !== "complete" && this.hand.inHand[seat] && !this.hand.folded[seat]) ||
+      this.inLiveTrustlessDeal(seat);
     if (midHand) {
       this.send(ws, { type: "error", message: "Finish this hand before leaving the table." });
       return;

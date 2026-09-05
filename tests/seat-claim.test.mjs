@@ -44,3 +44,26 @@ test("private state is only resent to the seat's rightful owner", () => {
   assert.match(source, /mayReceivePrivateState && this\.hand/, "hole-card resend is unguarded");
   assert.match(source, /mayReceivePrivateState && this\.isTrustless/, "trustless partial resend is unguarded");
 });
+
+test("a trustless player cannot see their cards and leave before paying", () => {
+  // Cards are dealt during the mental-poker phases; blinds are only posted
+  // once maybeStartTrustlessBetting runs at phase "betting". So this.hand is
+  // null while a player already holds their hole cards, and a leave guard
+  // keyed only on this.hand would grant a free look.
+  const guard = source.match(/const midHand =\s*([\s\S]*?);/);
+  assert.ok(guard, "handleLeave's midHand guard not found - did it get renamed?");
+  assert.match(
+    guard[1].replace(/\s+/g, " "),
+    /this\.inLiveTrustlessDeal\(seat\)/,
+    "leaving must also be refused during a live trustless deal",
+  );
+});
+
+test("the live-deal check covers the phases before betting starts", () => {
+  const helper = source.match(/private inLiveTrustlessDeal\(seat: Seat\): boolean \{([\s\S]*?)\n  \}/);
+  assert.ok(helper, "inLiveTrustlessDeal not found");
+  const body = helper[1].replace(/\s+/g, " ");
+  // Only the terminal phases release the seat; every dealing phase counts.
+  assert.match(body, /phase === "complete"/);
+  assert.match(body, /phase === "aborted"/);
+});
