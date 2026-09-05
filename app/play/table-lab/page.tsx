@@ -65,6 +65,40 @@ function rankSymbol(rank: number) {
   return ["2", "3", "4", "5", "6", "7", "8", "9", "T", "J", "Q", "K", "A"][rank - 2];
 }
 
+// Distinct per-seat accent so opponents read as separate people at a
+// glance, the way a real table's seat plates do - not a single shared hue.
+const SEAT_ACCENTS = ["violet", "blue", "teal", "rose", "sage", "sky"];
+function seatAccent(seat: number) {
+  return SEAT_ACCENTS[seat % SEAT_ACCENTS.length];
+}
+
+// A trustless hand's masking key is derived from this seed, and losing it
+// means the hand can only abort - so it survives a reload here. It is never
+// sent to the server, which is the whole point of the mode.
+//
+// Only the seed for the hand being played is kept. Most hands do publish
+// their seed in the receipt at settle, but NOT all of them: an aborted hand
+// never gets that far, and a hand folded before any card was turned up
+// publishes no receipt at all. Keeping those around would leave a secret for
+// a hand nobody ever revealed sitting in storage for the life of the tab, so
+// every key from a previous hand is dropped as the next one starts.
+const MP_SEED_PREFIX = "river-mp:";
+function mpSeedKey(room: string, handId: string) {
+  return `${MP_SEED_PREFIX}${room}:${handId}`;
+}
+function rememberMpSeed(room: string, handId: string, seed: string) {
+  try {
+    const keep = mpSeedKey(room, handId);
+    for (const key of Object.keys(sessionStorage)) {
+      if (key.startsWith(MP_SEED_PREFIX) && key !== keep) sessionStorage.removeItem(key);
+    }
+    sessionStorage.setItem(keep, seed);
+  } catch { /* private mode: fall back to abort-on-refresh */ }
+}
+function recallMpSeed(room: string, handId: string): string | undefined {
+  try { return sessionStorage.getItem(mpSeedKey(room, handId)) ?? undefined; } catch { return undefined; }
+}
+
 function TableCard({ card, hidden = false, mini = false }: { card?: Card; hidden?: boolean; mini?: boolean }) {
   if (!card || hidden) return <div className={`table-card card-back ${mini ? "mini" : ""}`} aria-label="Hidden card"><span>R</span></div>;
   const red = card.suit === "h" || card.suit === "d";
@@ -294,13 +328,24 @@ export default function TableLab() {
     // A new hand id means a fresh masking key - never reuse one across hands.
     let session = mpSessionRef.current;
     if (!session || session.handId !== progress.handId) {
-      session = await createMpSession(progress.handId, seat);
+      // A seed already stored for THIS hand means we are resuming one we were
+      // already playing (a reload), not starting a new one. Rebuilding from it
+      // reproduces the exact same key, so the cards we were dealt still
+      // decrypt. Without it a refresh could only ever abort the hand.
+      const stored = recallMpSeed(roomCode, progress.handId);
+      session = await createMpSession(progress.handId, seat, stored);
       mpSessionRef.current = session;
+      rememberMpSeed(roomCode, progress.handId, session.maskerSeed);
       setMpAbort(null);
       setMpVerification(null);
       setMpReceipt(null);
-      connection.send(await initialCommitment(session));
-      return;
+      // Only commit when this is genuinely a new hand. On a resume the relay
+      // already holds our commitment; re-sending it is refused, and the
+      // progress update it sends back tells us what we actually still owe.
+      if (!stored) {
+        connection.send(await initialCommitment(session));
+        return;
+      }
     }
     for (const outbound of await stepsFor(session, progress)) connection.send(outbound);
   }
@@ -667,7 +712,7 @@ export default function TableLab() {
 
                 return (
                   <div key={seat} className={`room-seat ${acting ? "acting" : ""} ${folded ? "folded" : ""}`} style={pos}>
-                    <span className={`seat-avatar ${isMe ? "coral" : "violet"}`}>{isMe ? "YOU" : seat}</span>
+                    <span className={`seat-avatar ${isMe ? "coral" : seatAccent(seat)}`}>{isMe ? "YOU" : seat}</span>
                     <div>
                       <b>
                         {isMe ? "You" : `Seat ${seat}`}{" "}
@@ -692,7 +737,7 @@ export default function TableLab() {
                   {[0, 1, 2, 3, 4].map((index) => (
                     publicState?.board[index]
                       ? <TableCard key={index} card={resolveCard(publicState.board[index])} />
-                      : <div className="empty-board-card" key={index}><span>{index < 3 ? "F" : index === 3 ? "T" : "R"}</span></div>
+                      : <div className="empty-board-card" key={index} />
                   ))}
                 </div>
                 <div className="room-pot"><span>POT</span><b><i className="chip-icon" />{publicState?.pot ?? 0}</b><small>TEST CHIPS</small></div>

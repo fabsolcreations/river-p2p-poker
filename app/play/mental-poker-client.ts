@@ -64,8 +64,20 @@ function roleForSeat(seat: number): "player" | "opponent" {
   return seat === 0 ? ROLE_FOR_SEAT[0] : ROLE_FOR_SEAT[1];
 }
 
-export async function createMpSession(handId: string, seat: number): Promise<MpSession> {
-  const maskerSeed = randomHex();
+/**
+ * `maskerSeed` is normally minted fresh. Pass one to REBUILD a session after a
+ * reload: deriveMaskingRound is deterministic in (handId, role, seed), so the
+ * same three inputs reproduce the identical key, permutation and randomizers.
+ * That is what makes a refresh mid-hand survivable - without it the key is
+ * gone and the hand can only abort.
+ *
+ * `sentFor` deliberately starts empty on a rebuild. The relay is the authority
+ * on what is still outstanding: it names the waiting seats in every progress
+ * update, and rejects a duplicate submission with an error to that seat alone
+ * rather than failing the hand. So re-sending is safe, and re-deriving what we
+ * already sent is cheaper than persisting it.
+ */
+export async function createMpSession(handId: string, seat: number, maskerSeed = randomHex()): Promise<MpSession> {
   const round = await deriveMaskingRound(handId, roleForSeat(seat), maskerSeed);
   return { handId, seat, maskerSeed, round, receivedHolePartials: {}, holeCards: [], sentFor: new Set() };
 }

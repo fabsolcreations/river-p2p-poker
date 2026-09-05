@@ -10,7 +10,7 @@ import {
   type ProofBundleV3,
   type Role,
 } from "../app/play/mental-poker.ts";
-import type { TranscriptEntry } from "../app/play/proof.ts";
+import { commitment, type TranscriptEntry } from "../app/play/proof.ts";
 
 /**
  * Phase machine for a trustless (mental-poker) heads-up hand.
@@ -296,10 +296,26 @@ export function beginSettle(state: MpState): MpState {
   return { ...state, phase: "settle" };
 }
 
-export function applyMaskerSeedReveal(state: MpState, seat: number, seed: string): MpState {
+export async function applyMaskerSeedReveal(state: MpState, seat: number, seed: string): Promise<MpState> {
   assert(state.phase === "settle" || state.phase === "showdown", `not accepting seed reveals (phase ${state.phase})`);
   assert(seat === 0 || seat === 1, "unknown seat");
   assert(HEX_64.test(seed), "masker seed must be 64-char hex");
+  // The relay has been holding this seat's commitment since the start of the
+  // hand, so a seed that does not open it is refused HERE rather than written
+  // into a receipt that would then fail verification.
+  //
+  // Without this, a player who dislikes the result can reveal garbage at
+  // settle and make an entirely honest hand render as PROOF REJECTED. The
+  // receipt does record both commitments, so a careful reader could attribute
+  // the mismatch - but the headline verdict, and the table's own copy, would
+  // read as "this table cheated" for something the other player did. Refusing
+  // it here means the griefer's own seat gets the error and the hand stalls
+  // into an abort with contributions returned, which is the honest outcome.
+  const expected = state.commitments[seat];
+  assert(expected !== null, "no commitment on file for this seat");
+  const role: Role = seat === 0 ? "player" : "opponent";
+  const opened = await commitment(role, state.handId, seed);
+  assert(opened === expected, "revealed seed does not open this seat's commitment");
   const maskerSeeds = state.maskerSeeds.slice();
   maskerSeeds[seat] = seed;
   const bothIn = maskerSeeds.every((entry) => entry !== null);

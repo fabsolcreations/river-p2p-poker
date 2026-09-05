@@ -281,8 +281,8 @@ test("a completed trustless hand produces a receipt the independent verifier acc
   }
 
   // Masker seeds go last - only now can anyone replay the shuffle.
-  state = applyMaskerSeedReveal(state, 0, seeds[0]);
-  state = applyMaskerSeedReveal(state, 1, seeds[1]);
+  state = await applyMaskerSeedReveal(state, 0, seeds[0]);
+  state = await applyMaskerSeedReveal(state, 1, seeds[1]);
   assert.equal(state.phase, "complete");
 
   const bundle = await buildMentalPokerBundle(state);
@@ -310,8 +310,8 @@ test("a folded trustless hand still verifies, without exposing the hand that fol
   // Seat 1 takes it uncontested, so only seat 0 ever shows - or in a real
   // fold, nobody does. Reveal nothing and settle.
   state = beginShowdown(state);
-  state = applyMaskerSeedReveal(state, 0, seeds[0]);
-  state = applyMaskerSeedReveal(state, 1, seeds[1]);
+  state = await applyMaskerSeedReveal(state, 0, seeds[0]);
+  state = await applyMaskerSeedReveal(state, 1, seeds[1]);
 
   const bundle = await buildMentalPokerBundle(state);
   const result = await verifyMentalPokerBundle(bundle);
@@ -329,8 +329,8 @@ test("a hand folded before any card was turned up produces no attestable receipt
   // Deal, then fold preflop: no board opened, nobody shows down.
   let { state, seeds } = await setupThroughDealing("mp-preflop-fold");
   state = beginSettle(state);
-  state = applyMaskerSeedReveal(state, 0, seeds[0]);
-  state = applyMaskerSeedReveal(state, 1, seeds[1]);
+  state = await applyMaskerSeedReveal(state, 0, seeds[0]);
+  state = await applyMaskerSeedReveal(state, 1, seeds[1]);
 
   const bundle = await buildMentalPokerBundle(state);
   assert.equal(bundle.deals.length, 0, "nothing was turned up, so nothing is attested");
@@ -341,4 +341,58 @@ test("a hand folded before any card was turned up produces no attestable receipt
   const result = await verifyMentalPokerBundle(bundle);
   assert.equal(result.valid, false);
   assert.equal(result.checks.dealsWellFormed, false);
+});
+
+test("a masking key rebuilt from a stored seed is byte-identical", async () => {
+  // Surviving a refresh rests entirely on this: the key is a pure function of
+  // (handId, role, seed). If derivation ever picked up fresh entropy, a
+  // rebuilt session would hold a DIFFERENT key, the cards already dealt to
+  // that seat would stop decrypting, and the hand could only abort - the exact
+  // failure the reconnect path exists to prevent.
+  //
+  // This exercises deriveMaskingRound rather than createMpSession because
+  // mental-poker-client.ts uses extensionless imports, which the Node test
+  // runner cannot resolve. createMpSession is a thin wrapper whose only job is
+  // to pass the seed through to this function.
+  const seed = randomHex();
+  const original = await deriveMaskingRound("mp-reconnect", "opponent", seed);
+  const rebuilt = await deriveMaskingRound("mp-reconnect", "opponent", seed);
+
+  assert.equal(rebuilt.publicKeyHex, original.publicKeyHex);
+  assert.equal(rebuilt.secretKeyHex, original.secretKeyHex);
+  assert.deepEqual(rebuilt.permutation, original.permutation);
+  assert.deepEqual(rebuilt.randomizersHex, original.randomizersHex);
+
+  // The role is part of the derivation, so the same seed at the other seat is
+  // a different key - a restored session cannot be replayed into the opponent.
+  const otherRole = await deriveMaskingRound("mp-reconnect", "player", seed);
+  assert.notEqual(otherRole.publicKeyHex, original.publicKeyHex);
+
+  // And so is the hand id, so a seed stored for one hand cannot revive a later
+  // one - which is why the storage key includes the hand id.
+  const otherHand = await deriveMaskingRound("mp-reconnect-2", "opponent", seed);
+  assert.notEqual(otherHand.publicKeyHex, original.publicKeyHex);
+});
+
+test("a seed that does not open its commitment is refused at the relay", async () => {
+  const { applyMaskerSeedReveal, beginSettle } = await import("../worker/mental-poker-protocol.ts");
+
+  let { state, seeds } = await setupThroughDealing("mp-bad-seed");
+  state = beginSettle(state);
+
+  // A player who dislikes the result reveals a well-formed but WRONG seed.
+  // Accepting it would write a seed into the receipt that fails verification,
+  // making an entirely honest hand read as PROOF REJECTED - the griefer's
+  // action, blamed on the table. The relay holds the commitment, so it can
+  // and must refuse.
+  const wrong = "f".repeat(64);
+  await assert.rejects(() => applyMaskerSeedReveal(state, 0, wrong), MpProtocolError);
+
+  // The other seat's real seed must not open this seat's commitment either -
+  // the role is bound into the commitment.
+  await assert.rejects(() => applyMaskerSeedReveal(state, 0, seeds[1]), MpProtocolError);
+
+  // The honest seed still works, so the check does not break the normal path.
+  const settled = await applyMaskerSeedReveal(state, 0, seeds[0]);
+  assert.equal(settled.maskerSeeds[0], seeds[0]);
 });

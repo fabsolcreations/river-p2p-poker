@@ -705,7 +705,22 @@ export class PokerTable {
   }
 
   private resolveSeat(seatHint?: Seat): Seat | null {
-    const isFree = (seat: Seat) => this.seats[seat] === null || this.seats[seat]?.connected === false;
+    // Dropping a socket is NOT leaving the table. handleLeave is, and it
+    // refuses to run mid-hand - so a seat still in a live hand must not be
+    // handed to someone else just because its occupant's connection died.
+    // Without this a refresh (the single most ordinary thing a player does)
+    // opens a window in which a stranger can claim the seat, be sent the
+    // occupant's hole cards by the resend below, overwrite their stack with a
+    // fresh buy-in, and erase their userId so their own reconnect can no
+    // longer find the seat.
+    //
+    // Reclaiming a genuinely abandoned seat is still allowed BETWEEN hands,
+    // which is what stops closed tabs filling a table with ghosts.
+    const inLiveHand = (seat: Seat) =>
+      Boolean(this.hand && this.hand.street !== "complete" && this.hand.inHand[seat]) ||
+      this.inLiveTrustlessDeal(seat);
+    const isFree = (seat: Seat) =>
+      this.seats[seat] === null || (this.seats[seat]?.connected === false && !inLiveHand(seat));
     if (seatHint !== undefined && seatHint >= 0 && seatHint < this.seatCount && isFree(seatHint)) return seatHint;
     for (let s = 0; s < this.seatCount; s += 1) if (isFree(s)) return s;
     return null;
@@ -719,6 +734,22 @@ export class PokerTable {
   // Checking for an existing seat first - connected or not - makes any
   // reconnect path find the same seat, matching real poker sites' one
   // seat per account per table.
+  /**
+   * A trustless hand exists as an mpState long BEFORE this.hand does: the
+   * whole deal (commit -> mask -> hole-partials) runs first, and
+   * maybeStartTrustlessBetting only creates this.hand once the phase reaches
+   * "betting". So a seat is genuinely mid-hand throughout that window while
+   * this.hand is still null - checking this.hand alone would leave the entire
+   * dealing phase unprotected, which is exactly when a player is most likely
+   * to be waiting on slow curve work and to reload.
+   */
+  private inLiveTrustlessDeal(seat: Seat): boolean {
+    const phase = this.mpState?.phase;
+    if (!phase || phase === "complete" || phase === "aborted") return false;
+    // Trustless play is heads-up; these are the seats the protocol deals to.
+    return seat === 0 || seat === 1;
+  }
+
   private findSeatForUser(userId: string): Seat | null {
     for (let s = 0; s < this.seatCount; s += 1) if (this.seats[s]?.userId === userId) return s;
     return null;
@@ -822,9 +853,26 @@ export class PokerTable {
     }
     this.send(ws, { type: "seat-assigned", seat });
 
-    if (this.hand && this.hand.street !== "complete" && this.hand.inHand[seat]) {
+    // Second, independent guard on the same window resolveSeat now closes.
+    // Cards go back only to the seat's rightful owner - or to an anonymous
+    // seat, which has no identity to check and no real balance behind it.
+    const mayReceivePrivateState = isReturningOwner || priorOccupant?.userId == null;
+    if (mayReceivePrivateState && this.hand && this.hand.street !== "complete" && this.hand.inHand[seat]) {
       const cards = this.hand.holeCards[seat];
       if (cards) this.send(ws, { type: "hole-cards", handId: this.hand.handId, cards: [cards[0].code, cards[1].code] });
+    }
+    // Trustless equivalent of the hole-card resend above. A reload rebuilds
+    // this seat's masking key from its stored seed, but the opponent's
+    // partials were relayed once and are gone from the tab - without them the
+    // rebuilt key has nothing to decrypt and the player sees no cards. Order
+    // matters: the progress update carries the masked deck the partials are
+    // decrypted against, so it has to land first.
+    if (mayReceivePrivateState && this.isTrustless && this.mpState) {
+      this.sendMpProgress(ws);
+      for (const position of mp.HOLE_POSITIONS[seat] ?? []) {
+        const partial = this.mpState.holePartials[position];
+        if (partial) this.send(ws, { type: "mp-hole-partial", position, partial });
+      }
     }
     if (this.chatLog.length > 0) this.send(ws, { type: "chat-history", messages: this.chatLog });
     this.broadcastState();
@@ -1020,22 +1068,33 @@ export class PokerTable {
       return;
     }
     if (message.type === "mp-seed-reveal") {
-      this.mpState = mp.applyMaskerSeedReveal(state, seat, message.seed);
+      this.mpState = await mp.applyMaskerSeedReveal(state, seat, message.seed);
       if (this.mpState.phase === "complete") await this.emitTrustlessReceipt();
       return;
     }
   }
 
   private broadcastMpProgress(): void {
+    const message = this.mpProgressMessage();
+    if (message) this.broadcast(message);
+  }
+
+  /** The same payload aimed at one socket - used to catch up a reconnect. */
+  private sendMpProgress(ws: WebSocket): void {
+    const message = this.mpProgressMessage();
+    if (message) this.send(ws, message);
+  }
+
+  private mpProgressMessage(): ServerMessage | null {
     const state = this.mpState;
-    if (!state) return;
+    if (!state) return null;
     const openBoardPositions = Object.keys(state.boardPartials)
       .map(Number)
       .filter((position) => !state.releasedBoardPositions.includes(position));
     // deckToMask is whichever deck the next masker needs as input: the fresh
     // one for seat 0 (built client-side) and seat 0's output for seat 1.
     const deckToMask = state.phase === "mask-seat-1" ? state.deckAfterSeat0 : null;
-    this.broadcast({
+    return {
       type: "mp-progress",
       phase: state.phase,
       waitingOn: mp.waitingOn(state, this.contestingSeatsForMp()),
@@ -1046,7 +1105,7 @@ export class PokerTable {
       board: state.board,
       publicKeys: state.publicKeys,
       abortReason: state.abortReason,
-    });
+    };
   }
 
   private contestingSeatsForMp(): number[] {
