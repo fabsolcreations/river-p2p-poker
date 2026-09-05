@@ -4,22 +4,44 @@ import type { ReactNode } from 'react';
  * Hash routing + the navigation table.
  *
  * Hand-rolled because there is no router dependency installed and this app has
- * five real views. The hash is the whole route state, so every link is a plain
- * `<a href="#/...">` - back/forward, middle-click and copy-link all work without
- * a single event handler.
+ * a handful of real views. The hash is the whole route state, so every link is a
+ * plain `<a href="#/...">` - back/forward, middle-click and copy-link all work
+ * without a single event handler.
  *
- * This module also owns the *honest* half of the nav: the eight analysis views
- * from the brief that do not exist yet are listed as disabled items carrying the
- * milestone that delivers them and the thing that is missing. Shipping them as
- * mock screens with sample data would be the single most misleading thing this
- * dashboard could do - a reader cannot tell a fake +EV table from a real one.
+ * This module also owns the *honest* half of the nav: the analysis views from
+ * the brief that do not exist yet are listed as disabled items carrying what is
+ * missing. Shipping them as mock screens with sample data would be the single
+ * most misleading thing this dashboard could do - a reader cannot tell a fake
+ * +EV table from a real one.
+ *
+ * Two of those items will never be unlisted by collecting harder, and the labels
+ * say so: an edge needs a price from a book other than the one being bet into.
+ * Margins and Movements are enabled precisely because they are the analyses a
+ * single book can support without that second source.
  */
 
-export type RouteId = 'captures' | 'bets' | 'hosts' | 'shapes' | 'frames' | 'settings';
+export type RouteId =
+  | 'captures'
+  | 'bets'
+  | 'margins'
+  | 'movements'
+  | 'hosts'
+  | 'shapes'
+  | 'frames'
+  | 'settings';
 
 export const DEFAULT_ROUTE: RouteId = 'captures';
 
-const ROUTE_IDS: readonly RouteId[] = ['captures', 'bets', 'hosts', 'shapes', 'frames', 'settings'];
+const ROUTE_IDS: readonly RouteId[] = [
+  'captures',
+  'bets',
+  'margins',
+  'movements',
+  'hosts',
+  'shapes',
+  'frames',
+  'settings',
+];
 
 export interface ParsedRoute {
   id: RouteId;
@@ -69,6 +91,14 @@ export const PAGE_META: Record<RouteId, PageMeta> = {
     title: 'Bets',
     subtitle: "Other people's bets, parsed and named. Stake percentiles are facts about size, not verdicts about value.",
   },
+  margins: {
+    title: 'Margins',
+    subtitle: 'How much the book charges, by sport and market type. A margin is not an edge, and one book cannot show one.',
+  },
+  movements: {
+    title: 'Movements',
+    subtitle: 'Prices against their own past. Steam and drift labels describe a move; the thresholds are uncalibrated.',
+  },
   hosts: {
     title: 'Hosts',
     subtitle: 'Which origins served data rather than assets. Host names are discovered, never assumed.',
@@ -98,12 +128,19 @@ interface FutureItem {
  * The brief's analysis sections. Each one names the input it does not have yet,
  * because "not built" and "cannot be built from what we have captured" are
  * different statements and the second is the true one here.
+ *
+ * Two of these have a blocker that no amount of collecting will clear. An edge
+ * needs a fair price that did not come from the book being bet into, and Scout
+ * watches exactly one book — so Opportunities and Price Edges are waiting on a
+ * second source of prices, not on more data from this one. Saying "Milestone 4"
+ * without saying that would imply they are merely queued.
  */
 const FUTURE_ITEMS: FutureItem[] = [
   {
     label: 'Opportunities',
-    milestone: 'Milestone 4',
-    blocker: 'Needs de-vigged fair prices, which need a fully parsed market with every selection priced.',
+    milestone: 'Needs a 2nd book',
+    blocker:
+      'Needs a fair price from a source other than the book being bet into. De-vigging Duel and betting back into Duel returns minus the margin - never a positive number - so a second independent book is the missing ingredient, not more captures. Margins shows what one book can honestly report.',
   },
   {
     label: 'Whale Bets',
@@ -118,14 +155,15 @@ const FUTURE_ITEMS: FutureItem[] = [
   },
   {
     label: 'Steam Moves',
-    milestone: 'Milestone 5',
+    milestone: 'Milestone 9',
     blocker:
-      'Odds snapshots are now recorded whenever a price moves. This needs that history to span enough time to tell a move from noise.',
+      'Detection ships in Movements. What is missing is calibration: the steam and drift thresholds are hand-chosen and have never been checked against a settled outcome, so nothing may act on them yet.',
   },
   {
     label: 'Price Edges',
-    milestone: 'Milestone 4',
-    blocker: 'Needs a complete market so the overround can be removed. A partial market has no usable fair value.',
+    milestone: 'Needs a 2nd book',
+    blocker:
+      'Same wall as Opportunities. The overround is removable and Margins reports it, but a fair value taken from the same book prices that book exactly - the only outcome is minus the margin.',
   },
   {
     label: 'Popular Legs',
@@ -144,7 +182,7 @@ const FUTURE_ITEMS: FutureItem[] = [
   },
 ];
 
-const DISCOVERY: RouteId[] = ['captures', 'bets', 'hosts', 'shapes', 'frames'];
+const DISCOVERY: RouteId[] = ['captures', 'bets', 'margins', 'movements', 'hosts', 'shapes', 'frames'];
 
 export function Nav({ current }: { current: RouteId }): ReactNode {
   return (
@@ -163,7 +201,8 @@ export function Nav({ current }: { current: RouteId }): ReactNode {
       <div>
         <NavHeading>Analysis</NavHeading>
         <p className="mt-1 px-2 text-[11px] leading-4 text-dark-300">
-          Not built. Each needs data we have not captured and parsed yet.
+          Not built. Each names what it is waiting for — for two of them, that is
+          a second book, which no amount of collecting here will supply.
         </p>
         <ul className="mt-1.5 space-y-0.5">
           {FUTURE_ITEMS.map((item) => (

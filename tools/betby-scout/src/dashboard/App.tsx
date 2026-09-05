@@ -18,6 +18,8 @@ import { DEFAULT_ROUTE, parseHash, type ParsedRoute } from './components/Nav.tsx
 import { useServerEvents } from './lib/ws.ts';
 import { LiveCaptures } from './pages/LiveCaptures.tsx';
 import { Bets } from './pages/Bets.tsx';
+import { Margins } from './pages/Margins.tsx';
+import { Movements } from './pages/Movements.tsx';
 import { Hosts } from './pages/Hosts.tsx';
 import { Shapes } from './pages/Shapes.tsx';
 import { Frames } from './pages/Frames.tsx';
@@ -89,6 +91,13 @@ export function App(): ReactNode {
   switch (route.id) {
     case 'bets':
       page = <Bets now={now} />;
+      break;
+    case 'margins':
+      // No clock: a median margin has no "3s ago" to it.
+      page = <Margins />;
+      break;
+    case 'movements':
+      page = <Movements now={now} />;
       break;
     case 'hosts':
       page = <Hosts now={now} />;

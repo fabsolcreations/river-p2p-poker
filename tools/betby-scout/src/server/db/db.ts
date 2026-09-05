@@ -738,7 +738,11 @@ export class ScoutDb {
     return this.migration.schemaVersion;
   }
 
-  /** Escape hatch for tests and one-off inspection. Not used by the routes. */
+  /**
+   * The raw handle, for read-only query modules that deliberately do not depend
+   * on this class - see db/analysis-queries.ts - plus tests and one-off
+   * inspection. Nothing outside this file writes through it.
+   */
   get handle(): DatabaseSync {
     return this.db;
   }

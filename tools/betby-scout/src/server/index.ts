@@ -58,6 +58,7 @@ import { registerStatsRoutes } from './routes/stats.ts';
 import { registerConfigRoutes } from './routes/config.ts';
 import { registerExportRoutes } from './routes/export.ts';
 import { registerBetRoutes } from './routes/bets.ts';
+import { registerAnalysisRoutes } from './routes/analysis.ts';
 
 /** Everything a route module needs. Passed explicitly rather than via decorators. */
 export interface ServerContext {
@@ -254,6 +255,7 @@ export async function buildServer(options: BuildOptions = {}): Promise<FastifyIn
   registerConfigRoutes(app, ctx);
   registerExportRoutes(app, ctx);
   registerBetRoutes(app, ctx);
+  registerAnalysisRoutes(app, ctx);
   registerWebsockets(app, ctx);
   registerDashboard(app, ctx);
 
@@ -380,6 +382,22 @@ function registerDashboard(app: FastifyInstance, ctx: ServerContext): void {
       );
       return;
     }
+    // A request for something that looks like a FILE must 404 as a file.
+    //
+    // Falling back to index.html for these is actively misleading: after a
+    // rebuild the asset hashes change, and a browser holding the old page asks
+    // for a bundle that no longer exists. Serving HTML in its place makes the
+    // browser report "Expected a JavaScript module but got text/html", which
+    // sends you looking for a syntax error that is not there. The real answer -
+    // that file is gone, reload - is what a 404 says.
+    if (/\.[a-z0-9]{2,8}$/i.test(path)) {
+      await reply.code(404).type('text/plain; charset=utf-8').send(
+        `${path} does not exist in this dashboard build.\n\n` +
+          `If the page was open across a rebuild, its asset hashes changed - reload.\n`,
+      );
+      return;
+    }
+
     // SPA fallback: client-side routes are not files on disk.
     await reply.sendFile('index.html');
   });

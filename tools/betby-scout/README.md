@@ -45,7 +45,7 @@ on the site once it is running.
 
 ```bash
 npm run build      # collector + dashboard + server
-npm test           # 127 tests
+npm test           # 159 tests
 npm run typecheck
 ```
 
@@ -143,15 +143,15 @@ defaults to **forever**.
 
 ## Status
 
-**Milestones 1 and 2 are complete.** The tool captures, classifies, stores and
-displays real traffic, and it has now been run against Duel's live sportsbook.
+**Milestones 1 through 5 are complete.** The tool captures, classifies, stores
+and analyses real traffic from Duel's live sportsbook.
 
 | | |
 |---|---|
 | ✅ M1 | Project structure, collector, debug panel, server, live dashboard |
 | ✅ M2 | **Duel's BETBY API reverse-engineered from real traffic** — see below |
 | ✅ M3 | Feed legs named, and normalized rows persisted with odds history |
-| ⬜ M4-M5 | Fair prices, line-movement detection, opportunity ranking |
+| ✅ M4–M5 | Margin measurement, line movement, closing-line value |
 | ⬜ M6–M7 | Bettor tracking, sharpness score |
 | ⬜ M8 | Signal engine |
 | ⬜ M9 | Backtesting |
@@ -222,6 +222,37 @@ hold, and an unnamed leg says so in the parse warnings.
 verdict the shape analysis already reached**. Move the endpoint and the tool
 still finds the feed; put an unexpected payload on a known path and it keeps the
 shape verdict and says the endpoint may have changed. There is a test for each.
+
+## What one book can honestly tell you
+
+Scout has prices from a single sportsbook, and that decides what it may claim.
+De-vigging Duel's market gives a fair price derived from Duel's own numbers, and
+betting that back into Duel returns
+
+```
+EV = p * d - 1 = (1/d)/overround * d - 1 = 1/overround - 1
+```
+
+which is **minus the margin** - identical for every outcome, never zero, never
+positive. On a 1.90/1.90 market it is -5%. That is arithmetic, not a limitation
+to engineer around, and `isEdgeClaimable()` enforces it in code rather than in a
+comment: an edge may only be claimed against a fair value from an independent
+source, and there is none yet.
+
+So the analysis layer reports what is genuinely measurable from one book:
+
+- **Margins** - the overround per market, by sport and by market type. Real,
+  directly measured, and comparable. On the captured sample Duel prices soccer
+  at a 3.3% median margin over 115 markets and rugby union at 8.9% over 12.
+- **Line movement** - a price against its own past, measured in implied
+  probability points because an odds ratio ranks 1.10 to 1.05 the same as 11.00
+  to 10.50 when the first is ten times the move.
+- **Closing line value** - the last price before kickoff versus the price taken.
+  The strongest evidence available that a bettor or signal holds information.
+
+The movement thresholds are **uncalibrated**, which the UI says out loud. A row
+labelled "steam" means a price moved quickly; whether that carries information
+is what Milestone 9 exists to find out.
 
 ## Design philosophy
 

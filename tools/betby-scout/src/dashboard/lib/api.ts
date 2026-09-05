@@ -30,6 +30,13 @@ import type {
 } from '../../shared/types.ts';
 import { DEFAULT_COLLECTOR_CONFIG } from '../../shared/types.ts';
 import { pick } from '../../shared/shape.ts';
+import { isValidDecimalOdds } from '../../shared/odds.ts';
+import type { LineMovement, MovementKind } from '../../analysis/types.ts';
+// MarginSummary is declared beside the summarizer that produces it, in
+// analysis/fair.ts, not in analysis/types.ts. Importing it from where it
+// actually lives means a rename there breaks this build rather than silently
+// leaving the dashboard reading a field the server stopped sending.
+import type { MarginSummary } from '../../analysis/fair.ts';
 
 export const API_BASE = '/api';
 
@@ -618,4 +625,196 @@ export async function getNormalized(): Promise<NormalizedCounts> {
     counts: isRecord(root['counts']) ? (root['counts'] as Record<string, number>) : {},
     refs: isRecord(root['refs']) ? (root['refs'] as Record<string, unknown>) : {},
   };
+}
+
+/* ------------------------------------------------------------------ *
+ * Analysis
+ *
+ * Two routes, both of which return numbers that are honest for a SINGLE book:
+ * how much margin it charges, and how its own prices have moved against their
+ * own past. Neither is an edge, and nothing in this section computes one — see
+ * the header of src/analysis/types.ts for why a second price source is the
+ * missing ingredient rather than a missing feature.
+ * ------------------------------------------------------------------ */
+
+/**
+ * Named-key lookup with no single-array fallback.
+ *
+ * `unwrapArray` guesses the lone array-valued property when it recognises no
+ * key, which is right for a one-list envelope and actively dangerous here: the
+ * margins response carries two lists, and a payload missing `bySport` would hand
+ * back `byType` labelled as sports. Silence is better than the wrong list.
+ */
+function namedArray(root: Record<string, unknown>, ...keys: string[]): unknown[] {
+  const value = pick(root, ...keys);
+  return Array.isArray(value) ? value : [];
+}
+
+/**
+ * A margin row as the dashboard is willing to render it.
+ *
+ * `MarginSummary` types min/max as plain numbers because `summarizeMargins`
+ * always produces them. Over the wire they can be absent, and an absent bound
+ * has to render as a dash — defaulting it to the median would draw a range of
+ * zero width, which reads as "every market in this group priced identically".
+ */
+export interface MarginRow extends Omit<MarginSummary, 'minMarginPct' | 'maxMarginPct'> {
+  minMarginPct: number | null;
+  maxMarginPct: number | null;
+}
+
+/**
+ * Structural validation of one margin row. A row without a group name, a market
+ * count or a median is dropped rather than repaired: the whole value of this
+ * page is that every median is displayed next to the number of markets it was
+ * taken over, and a row that cannot supply that number is not publishable.
+ */
+export function coerceMarginRow(raw: unknown): MarginRow | null {
+  if (!isRecord(raw)) return null;
+  const group = str(pick(raw, 'group', 'name', 'label'));
+  const markets = num(pick(raw, 'markets', 'count', 'samples'));
+  const medianMarginPct = num(pick(raw, 'medianMarginPct', 'median'));
+  if (group === null || group === '' || markets === null || medianMarginPct === null) return null;
+  // A median over zero markets is not a median.
+  if (markets < 1) return null;
+  return {
+    group,
+    markets,
+    medianMarginPct,
+    minMarginPct: num(pick(raw, 'minMarginPct', 'min')),
+    maxMarginPct: num(pick(raw, 'maxMarginPct', 'max')),
+  };
+}
+
+export interface MarginsResult {
+  bySport: MarginRow[];
+  byType: MarginRow[];
+  /** The server's own caveat about these numbers. Rendered verbatim. */
+  note: string | null;
+  /** Rows the server sent that failed structural validation. Never hidden. */
+  malformed: number;
+  /** False when this server build has no /api/analysis/margins route. */
+  supported: boolean;
+}
+
+export async function getMargins(): Promise<MarginsResult> {
+  let payload: unknown;
+  try {
+    payload = await request('/analysis/margins');
+  } catch (err) {
+    // A 404 means "this server does not implement the route", which is a
+    // different message to the user than "the analysis failed".
+    if (err instanceof ApiError && err.isNotFound) {
+      return { bySport: [], byType: [], note: null, malformed: 0, supported: false };
+    }
+    throw err;
+  }
+  const root = isRecord(payload) ? payload : {};
+  let malformed = 0;
+  const read = (...keys: string[]): MarginRow[] => {
+    const out: MarginRow[] = [];
+    for (const raw of namedArray(root, ...keys)) {
+      const row = coerceMarginRow(raw);
+      if (row) out.push(row);
+      else malformed += 1;
+    }
+    return out;
+  };
+  return {
+    bySport: read('bySport', 'sports'),
+    byType: read('byType', 'byMarketType', 'types'),
+    note: str(pick(root, 'note', 'explanation')),
+    malformed,
+    supported: true,
+  };
+}
+
+/**
+ * A movement plus whatever human-readable labels the server attached.
+ *
+ * `LineMovement` carries keys, not names, because the analysis layer works on
+ * keys. Names are optional here and null when absent — the page falls back to
+ * showing the key rather than inventing a title for an event.
+ */
+export interface MovementRow extends LineMovement {
+  eventName: string | null;
+  selectionName: string | null;
+}
+
+/**
+ * Derived from the union so a new `MovementKind` fails validation loudly here
+ * instead of being quietly rewritten to something this page knows how to draw.
+ */
+const MOVEMENT_KINDS: readonly MovementKind[] = ['steam', 'drift', 'round-trip', 'move'];
+
+export function coerceMovement(raw: unknown): MovementRow | null {
+  if (!isRecord(raw)) return null;
+  const selectionKey = str(pick(raw, 'selectionKey'));
+  const eventKey = str(pick(raw, 'eventKey'));
+  const kind = MOVEMENT_KINDS.find((k) => k === str(pick(raw, 'kind')));
+  const tsFrom = num(pick(raw, 'tsFrom'));
+  const tsTo = num(pick(raw, 'tsTo'));
+  const oddsFrom = num(pick(raw, 'oddsFrom'));
+  const oddsTo = num(pick(raw, 'oddsTo'));
+  const probDelta = num(pick(raw, 'probDelta'));
+  const durationMs = num(pick(raw, 'durationMs'));
+  const samples = num(pick(raw, 'samples'));
+
+  if (!selectionKey || !eventKey || kind === undefined) return null;
+  if (tsFrom === null || tsTo === null || durationMs === null || durationMs < 0) return null;
+  if (samples === null || samples < 1) return null;
+  // Prices are validated with the same band the rest of the system uses rather
+  // than a local "looks numeric" check, so a parse artefact like 0 or 1e9 is
+  // rejected here exactly as it would be in the analysis layer.
+  if (!isValidDecimalOdds(oddsFrom) || !isValidDecimalOdds(oddsTo)) return null;
+  // probDelta is the ranking key and the only column in comparable units. It is
+  // NOT recomputed from the two prices when the server omits it: the sign
+  // convention belongs to the analysis layer, and a guess at it that came out
+  // backwards would relabel every shortening on the page as a drift.
+  if (probDelta === null) return null;
+
+  return {
+    selectionKey,
+    eventKey,
+    kind,
+    tsFrom,
+    tsTo,
+    oddsFrom,
+    oddsTo,
+    probDelta,
+    durationMs,
+    samples,
+    eventName: str(pick(raw, 'eventName', 'event')),
+    selectionName: str(pick(raw, 'selectionName', 'selection')),
+  };
+}
+
+export interface MovementsResult {
+  movements: MovementRow[];
+  note: string | null;
+  malformed: number;
+  /** False when this server build has no /api/analysis/movements route. */
+  supported: boolean;
+}
+
+export async function getMovements(): Promise<MovementsResult> {
+  let payload: unknown;
+  try {
+    payload = await request('/analysis/movements');
+  } catch (err) {
+    if (err instanceof ApiError && err.isNotFound) {
+      return { movements: [], note: null, malformed: 0, supported: false };
+    }
+    throw err;
+  }
+  const root = isRecord(payload) ? payload : {};
+  const movements: MovementRow[] = [];
+  let malformed = 0;
+  // One list in this envelope, so unwrapArray's fallback is safe and useful.
+  for (const raw of unwrapArray(payload, 'movements', 'items', 'rows', 'data')) {
+    const row = coerceMovement(raw);
+    if (row) movements.push(row);
+    else malformed += 1;
+  }
+  return { movements, note: str(pick(root, 'note', 'explanation')), malformed, supported: true };
 }
