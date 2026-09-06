@@ -45,7 +45,7 @@ on the site once it is running.
 
 ```bash
 npm run build      # collector + dashboard + server
-npm test           # 174 tests
+npm test           # 197 tests
 npm run typecheck
 ```
 
@@ -153,6 +153,7 @@ and analyses real traffic from Duel's live sportsbook.
 | ✅ M3 | Feed legs named, and normalized rows persisted with odds history |
 | ✅ M4–M5 | Margin measurement, line movement, closing-line value |
 | ✅ M6–M7 | Bettor profiles and a sharpness score built on closing line value |
+| ✅ M8a | Independent price source, consensus fair value, and real +EV edges |
 | ⬜ M8 | Signal engine |
 | ⬜ M9 | Backtesting |
 | ⬜ M10 | Draggable overlay on Duel |
@@ -268,6 +269,51 @@ the specific blockers instead of a small number dressed up as a rating — and a
 observed CLV is shrunk toward zero by `n/(n+30)` so a short hot streak cannot
 manufacture a rating. Confidence is reported separately from the score, so a
 high number on a thin record cannot pass for a strong one.
+
+## Getting real edges: add a second price source
+
+Everything above measures Duel against itself, which by arithmetic can never
+show an edge. One independent source changes that.
+
+1. Get a free key at <https://the-odds-api.com> — 500 credits a month, no card.
+2. Set it before starting the server:
+
+```bash
+ODDS_API_KEY=your_key npm start
+```
+
+3. Check `/api/edges/status`, then read the **Edges** data at `/api/edges`.
+
+Optional: `ODDS_API_REGIONS` (default `eu`) and `ODDS_API_MARKETS` (default
+`h2h`). Leave them alone unless you know why — a request costs
+`markets × regions` credits, so asking for three regions triples the burn for
+prices that mostly agree.
+
+**Budget discipline.** 500 credits a month is about 16 a day, so Scout never
+polls. It fetches only when asked, caches every response for 30 minutes, and
+reports `x-requests-remaining` so you can see what is left rather than
+discovering the limit by hitting it.
+
+**How an edge is computed**, and what it refuses:
+
+- Each external book is de-vigged **separately**, then the fair probabilities
+  are combined by **median**. Averaging raw prices first would leave every
+  book's margin baked into the "fair" number.
+- **Duel is excluded** from the consensus it is judged against. A book cannot
+  help price itself, and the circularity would be invisible in the output.
+- Fewer than **three** independent books → refused. Below three the median has
+  no resistance to one bad price, which is the only reason to use one.
+- Stale quotes (older than 6h) are dropped and the drop is reported.
+- An **unmapped league is refused, never guessed.** Matching "LaLiga" to a
+  second-division key by string similarity would produce a large and entirely
+  fictional edge.
+- **Fixture matching is the most dangerous step in the project**, because a
+  wrong match yields a number that is arithmetically perfect and complete
+  nonsense. Both teams must match, kickoffs must agree within two hours, and two
+  equally plausible fixtures are refused rather than guessed between. Every edge
+  carries its match confidence and the reasoning so you can check it.
+- An edge above 15% flags itself as suspicious, because at that size a bad match
+  is more likely than an opportunity.
 
 ## Design philosophy
 

@@ -60,6 +60,7 @@ import { registerExportRoutes } from './routes/export.ts';
 import { registerBetRoutes } from './routes/bets.ts';
 import { registerAnalysisRoutes } from './routes/analysis.ts';
 import { registerBettorRoutes } from './routes/bettors.ts';
+import { registerEdgeRoutes } from './routes/edges.ts';
 
 /** Everything a route module needs. Passed explicitly rather than via decorators. */
 export interface ServerContext {
@@ -258,6 +259,7 @@ export async function buildServer(options: BuildOptions = {}): Promise<FastifyIn
   registerBetRoutes(app, ctx);
   registerAnalysisRoutes(app, ctx);
   registerBettorRoutes(app, ctx);
+  registerEdgeRoutes(app, ctx);
   registerWebsockets(app, ctx);
   registerDashboard(app, ctx);
 
