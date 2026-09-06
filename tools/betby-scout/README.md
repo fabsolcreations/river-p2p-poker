@@ -45,7 +45,7 @@ on the site once it is running.
 
 ```bash
 npm run build      # collector + dashboard + server
-npm test           # 159 tests
+npm test           # 174 tests
 npm run typecheck
 ```
 
@@ -152,7 +152,7 @@ and analyses real traffic from Duel's live sportsbook.
 | ✅ M2 | **Duel's BETBY API reverse-engineered from real traffic** — see below |
 | ✅ M3 | Feed legs named, and normalized rows persisted with odds history |
 | ✅ M4–M5 | Margin measurement, line movement, closing-line value |
-| ⬜ M6–M7 | Bettor tracking, sharpness score |
+| ✅ M6–M7 | Bettor profiles and a sharpness score built on closing line value |
 | ⬜ M8 | Signal engine |
 | ⬜ M9 | Backtesting |
 | ⬜ M10 | Draggable overlay on Duel |
@@ -253,6 +253,21 @@ So the analysis layer reports what is genuinely measurable from one book:
 The movement thresholds are **uncalibrated**, which the UI says out loud. A row
 labelled "steam" means a price moved quickly; whether that carries information
 is what Milestone 9 exists to find out.
+
+### The feed reports no results
+
+Duel's feed rows carry `id, odds, stake, pot_win, player, type, selections` and
+**no status field**. A bet appears and, as far as the feed is concerned, never
+resolves. So wins, losses, ROI and profit are not "not yet computed" — they are
+not obtainable from this source at all, and nothing in Scout reports them.
+
+Closing line value survives, because it needs only the price taken and the price
+at kickoff, both of which are recorded. So a bettor is scored on **price-taking**
+and the score says so. It refuses to exist below 30 measurable legs — returning
+the specific blockers instead of a small number dressed up as a rating — and an
+observed CLV is shrunk toward zero by `n/(n+30)` so a short hot streak cannot
+manufacture a rating. Confidence is reported separately from the score, so a
+high number on a thin record cannot pass for a strong one.
 
 ## Design philosophy
 

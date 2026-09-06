@@ -23,6 +23,7 @@ import type { ReactNode } from 'react';
 export type RouteId =
   | 'captures'
   | 'bets'
+  | 'bettors'
   | 'margins'
   | 'movements'
   | 'hosts'
@@ -35,6 +36,7 @@ export const DEFAULT_ROUTE: RouteId = 'captures';
 const ROUTE_IDS: readonly RouteId[] = [
   'captures',
   'bets',
+  'bettors',
   'margins',
   'movements',
   'hosts',
@@ -90,6 +92,10 @@ export const PAGE_META: Record<RouteId, PageMeta> = {
   bets: {
     title: 'Bets',
     subtitle: "Other people's bets, parsed and named. Stake percentiles are facts about size, not verdicts about value.",
+  },
+  bettors: {
+    title: 'Bettors',
+    subtitle: 'Who is in the feed. Scored on the prices they took, never on results the feed does not report.',
   },
   margins: {
     title: 'Margins',
@@ -149,11 +155,6 @@ const FUTURE_ITEMS: FutureItem[] = [
       'Bets and stakes are parsed and stored - see Bets. A whale view additionally needs a stake distribution with enough history to make a percentile mean something.',
   },
   {
-    label: 'Sharp Bettors',
-    milestone: 'Milestone 6',
-    blocker: 'Needs settled outcomes per pseudonymous bettor, which means days of feed history.',
-  },
-  {
     label: 'Steam Moves',
     milestone: 'Milestone 9',
     blocker:
@@ -182,7 +183,7 @@ const FUTURE_ITEMS: FutureItem[] = [
   },
 ];
 
-const DISCOVERY: RouteId[] = ['captures', 'bets', 'margins', 'movements', 'hosts', 'shapes', 'frames'];
+const DISCOVERY: RouteId[] = ['captures', 'bets', 'bettors', 'margins', 'movements', 'hosts', 'shapes', 'frames'];
 
 export function Nav({ current }: { current: RouteId }): ReactNode {
   return (
