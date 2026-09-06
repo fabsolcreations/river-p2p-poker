@@ -804,6 +804,19 @@ export class PokerTable {
 
   private async handleSit(ws: WebSocket, seatHint?: Seat, buyInAmount?: number, seed?: string): Promise<void> {
     const attachment = this.attachmentOf(ws) ?? { seat: null, userId: null, username: null };
+    // A socket that is already seated is not sitting down again. An
+    // attachment only carries a seat if THIS socket sat during its own
+    // lifetime (a reconnect is a new socket with a blank attachment), so this
+    // is that same player asking twice. Without the check an anonymous client
+    // could pass a different seatHint and simply move: findSeatForUser only
+    // covers authenticated users, so resolveSeat would hand them a second
+    // seat while the first stayed marked occupied with no socket pointing at
+    // it - disconnectSocket keys off the CURRENT attachment, so nothing would
+    // ever release it and the table would lose that seat for good.
+    if (attachment.seat !== null && this.seats[attachment.seat]?.connected) {
+      this.send(ws, { type: "seat-assigned", seat: attachment.seat });
+      return;
+    }
     const seat = (attachment.userId ? this.findSeatForUser(attachment.userId) : null) ?? this.resolveSeat(seatHint);
     if (seat === null) {
       this.send(ws, { type: "error", message: "Room is full." });
@@ -819,10 +832,22 @@ export class PokerTable {
     const isReturningOwner = priorOccupant !== null && attachment.userId !== null && priorOccupant.userId === attachment.userId;
     const desired = Number.isFinite(buyInAmount) && (buyInAmount as number) > 0 ? (buyInAmount as number) : this.maxBuyIn;
 
+    // Reserve the seat BEFORE the first await. Resolving the seat and writing
+    // it are separated below by buyIn()'s real D1 round-trip, and a Durable
+    // Object yields at every await even though it is single-threaded - so two
+    // sits arriving together would both resolve the SAME free seat, both buy
+    // in, and both write it. One player's buy-in is debited from their real
+    // balance and then overwritten, and both sockets end up attached to one
+    // seat, after which socketFor() routes that seat's private state to
+    // whichever socket it happens to find first. Claiming synchronously means
+    // the second sit sees an occupied seat and picks another.
+    this.seats[seat] = { connected: true, userId: attachment.userId };
+
     if (!isReturningOwner) {
       if (attachment.userId) {
         const bought = await this.buyIn(attachment.userId, this.roomCode, desired);
         if (bought === null) {
+          this.seats[seat] = priorOccupant; // release the reservation
           this.send(ws, {
             type: "error",
             message: `Insufficient balance - you need at least ${this.minBuyIn} chips to sit down. Visit your account to check your bankroll.`,

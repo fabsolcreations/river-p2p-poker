@@ -67,3 +67,35 @@ test("the live-deal check covers the phases before betting starts", () => {
   assert.match(body, /phase === "complete"/);
   assert.match(body, /phase === "aborted"/);
 });
+
+test("the seat is claimed before the first await, not after the buy-in", () => {
+  // Seat resolution and the buy-in are separated by a real D1 round-trip, and
+  // a Durable Object yields at every await. If the seat were only written
+  // after that, two sits arriving together would both resolve the same free
+  // seat: one player's buy-in is debited and then overwritten, and two sockets
+  // end up attached to one seat, after which socketFor() routes that seat's
+  // private state to whichever it finds first.
+  const body = source.slice(source.indexOf("private async handleSit("));
+  const claim = body.indexOf("this.seats[seat] = { connected: true, userId: attachment.userId };");
+  const firstAwait = body.indexOf("await this.buyIn(");
+  assert.ok(claim > 0, "seat claim not found in handleSit");
+  assert.ok(firstAwait > 0, "buyIn call not found in handleSit");
+  assert.ok(claim < firstAwait, "the seat must be reserved BEFORE the awaited buy-in");
+
+  // And a failed buy-in must not leave the reservation behind.
+  assert.match(body.slice(0, firstAwait + 900), /this\.seats\[seat\] = priorOccupant;/,
+    "a failed buy-in must release the seat it reserved");
+});
+
+test("an already-seated socket cannot move to a different seat", () => {
+  // findSeatForUser only pins authenticated users, so without this an
+  // anonymous socket could pass a new seatHint and take a second seat while
+  // the first stayed occupied with no socket pointing at it - disconnectSocket
+  // keys off the current attachment, so nothing would ever release it.
+  const body = source.slice(source.indexOf("private async handleSit("));
+  assert.match(
+    body.slice(0, 1400),
+    /if \(attachment\.seat !== null && this\.seats\[attachment\.seat\]\?\.connected\)/,
+    "handleSit must short-circuit when this socket already holds a live seat",
+  );
+});
