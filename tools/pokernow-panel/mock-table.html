@@ -24,6 +24,14 @@
   .dealer-button-ctn{position:absolute;left:600px;top:420px;width:22px;height:22px;border-radius:50%;
     background:#fff;color:#225;display:flex;align-items:center;justify-content:center;font-weight:800}
   .table-player-bet-value{color:#ffd479;font-size:12px}
+  .log-ctn{position:absolute;left:12px;bottom:12px;width:340px;height:230px;background:#12151b;
+    border:1px solid #2b3038;border-radius:8px;display:flex;flex-direction:column}
+  .log-ctn h4{margin:0;padding:6px 8px;font-size:11px;letter-spacing:.08em;color:#8b98a9;
+    border-bottom:1px solid #2b3038}
+  .log-entries{flex:1;overflow:auto;padding:4px 8px}
+  .log-entry{font:11px/1.4 ui-monospace,Menlo,Consolas,monospace;color:#c4ccd8;padding:1px 0}
+  .log-ctn .ctrl{display:flex;gap:6px;padding:6px 8px;border-top:1px solid #2b3038}
+  .log-ctn .ctrl button{flex:1;font:11px system-ui;padding:5px}
 </style>
 </head>
 <body>
@@ -98,6 +106,79 @@
   <button class="button-3">Raise</button>
 </div>
 
+<div class="log-ctn">
+  <h4>LOG</h4>
+  <div class="log-entries"></div>
+  <div class="ctrl">
+    <button id="step">Next line</button>
+    <button id="play">Play hand history</button>
+  </div>
+</div>
+
 <script src="pokernow-panel.user.js"></script>
+<script>
+// The same two-hand fixture the Node suite asserts against, replayed into a DOM
+// log panel so ingestion, stats and the HUD can be exercised in a browser.
+const FIXTURE = [
+  `-- starting hand #1  (No Limit Texas Hold'em) (dealer: "Alice @ aaa") --`,
+  `Player stacks: #1 "Alice @ aaa" (1000) | #2 "Bob @ bbb" (1000) | #3 "Cara @ ccc" (1000)`,
+  `"Bob @ bbb" posts a small blind of 5`,
+  `"Cara @ ccc" posts a big blind of 10`,
+  `Your hand is A♠, K♦`,
+  `"Alice @ aaa" raises to 30`,
+  `"Bob @ bbb" folds`,
+  `"Cara @ ccc" calls 30`,
+  `Flop:  [7♣, 2♦, 9♠]`,
+  `"Cara @ ccc" checks`,
+  `"Alice @ aaa" bets 40`,
+  `"Cara @ ccc" folds`,
+  `Uncalled bet of 40 returned to "Alice @ aaa"`,
+  `"Alice @ aaa" collected 65 from pot`,
+  `-- ending hand #1 --`,
+  `-- starting hand #2  (No Limit Texas Hold'em) (dealer: "Bob @ bbb") --`,
+  `Player stacks: #1 "Alice @ aaa" (1035) | #2 "Bob @ bbb" (995) | #3 "Cara @ ccc" (970)`,
+  `"Cara @ ccc" posts a small blind of 5`,
+  `"Alice @ aaa" posts a big blind of 10`,
+  `Your hand is 5♥, 5♣`,
+  `"Bob @ bbb" calls 10`,
+  `"Cara @ ccc" calls 10`,
+  `"Alice @ aaa" checks`,
+  `Flop:  [5♦, K♠, 2♣]`,
+  `"Cara @ ccc" checks`,
+  `"Alice @ aaa" bets 20`,
+  `"Bob @ bbb" calls 20`,
+  `"Cara @ ccc" folds`,
+  `Turn: 5♦, K♠, 2♣ [Qh]`,
+  `"Alice @ aaa" checks`,
+  `"Bob @ bbb" checks`,
+  `River: 5♦, K♠, 2♣, Qh [3s]`,
+  `"Alice @ aaa" bets 30`,
+  `"Bob @ bbb" calls 30 and go all in`,
+  `"Bob @ bbb" shows a K♥, K♣.`,
+  `"Alice @ aaa" shows a 5♥, 5♣.`,
+  `"Alice @ aaa" collected 130 from pot with Three of a Kind`,
+  `-- ending hand #2 --`,
+];
+
+const entries = document.querySelector('.log-entries');
+// ?reverse=1 renders newest-first, to exercise the panel's orientation detection.
+const REVERSED = new URLSearchParams(location.search).get('reverse') === '1';
+let cursor = 0;
+
+function emit() {
+  if (cursor >= FIXTURE.length) return false;
+  const div = document.createElement('div');
+  div.className = 'log-entry';
+  div.textContent = FIXTURE[cursor++];
+  if (REVERSED) entries.prepend(div);
+  else { entries.appendChild(div); entries.scrollTop = entries.scrollHeight; }
+  return true;
+}
+
+document.getElementById('step').addEventListener('click', emit);
+document.getElementById('play').addEventListener('click', () => {
+  const t = setInterval(() => { if (!emit()) clearInterval(t); }, 60);
+});
+</script>
 </body>
 </html>

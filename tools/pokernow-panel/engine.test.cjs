@@ -90,5 +90,155 @@ ok('AA = 20', E.chenScore(H('Ah As')) === 20);
 ok('AKs = 12', E.chenScore(H('Ah Kh')) === 12);
 ok('72o = -1.5', E.chenScore(H('7c 2d')) === -1.5, 'got ' + E.chenScore(H('7c 2d')));
 
+console.log('log parsing');
+const LOG = [
+  `-- starting hand #1  (No Limit Texas Hold'em) (dealer: "Alice @ aaa") --`,
+  `Player stacks: #1 "Alice @ aaa" (1000) | #2 "Bob @ bbb" (1000) | #3 "Cara @ ccc" (1000)`,
+  `"Bob @ bbb" posts a small blind of 5`,
+  `"Cara @ ccc" posts a big blind of 10`,
+  `Your hand is A♠, K♦`,
+  `"Alice @ aaa" raises to 30`,
+  `"Bob @ bbb" folds`,
+  `"Cara @ ccc" calls 30`,
+  `Flop:  [7♣, 2♦, 9♠]`,
+  `"Cara @ ccc" checks`,
+  `"Alice @ aaa" bets 40`,
+  `"Cara @ ccc" folds`,
+  `Uncalled bet of 40 returned to "Alice @ aaa"`,
+  `"Alice @ aaa" collected 65 from pot`,
+  `-- ending hand #1 --`,
+  `-- starting hand #2  (No Limit Texas Hold'em) (dealer: "Bob @ bbb") --`,
+  `Player stacks: #1 "Alice @ aaa" (1035) | #2 "Bob @ bbb" (995) | #3 "Cara @ ccc" (970)`,
+  `"Cara @ ccc" posts a small blind of 5`,
+  `"Alice @ aaa" posts a big blind of 10`,
+  `Your hand is 5♥, 5♣`,
+  `"Bob @ bbb" calls 10`,
+  `"Cara @ ccc" calls 10`,
+  `"Alice @ aaa" checks`,
+  `Flop:  [5♦, K♠, 2♣]`,
+  `"Cara @ ccc" checks`,
+  `"Alice @ aaa" bets 20`,
+  `"Bob @ bbb" calls 20`,
+  `"Cara @ ccc" folds`,
+  `Turn: 5♦, K♠, 2♣ [Qh]`,
+  `"Alice @ aaa" checks`,
+  `"Bob @ bbb" checks`,
+  `River: 5♦, K♠, 2♣, Qh [3s]`,
+  `"Alice @ aaa" bets 30`,
+  `"Bob @ bbb" calls 30 and go all in`,
+  `"Bob @ bbb" shows a K♥, K♣.`,
+  `"Alice @ aaa" shows a 5♥, 5♣.`,
+  `"Alice @ aaa" collected 130 from pot with Three of a Kind`,
+  `-- ending hand #2 --`,
+];
+
+const P = (s) => E.parseLogLine(s);
+ok('hand-start parsed with dealer', (() => {
+  const e = P(LOG[0]);
+  return e.type === 'hand-start' && e.hand === 1 && e.dealer.name === 'Alice' && e.dealer.id === 'aaa';
+})());
+ok('player stacks parsed', (() => {
+  const e = P(LOG[1]);
+  return e.type === 'stacks' && e.players.length === 3 && e.players[0].stack === 1000 && e.players[2].name === 'Cara';
+})());
+ok('name containing " @ " splits on the last one',
+  E.splitPlayer('a @ b @ zzz').name === 'a @ b' && E.splitPlayer('a @ b @ zzz').id === 'zzz');
+ok('blind post parsed', P(LOG[2]).type === 'post' && P(LOG[2]).blind === 'sb' && P(LOG[2]).amount === 5);
+ok('hero cards parsed from unicode suits',
+  P(LOG[4]).cards.map(E.cardStr).join(' ') === 'As Kd', P(LOG[4]).cards.map(E.cardStr).join(' '));
+ok('raise-to parsed', P(LOG[5]).action === 'raise' && P(LOG[5]).amount === 30);
+ok('fold parsed', P(LOG[6]).action === 'fold');
+ok('flop parsed', P(LOG[8]).street === 'flop' && P(LOG[8]).cards.length === 3);
+ok('turn takes only the bracketed card', (() => {
+  const e = P(LOG[28]);
+  return e.street === 'turn' && e.cards.length === 1 && E.cardStr(e.cards[0]) === 'Qh';
+})());
+ok('all-in call flagged', P(LOG[33]).action === 'call' && P(LOG[33]).allIn === true);
+ok('showdown cards parsed',
+  P(LOG[34]).type === 'show' && P(LOG[34]).cards.map(E.cardStr).join(' ') === 'Kh Kc');
+ok('collect parsed with hand name',
+  P(LOG[36]).type === 'collect' && P(LOG[36]).amount === 130 && P(LOG[36]).hand === 'Three of a Kind');
+ok('uncalled bet parsed', P(LOG[12]).type === 'uncalled' && P(LOG[12]).amount === 40);
+ok('unrecognised line kept, not dropped', (() => {
+  const e = P('"Zed @ zzz" invented a new verb');
+  return e.type === 'unknown' && e.line.includes('invented');
+})());
+ok('blank line ignored', P('   ') === null);
+
+console.log('hand replay');
+const hands = E.replay(LOG.map(P));
+ok('two hands reconstructed', hands.length === 2, 'got ' + hands.length);
+ok('hand 1 pot nets out the uncalled bet', hands[0].pot === 65, 'got ' + hands[0].pot);
+ok('hand 2 pot totals 130', hands[1].pot === 130, 'got ' + hands[1].pot);
+ok('raise-to is a street total, not additive', hands[0].contributions.aaa === 30,
+  'got ' + hands[0].contributions.aaa);
+ok('bet is additive on a fresh street', hands[1].contributions.aaa === 60,
+  'got ' + hands[1].contributions.aaa);
+ok('board runs out to five cards',
+  hands[1].board.map(E.cardStr).join(' ') === '5d Ks 2c Qh 3s', hands[1].board.map(E.cardStr).join(' '));
+ok('hero cards captured per hand', hands[1].hero.map(E.cardStr).join(' ') === '5h 5c');
+ok('winner captured', hands[1].winners.length === 1 && hands[1].winners[0].id === 'aaa');
+ok('folds recorded', hands[0].players.bbb.folded === true);
+ok('shown hands recorded', Object.keys(hands[1].shown).length === 2);
+ok('closed hands are marked complete', hands[0].complete === true && hands[1].complete === true);
+ok('a hand with no ending line is not complete', (() => {
+  const partial = E.replay(LOG.slice(0, 8).map(P));
+  return partial.length === 1 && partial[0].complete === false;
+})());
+for (const h of hands) {
+  const paid = Object.values(h.contributions).reduce((a, b) => a + b, 0);
+  const won = h.winners.reduce((a, w) => a + w.amount, 0);
+  ok('hand #' + h.hand + ' books balance (' + paid + ' in / ' + won + ' out)', paid === won,
+    'in ' + paid + ' out ' + won);
+}
+
+console.log('player stats');
+const stats = E.accumulate(hands);
+const A = E.statView(stats.aaa), B = E.statView(stats.bbb), C = E.statView(stats.ccc);
+ok('alice dealt into both hands', A.hands === 2);
+ok('checking the big blind is not VPIP', A.vpipPct === 50, 'got ' + A.vpipPct);
+ok('alice pfr 50%', A.pfrPct === 50, 'got ' + A.pfrPct);
+ok('bob vpip 50% (folded hand 1)', B.vpipPct === 50, 'got ' + B.vpipPct);
+ok('nobody but alice raised preflop', B.pfrPct === 0 && C.pfrPct === 0);
+ok('never-called player reads as infinitely aggressive, not as no data',
+  A.af === Infinity, 'got ' + A.af);
+ok('aggression factor is a ratio when there are calls',
+  E.statView({ hands: 4, vpip: 2, pfr: 1, bets: 2, raises: 1, calls: 2 }).af === 1.5);
+ok('a passive player with no action at all reports null',
+  E.statView({ hands: 4, vpip: 0, pfr: 0, bets: 0, raises: 0, calls: 0 }).af === null);
+ok('showdowns counted', B.showdowns === 1 && C.showdowns === 0);
+ok('net: alice +105', A.net === 105, 'got ' + A.net);
+ok('net: bob -65', B.net === -65, 'got ' + B.net);
+ok('net across the table sums to zero', A.net + B.net + C.net === 0);
+ok('a player with no hands reports null, not 0%',
+  E.statView({ hands: 0, vpip: 0, pfr: 0, calls: 0, bets: 0, raises: 0 }).vpipPct === null);
+ok('stats accumulate across calls', (() => {
+  const acc = {};
+  E.accumulate([hands[0]], acc);
+  E.accumulate([hands[1]], acc);
+  return acc.aaa.hands === 2 && acc.aaa.net === 105;
+})());
+
+console.log('advice');
+const adv = (o) => E.advise(Object.assign({
+  hero: H('Ah Kh'), board: [], pot: 100, toCall: 0, opponents: 1,
+  seats: 6, bigBlind: 10, position: 'BTN', spr: 5, sim: null, outs: null,
+}, o), 'NORMAL');
+ok('premium preflop opens', adv({}).action === 'RAISE');
+ok('trash preflop folds to a raise', adv({ hero: H('7c 2d'), toCall: 40 }).action === 'FOLD');
+ok('bad price folds',
+  adv({ board: H('2c 7d 9s'), toCall: 200, sim: { equity: 0.15 } }).action === 'FOLD');
+ok('good price calls',
+  adv({ board: H('2c 7d 9s'), toCall: 20, sim: { equity: 0.45 } }).action === 'CALL');
+ok('nuts value bets',
+  adv({ hero: H('Qh Jh'), board: H('Th 9h 8h'), toCall: 0, sim: { equity: 0.95 } }).action === 'BET');
+ok('paired board warns',
+  adv({ board: H('Kc Kd 2h'), sim: { equity: 0.5 } }).warns.some((w) => /PAIRED/.test(w)));
+ok('playing the board is called out',
+  adv({ hero: H('2c 3d'), board: H('Ah Kh Qh Jh Th'), toCall: 0, sim: { equity: 0.2 } })
+    .warns.some((w) => /playing the board/i.test(w)));
+ok('no equity yet => no recommendation',
+  adv({ board: H('2c 7d 9s'), sim: null }).action === '—');
+
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);
