@@ -60,12 +60,19 @@ test("a trustless player cannot see their cards and leave before paying", () => 
 });
 
 test("the live-deal check covers the phases before betting starts", () => {
-  const helper = source.match(/private inLiveTrustlessDeal\(seat: Seat\): boolean \{([\s\S]*?)\n  \}/);
-  assert.ok(helper, "inLiveTrustlessDeal not found");
+  // The phase test lives in trustlessDealInProgress, which inLiveTrustlessDeal
+  // and armHandStart both consult - they must agree on when a deal is live.
+  const helper = source.match(/private trustlessDealInProgress\(\): boolean \{([\s\S]*?)\n  \}/);
+  assert.ok(helper, "trustlessDealInProgress not found");
   const body = helper[1].replace(/\s+/g, " ");
-  // Only the terminal phases release the seat; every dealing phase counts.
-  assert.match(body, /phase === "complete"/);
-  assert.match(body, /phase === "aborted"/);
+  // Only the terminal phases release it; every dealing phase counts as live.
+  assert.match(body, /phase !== "complete"/);
+  assert.match(body, /phase !== "aborted"/);
+  assert.match(
+    source,
+    /private inLiveTrustlessDeal\(seat: Seat\): boolean \{[\s\S]*?this\.trustlessDealInProgress\(\)/,
+    "inLiveTrustlessDeal must share the same phase test",
+  );
 });
 
 test("the seat is claimed before the first await, not after the buy-in", () => {
@@ -97,5 +104,35 @@ test("an already-seated socket cannot move to a different seat", () => {
     body.slice(0, 1400),
     /if \(attachment\.seat !== null && this\.seats\[attachment\.seat\]\?\.connected\)/,
     "handleSit must short-circuit when this socket already holds a live seat",
+  );
+});
+
+test("a hand-start is not armed while a trustless deal is running", () => {
+  // A Durable Object holds ONE alarm. this.hand is null for the whole of a
+  // trustless deal, so checking it alone reads "no hand in progress" mid-deal
+  // and arms a hand-start whose setAlarm REPLACES the protocol's stall alarm.
+  // Every sit calls armHandStart, so a reconnect mid-deal would trip it.
+  const fn = source.match(/private async armHandStart\(\): Promise<void> \{([\s\S]*?)\n  \}/);
+  assert.ok(fn, "armHandStart not found");
+  assert.match(
+    fn[1].replace(/\s+/g, " "),
+    /!this\.trustlessDealInProgress\(\)/,
+    "armHandStart must not arm while a trustless deal is in progress",
+  );
+});
+
+test("consuming the hand-start alarm restores an outstanding stall deadline", () => {
+  // startHandIfReady does nothing while a trustless deal is already running,
+  // so this branch could otherwise clear the only pending alarm and leave
+  // mpDeadline set with nothing to fire - a stalled deal that can never abort
+  // or refund. The later branches restore it; this one returns before them.
+  const branch = source.match(/if \(this\.pendingHandStartAt !== null\) \{([\s\S]*?)\n    \}/);
+  assert.ok(branch, "the alarm's pendingHandStartAt branch not found");
+  const body = branch[1].replace(/\s+/g, " ");
+  assert.match(body, /await this\.startHandIfReady\(\)/);
+  assert.match(
+    body,
+    /this\.mpDeadline !== null.*setAlarm\(this\.mpDeadline\)/,
+    "this branch must put an outstanding stall deadline back before returning",
   );
 });

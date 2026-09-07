@@ -744,10 +744,16 @@ export class PokerTable {
    * to be waiting on slow curve work and to reload.
    */
   private inLiveTrustlessDeal(seat: Seat): boolean {
-    const phase = this.mpState?.phase;
-    if (!phase || phase === "complete" || phase === "aborted") return false;
     // Trustless play is heads-up; these are the seats the protocol deals to.
-    return seat === 0 || seat === 1;
+    return this.trustlessDealInProgress() && (seat === 0 || seat === 1);
+  }
+
+  /** True while a trustless hand exists as an mpState, which is well before
+   *  this.hand does - see inLiveTrustlessDeal. */
+  private trustlessDealInProgress(): boolean {
+    const phase = this.mpState?.phase;
+    if (!phase) return false;
+    return phase !== "complete" && phase !== "aborted";
   }
 
   private findSeatForUser(userId: string): Seat | null {
@@ -1504,7 +1510,13 @@ export class PokerTable {
   private async armHandStart(): Promise<void> {
     if (this.pendingHandStartAt !== null) return;
     const occupiedCount = this.seats.filter((seat, s) => seat?.connected && this.stacks[s] > 0).length;
-    const noHandInProgress = !this.hand || this.hand.street === "complete";
+    // this.hand is null for the whole of a trustless deal, so checking it
+    // alone would read "no hand in progress" mid-deal and arm a hand-start
+    // whose setAlarm REPLACES the protocol's stall alarm - a Durable Object
+    // holds only one. Every sit calls this, so a reconnect mid-deal would
+    // trip it routinely.
+    const noHandInProgress =
+      (!this.hand || this.hand.street === "complete") && !this.trustlessDealInProgress();
     if (occupiedCount < 2 || !noHandInProgress) return;
     this.pendingHandStartAt = Date.now() + FAIR_START_WINDOW_MS;
     await this.persist(["pendingHandStartAt"]);
@@ -1526,6 +1538,12 @@ export class PokerTable {
       this.pendingHandStartAt = null;
       await this.persist(["pendingHandStartAt"]);
       await this.startHandIfReady();
+      // startHandIfReady does nothing while a trustless deal is already
+      // running, so consuming this alarm would otherwise leave mpDeadline set
+      // with NOTHING pending - and a stalled deal could then never abort or
+      // refund. The branches below restore the stall deadline when they are
+      // reached; this one returns before them, so it has to do it itself.
+      if (this.mpDeadline !== null) await this.ctx.storage.setAlarm(this.mpDeadline);
       return;
     }
     const dealPending = this.isTrustless && this.mpState !== null && this.mpState.phase !== "betting";
