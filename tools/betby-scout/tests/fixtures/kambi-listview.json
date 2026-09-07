@@ -1,0 +1,836 @@
+{
+ "events": [
+  {
+   "event": {
+    "id": 1028072812,
+    "name": "Arsenal - Chelsea",
+    "nameDelimiter": "-",
+    "englishName": "Arsenal - Chelsea",
+    "homeName": "Arsenal",
+    "awayName": "Chelsea",
+    "start": "2026-09-06T15:30:00Z",
+    "group": "Premier League",
+    "groupId": 1000094985,
+    "path": [
+     {
+      "id": 1000093190,
+      "name": "Football",
+      "englishName": "Football",
+      "termKey": "football"
+     },
+     {
+      "id": 1000461733,
+      "name": "England",
+      "englishName": "England",
+      "termKey": "england"
+     },
+     {
+      "id": 1000094985,
+      "name": "Premier League",
+      "englishName": "Premier League",
+      "termKey": "premier_league"
+     }
+    ],
+    "nonLiveBoCount": 517,
+    "liveBoCount": 298,
+    "sport": "FOOTBALL",
+    "tags": [
+     "OPEN_FOR_LIVE",
+     "BET_BUILDER",
+     "MATCH"
+    ],
+    "state": "NOT_STARTED"
+   },
+   "betOffers": [
+    {
+     "id": 2683800045,
+     "criterion": {
+      "id": 1001159858,
+      "label": "Full Time",
+      "englishLabel": "Full Time",
+      "order": [],
+      "occurrenceType": "GOALS",
+      "lifetime": "FULL_TIME"
+     },
+     "betOfferType": {
+      "id": 2,
+      "name": "Match",
+      "englishName": "Match"
+     },
+     "eventId": 1028072812,
+     "outcomes": [
+      {
+       "id": 4309368540,
+       "label": "1",
+       "englishLabel": "1",
+       "odds": 1680,
+       "participant": "Arsenal",
+       "type": "OT_ONE",
+       "betOfferId": 2683800045,
+       "changedDate": "2026-09-06T15:22:20Z",
+       "participantId": 1000000085,
+       "oddsFractional": "4/6",
+       "oddsAmerican": "-148",
+       "status": "OPEN",
+       "cashOutStatus": "ENABLED",
+       "displayOrder": 0
+      },
+      {
+       "id": 4309368541,
+       "label": "X",
+       "englishLabel": "X",
+       "odds": 3850,
+       "type": "OT_CROSS",
+       "betOfferId": 2683800045,
+       "changedDate": "2026-09-06T15:22:20Z",
+       "oddsFractional": "14/5",
+       "oddsAmerican": "285",
+       "status": "OPEN",
+       "cashOutStatus": "ENABLED",
+       "displayOrder": 1
+      },
+      {
+       "id": 4309368542,
+       "label": "2",
+       "englishLabel": "2",
+       "odds": 5000,
+       "participant": "Chelsea",
+       "type": "OT_TWO",
+       "betOfferId": 2683800045,
+       "changedDate": "2026-09-06T15:13:32Z",
+       "participantId": 1000000080,
+       "oddsFractional": "4/1",
+       "oddsAmerican": "400",
+       "status": "OPEN",
+       "cashOutStatus": "ENABLED",
+       "displayOrder": 2
+      }
+     ],
+     "tags": [
+      "OFFERED_PREMATCH",
+      "OFFERED_LIVE",
+      "BET_BUILDER",
+      "MAIN"
+     ],
+     "oddsStats": {
+      "unexpectedOddsTrend": false,
+      "outcomeId": 4309368540,
+      "startingOdds": 1730,
+      "startingOddsFractional": "8/11",
+      "startingOddsAmerican": "-137"
+     },
+     "sortOrder": 1,
+     "cashOutStatus": "ENABLED"
+    }
+   ]
+  },
+  {
+   "event": {
+    "id": 1028072855,
+    "name": "Crystal Palace - Ipswich Town",
+    "nameDelimiter": "-",
+    "englishName": "Crystal Palace - Ipswich Town",
+    "homeName": "Crystal Palace",
+    "awayName": "Ipswich Town",
+    "start": "2026-09-12T14:00:00Z",
+    "group": "Premier League",
+    "groupId": 1000094985,
+    "path": [
+     {
+      "id": 1000093190,
+      "name": "Football",
+      "englishName": "Football",
+      "termKey": "football"
+     },
+     {
+      "id": 1000461733,
+      "name": "England",
+      "englishName": "England",
+      "termKey": "england"
+     },
+     {
+      "id": 1000094985,
+      "name": "Premier League",
+      "englishName": "Premier League",
+      "termKey": "premier_league"
+     }
+    ],
+    "nonLiveBoCount": 115,
+    "sport": "FOOTBALL",
+    "tags": [
+     "OFFERED_LIVE",
+     "BET_BUILDER",
+     "MATCH"
+    ],
+    "state": "NOT_STARTED"
+   },
+   "betOffers": [
+    {
+     "id": 2686456364,
+     "criterion": {
+      "id": 1001159858,
+      "label": "Full Time",
+      "englishLabel": "Full Time",
+      "order": [],
+      "occurrenceType": "GOALS",
+      "lifetime": "FULL_TIME"
+     },
+     "betOfferType": {
+      "id": 2,
+      "name": "Match",
+      "englishName": "Match"
+     },
+     "eventId": 1028072855,
+     "outcomes": [
+      {
+       "id": 4318206540,
+       "label": "1",
+       "englishLabel": "1",
+       "odds": 1900,
+       "participant": "Crystal Palace",
+       "type": "OT_ONE",
+       "betOfferId": 2686456364,
+       "changedDate": "2026-09-04T22:29:44Z",
+       "participantId": 1000013415,
+       "oddsFractional": "9/10",
+       "oddsAmerican": "-112",
+       "status": "OPEN",
+       "cashOutStatus": "ENABLED",
+       "displayOrder": 0
+      },
+      {
+       "id": 4318206541,
+       "label": "X",
+       "englishLabel": "X",
+       "odds": 3500,
+       "type": "OT_CROSS",
+       "betOfferId": 2686456364,
+       "changedDate": "2026-09-04T22:29:44Z",
+       "oddsFractional": "5/2",
+       "oddsAmerican": "250",
+       "status": "OPEN",
+       "cashOutStatus": "ENABLED",
+       "displayOrder": 1
+      },
+      {
+       "id": 4318206542,
+       "label": "2",
+       "englishLabel": "2",
+       "odds": 4000,
+       "participant": "Ipswich Town",
+       "type": "OT_TWO",
+       "betOfferId": 2686456364,
+       "changedDate": "2026-09-04T22:29:44Z",
+       "participantId": 1000086243,
+       "oddsFractional": "3/1",
+       "oddsAmerican": "300",
+       "status": "OPEN",
+       "cashOutStatus": "ENABLED",
+       "displayOrder": 2
+      }
+     ],
+     "tags": [
+      "OFFERED_PREMATCH",
+      "OFFERED_LIVE",
+      "BET_BUILDER",
+      "MAIN"
+     ],
+     "sortOrder": 1,
+     "cashOutStatus": "ENABLED"
+    }
+   ]
+  },
+  {
+   "event": {
+    "id": 1028072854,
+    "name": "Chelsea - Hull City",
+    "nameDelimiter": "-",
+    "englishName": "Chelsea - Hull City",
+    "homeName": "Chelsea",
+    "awayName": "Hull City",
+    "start": "2026-09-12T14:00:00Z",
+    "group": "Premier League",
+    "groupId": 1000094985,
+    "path": [
+     {
+      "id": 1000093190,
+      "name": "Football",
+      "englishName": "Football",
+      "termKey": "football"
+     },
+     {
+      "id": 1000461733,
+      "name": "England",
+      "englishName": "England",
+      "termKey": "england"
+     },
+     {
+      "id": 1000094985,
+      "name": "Premier League",
+      "englishName": "Premier League",
+      "termKey": "premier_league"
+     }
+    ],
+    "nonLiveBoCount": 123,
+    "sport": "FOOTBALL",
+    "tags": [
+     "OFFERED_LIVE",
+     "BET_BUILDER",
+     "MATCH"
+    ],
+    "state": "NOT_STARTED"
+   },
+   "betOffers": [
+    {
+     "id": 2686447897,
+     "criterion": {
+      "id": 1001159858,
+      "label": "Full Time",
+      "englishLabel": "Full Time",
+      "order": [],
+      "occurrenceType": "GOALS",
+      "lifetime": "FULL_TIME"
+     },
+     "betOfferType": {
+      "id": 2,
+      "name": "Match",
+      "englishName": "Match"
+     },
+     "eventId": 1028072854,
+     "outcomes": [
+      {
+       "id": 4318223600,
+       "label": "1",
+       "englishLabel": "1",
+       "odds": 1250,
+       "participant": "Chelsea",
+       "type": "OT_ONE",
+       "betOfferId": 2686447897,
+       "changedDate": "2026-09-05T13:59:47Z",
+       "participantId": 1000000080,
+       "oddsFractional": "1/4",
+       "oddsAmerican": "-400",
+       "status": "OPEN",
+       "cashOutStatus": "ENABLED",
+       "displayOrder": 0
+      },
+      {
+       "id": 4318223601,
+       "label": "X",
+       "englishLabel": "X",
+       "odds": 6250,
+       "type": "OT_CROSS",
+       "betOfferId": 2686447897,
+       "changedDate": "2026-09-05T13:59:47Z",
+       "oddsFractional": "21/4",
+       "oddsAmerican": "525",
+       "status": "OPEN",
+       "cashOutStatus": "ENABLED",
+       "displayOrder": 1
+      },
+      {
+       "id": 4318223602,
+       "label": "2",
+       "englishLabel": "2",
+       "odds": 10000,
+       "participant": "Hull City",
+       "type": "OT_TWO",
+       "betOfferId": 2686447897,
+       "changedDate": "2026-09-05T13:59:47Z",
+       "participantId": 1000066582,
+       "oddsFractional": "9/1",
+       "oddsAmerican": "900",
+       "status": "OPEN",
+       "cashOutStatus": "ENABLED",
+       "displayOrder": 2
+      }
+     ],
+     "tags": [
+      "OFFERED_PREMATCH",
+      "OFFERED_LIVE",
+      "BET_BUILDER",
+      "MAIN"
+     ],
+     "sortOrder": 1,
+     "cashOutStatus": "ENABLED"
+    }
+   ]
+  },
+  {
+   "event": {
+    "id": 1028072849,
+    "name": "Aston Villa - Nottingham Forest",
+    "nameDelimiter": "-",
+    "englishName": "Aston Villa - Nottingham Forest",
+    "homeName": "Aston Villa",
+    "awayName": "Nottingham Forest",
+    "start": "2026-09-12T14:00:00Z",
+    "group": "Premier League",
+    "groupId": 1000094985,
+    "path": [
+     {
+      "id": 1000093190,
+      "name": "Football",
+      "englishName": "Football",
+      "termKey": "football"
+     },
+     {
+      "id": 1000461733,
+      "name": "England",
+      "englishName": "England",
+      "termKey": "england"
+     },
+     {
+      "id": 1000094985,
+      "name": "Premier League",
+      "englishName": "Premier League",
+      "termKey": "premier_league"
+     }
+    ],
+    "nonLiveBoCount": 119,
+    "sport": "FOOTBALL",
+    "tags": [
+     "OFFERED_LIVE",
+     "BET_BUILDER",
+     "MATCH"
+    ],
+    "state": "NOT_STARTED"
+   },
+   "betOffers": [
+    {
+     "id": 2686442588,
+     "criterion": {
+      "id": 1001159858,
+      "label": "Full Time",
+      "englishLabel": "Full Time",
+      "order": [],
+      "occurrenceType": "GOALS",
+      "lifetime": "FULL_TIME"
+     },
+     "betOfferType": {
+      "id": 2,
+      "name": "Match",
+      "englishName": "Match"
+     },
+     "eventId": 1028072849,
+     "outcomes": [
+      {
+       "id": 4318198169,
+       "label": "1",
+       "englishLabel": "1",
+       "odds": 1980,
+       "participant": "Aston Villa",
+       "type": "OT_ONE",
+       "betOfferId": 2686442588,
+       "changedDate": "2026-09-03T00:32:11Z",
+       "participantId": 1000000045,
+       "oddsFractional": "49/50",
+       "oddsAmerican": "-103",
+       "status": "OPEN",
+       "cashOutStatus": "ENABLED",
+       "displayOrder": 0
+      },
+      {
+       "id": 4318198170,
+       "label": "X",
+       "englishLabel": "X",
+       "odds": 3600,
+       "type": "OT_CROSS",
+       "betOfferId": 2686442588,
+       "changedDate": "2026-09-03T00:32:11Z",
+       "oddsFractional": "13/5",
+       "oddsAmerican": "260",
+       "status": "OPEN",
+       "cashOutStatus": "ENABLED",
+       "displayOrder": 1
+      },
+      {
+       "id": 4318198171,
+       "label": "2",
+       "englishLabel": "2",
+       "odds": 3550,
+       "participant": "Nottingham Forest",
+       "type": "OT_TWO",
+       "betOfferId": 2686442588,
+       "changedDate": "2026-09-03T00:32:11Z",
+       "participantId": 1000000046,
+       "oddsFractional": "5/2",
+       "oddsAmerican": "255",
+       "status": "OPEN",
+       "cashOutStatus": "ENABLED",
+       "displayOrder": 2
+      }
+     ],
+     "tags": [
+      "OFFERED_PREMATCH",
+      "OFFERED_LIVE",
+      "BET_BUILDER",
+      "MAIN"
+     ],
+     "sortOrder": 1,
+     "cashOutStatus": "ENABLED"
+    }
+   ]
+  },
+  {
+   "event": {
+    "id": 1028072846,
+    "name": "Bournemouth - Brentford",
+    "nameDelimiter": "-",
+    "englishName": "Bournemouth - Brentford",
+    "homeName": "Bournemouth",
+    "awayName": "Brentford",
+    "start": "2026-09-12T14:00:00Z",
+    "group": "Premier League",
+    "groupId": 1000094985,
+    "path": [
+     {
+      "id": 1000093190,
+      "name": "Football",
+      "englishName": "Football",
+      "termKey": "football"
+     },
+     {
+      "id": 1000461733,
+      "name": "England",
+      "englishName": "England",
+      "termKey": "england"
+     },
+     {
+      "id": 1000094985,
+      "name": "Premier League",
+      "englishName": "Premier League",
+      "termKey": "premier_league"
+     }
+    ],
+    "nonLiveBoCount": 113,
+    "sport": "FOOTBALL",
+    "tags": [
+     "OFFERED_LIVE",
+     "BET_BUILDER",
+     "MATCH"
+    ],
+    "state": "NOT_STARTED"
+   },
+   "betOffers": [
+    {
+     "id": 2686476422,
+     "criterion": {
+      "id": 1001159858,
+      "label": "Full Time",
+      "englishLabel": "Full Time",
+      "order": [],
+      "occurrenceType": "GOALS",
+      "lifetime": "FULL_TIME"
+     },
+     "betOfferType": {
+      "id": 2,
+      "name": "Match",
+      "englishName": "Match"
+     },
+     "eventId": 1028072846,
+     "outcomes": [
+      {
+       "id": 4318166342,
+       "label": "1",
+       "englishLabel": "1",
+       "odds": 2500,
+       "participant": "Bournemouth",
+       "type": "OT_ONE",
+       "betOfferId": 2686476422,
+       "changedDate": "2026-09-04T06:54:20Z",
+       "participantId": 1000052183,
+       "oddsFractional": "6/4",
+       "oddsAmerican": "150",
+       "status": "OPEN",
+       "cashOutStatus": "ENABLED",
+       "displayOrder": 0
+      },
+      {
+       "id": 4318166343,
+       "label": "X",
+       "englishLabel": "X",
+       "odds": 3500,
+       "type": "OT_CROSS",
+       "betOfferId": 2686476422,
+       "changedDate": "2026-09-04T06:54:20Z",
+       "oddsFractional": "5/2",
+       "oddsAmerican": "250",
+       "status": "OPEN",
+       "cashOutStatus": "ENABLED",
+       "displayOrder": 1
+      },
+      {
+       "id": 4318166344,
+       "label": "2",
+       "englishLabel": "2",
+       "odds": 2630,
+       "participant": "Brentford",
+       "type": "OT_TWO",
+       "betOfferId": 2686476422,
+       "changedDate": "2026-09-04T06:54:20Z",
+       "participantId": 1000069183,
+       "oddsFractional": "13/8",
+       "oddsAmerican": "163",
+       "status": "OPEN",
+       "cashOutStatus": "ENABLED",
+       "displayOrder": 2
+      }
+     ],
+     "tags": [
+      "OFFERED_PREMATCH",
+      "OFFERED_LIVE",
+      "BET_BUILDER",
+      "MAIN"
+     ],
+     "sortOrder": 1,
+     "cashOutStatus": "ENABLED"
+    }
+   ]
+  },
+  {
+   "event": {
+    "id": 1028072858,
+    "name": "Liverpool - Fulham",
+    "nameDelimiter": "-",
+    "englishName": "Liverpool - Fulham",
+    "homeName": "Liverpool",
+    "awayName": "Fulham",
+    "start": "2026-09-12T14:00:00Z",
+    "group": "Premier League",
+    "groupId": 1000094985,
+    "path": [
+     {
+      "id": 1000093190,
+      "name": "Football",
+      "englishName": "Football",
+      "termKey": "football"
+     },
+     {
+      "id": 1000461733,
+      "name": "England",
+      "englishName": "England",
+      "termKey": "england"
+     },
+     {
+      "id": 1000094985,
+      "name": "Premier League",
+      "englishName": "Premier League",
+      "termKey": "premier_league"
+     }
+    ],
+    "nonLiveBoCount": 119,
+    "sport": "FOOTBALL",
+    "tags": [
+     "OFFERED_LIVE",
+     "BET_BUILDER",
+     "MATCH"
+    ],
+    "state": "NOT_STARTED"
+   },
+   "betOffers": [
+    {
+     "id": 2686453616,
+     "criterion": {
+      "id": 1001159858,
+      "label": "Full Time",
+      "englishLabel": "Full Time",
+      "order": [],
+      "occurrenceType": "GOALS",
+      "lifetime": "FULL_TIME"
+     },
+     "betOfferType": {
+      "id": 2,
+      "name": "Match",
+      "englishName": "Match"
+     },
+     "eventId": 1028072858,
+     "outcomes": [
+      {
+       "id": 4318241723,
+       "label": "1",
+       "englishLabel": "1",
+       "odds": 1460,
+       "participant": "Liverpool",
+       "type": "OT_ONE",
+       "betOfferId": 2686453616,
+       "changedDate": "2026-09-05T21:03:21Z",
+       "participantId": 1000000087,
+       "oddsFractional": "4/9",
+       "oddsAmerican": "-220",
+       "status": "OPEN",
+       "cashOutStatus": "ENABLED",
+       "displayOrder": 0
+      },
+      {
+       "id": 4318241724,
+       "label": "X",
+       "englishLabel": "X",
+       "odds": 4750,
+       "type": "OT_CROSS",
+       "betOfferId": 2686453616,
+       "changedDate": "2026-09-05T21:03:21Z",
+       "oddsFractional": "15/4",
+       "oddsAmerican": "375",
+       "status": "OPEN",
+       "cashOutStatus": "ENABLED",
+       "displayOrder": 1
+      },
+      {
+       "id": 4318241725,
+       "label": "2",
+       "englishLabel": "2",
+       "odds": 6000,
+       "participant": "Fulham",
+       "type": "OT_TWO",
+       "betOfferId": 2686453616,
+       "changedDate": "2026-09-05T21:03:21Z",
+       "participantId": 1000000103,
+       "oddsFractional": "5/1",
+       "oddsAmerican": "500",
+       "status": "OPEN",
+       "cashOutStatus": "ENABLED",
+       "displayOrder": 2
+      }
+     ],
+     "tags": [
+      "OFFERED_PREMATCH",
+      "OFFERED_LIVE",
+      "BET_BUILDER",
+      "MAIN"
+     ],
+     "sortOrder": 1,
+     "cashOutStatus": "ENABLED"
+    }
+   ]
+  }
+ ],
+ "terms": [
+  {
+   "type": "SPORT",
+   "id": "/football",
+   "termKey": "football",
+   "localizedName": "Football",
+   "parentId": "/",
+   "englishName": "Football"
+  },
+  {
+   "type": "REGION",
+   "id": "/football/england",
+   "termKey": "england",
+   "localizedName": "England",
+   "parentId": "/football",
+   "englishName": "England"
+  },
+  {
+   "type": "LEAGUE",
+   "id": "/football/england/premier_league",
+   "termKey": "premier_league",
+   "localizedName": "Premier League",
+   "parentId": "/football/england",
+   "englishName": "Premier League"
+  }
+ ],
+ "activeTermIds": [
+  "/football/england/premier_league"
+ ],
+ "soonMode": "MONTHLY",
+ "categoryGroups": [
+  {
+   "categoryGroupName": "list_view",
+   "categories": [
+    {
+     "id": 11942,
+     "englishName": "Both Teams To Score",
+     "localizedName": "Both Teams To Score"
+    },
+    {
+     "id": 12220,
+     "englishName": "Double Chance",
+     "localizedName": "Double Chance"
+    },
+    {
+     "id": 11927,
+     "englishName": "Half Time",
+     "localizedName": "Half Time"
+    },
+    {
+     "id": 11928,
+     "englishName": "Total Goals - 1st Half",
+     "localizedName": "Total Goals - 1st Half"
+    },
+    {
+     "id": 11929,
+     "englishName": "Draw No Bet",
+     "localizedName": "Draw No Bet"
+    },
+    {
+     "id": 16819,
+     "englishName": "3-Way Handicap",
+     "localizedName": "3-Way Handicap"
+    },
+    {
+     "id": 12319,
+     "englishName": "Asian Handicap",
+     "localizedName": "Asian Handicap"
+    },
+    {
+     "id": 11930,
+     "englishName": "Total Goals by Home Team",
+     "localizedName": "Total Goals by Home Team"
+    },
+    {
+     "id": 11931,
+     "englishName": "Total Goals by Away Team",
+     "localizedName": "Total Goals by Away Team"
+    },
+    {
+     "id": 19260,
+     "englishName": "Total Corners",
+     "localizedName": "Total Corners"
+    },
+    {
+     "id": 19261,
+     "englishName": "Total Cards",
+     "localizedName": "Total Cards"
+    },
+    {
+     "id": 18919,
+     "englishName": "Red Card Given",
+     "localizedName": "Red Card Given"
+    },
+    {
+     "id": 18899,
+     "englishName": "Penalty kick awarded",
+     "localizedName": "Penalty kick awarded"
+    }
+   ]
+  },
+  {
+   "categoryGroupName": "combined_layout",
+   "categories": [
+    {
+     "id": 12579,
+     "englishName": "match",
+     "localizedName": "Match"
+    },
+    {
+     "id": 12580,
+     "englishName": "totals",
+     "localizedName": "Total Goals"
+    }
+   ],
+   "localizedName": "Match & Total Goals"
+  }
+ ],
+ "activeCategories": [
+  "12579"
+ ],
+ "activeEventTypes": [
+  "matches"
+ ],
+ "eventTypes": [
+  "matches"
+ ],
+ "defaultEventType": "matches"
+}

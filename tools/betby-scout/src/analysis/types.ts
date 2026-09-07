@@ -58,8 +58,19 @@ export type DevigMethod = 'proportional' | 'shin';
 export type FairSource =
   /** De-vigged from this book's own market. Cannot support an edge claim. */
   | 'single-book-devig'
-  /** Average/median across two or more independent books. Can. */
+  /** Median across three or more independent books. The strongest tier. */
   | 'multi-book-consensus'
+  /**
+   * De-vigged from ONE book chosen because it is sharp - in practice Pinnacle,
+   * whose margins are thinnest and which does not limit winners, so it has no
+   * reason to shade a price away from its true opinion.
+   *
+   * Weaker than a consensus and it must say so, but it is the standard method
+   * in betting analytics and refusing it would throw away the best reference
+   * available. The critical property is preserved: it is not the book being
+   * evaluated, so the comparison does not collapse to minus the margin.
+   */
+  | 'sharp-reference'
   /** The closing price of this book's own market. Supports CLV, not live edge. */
   | 'closing-line';
 
@@ -122,7 +133,20 @@ export interface FairPrice {
  * Kept as a function rather than a comment because a comment cannot fail a test.
  */
 export function isEdgeClaimable(source: FairSource): boolean {
-  return source === 'multi-book-consensus';
+  // Both admissible sources share the one property that matters: the fair value
+  // came from somewhere other than the book whose price is being judged.
+  return source === 'multi-book-consensus' || source === 'sharp-reference';
+}
+
+/**
+ * How much weight an edge from this source deserves. A consensus of independent
+ * books beats one book's opinion, however sharp, and the UI should not present
+ * them as equals.
+ */
+export function edgeStrength(source: FairSource): 'strong' | 'moderate' | 'none' {
+  if (source === 'multi-book-consensus') return 'strong';
+  if (source === 'sharp-reference') return 'moderate';
+  return 'none';
 }
 
 /* ------------------------------------------------------------------ *

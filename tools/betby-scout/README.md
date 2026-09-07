@@ -45,7 +45,7 @@ on the site once it is running.
 
 ```bash
 npm run build      # collector + dashboard + server
-npm test           # 197 tests
+npm test           # 213 tests
 npm run typecheck
 ```
 
@@ -270,29 +270,32 @@ observed CLV is shrunk toward zero by `n/(n+30)` so a short hot streak cannot
 manufacture a rating. Confidence is reported separately from the score, so a
 high number on a thin record cannot pass for a strong one.
 
-## Getting real edges: add a second price source
+## Getting real edges: independent prices, no keys
 
 Everything above measures Duel against itself, which by arithmetic can never
-show an edge. One independent source changes that.
+show an edge. Independent prices change that, and **none of them need an API
+key or an account** — they are scraped from the public endpoints those books'
+own websites use:
 
-1. Get a free key at <https://the-odds-api.com> — 500 credits a month, no card.
-2. Set it before starting the server:
+| Source | What it is | Configuration |
+|---|---|---|
+| **Pinnacle** | The reference book. Thinnest margins in the market, and it does not limit winners, so it has no reason to shade a price away from its true opinion. | none |
+| **Kambi** | The platform behind Unibet, Betsson, LeoVegas and others. | none |
+| The Odds API | Optional extra. Contributes only if `ODDS_API_KEY` is set. | free key |
 
-```bash
-ODDS_API_KEY=your_key npm start
-```
+Just start the server and read `/api/edges`. `/api/edges/status` shows which
+sources are live.
 
-3. Check `/api/edges/status`, then read the **Edges** data at `/api/edges`.
+**Two tiers, and the response says which applies.** Three or more independent
+books give a `strong` consensus. With fewer, Pinnacle alone stands as a
+`moderate` sharp reference — admissible because it is not the book being judged,
+and because de-vigging Pinnacle is the standard method, but it has no
+redundancy: if Pinnacle is the one that is wrong, nothing here can tell.
 
-Optional: `ODDS_API_REGIONS` (default `eu`) and `ODDS_API_MARKETS` (default
-`h2h`). Leave them alone unless you know why — a request costs
-`markets × regions` credits, so asking for three regions triples the burn for
-prices that mostly agree.
-
-**Budget discipline.** 500 credits a month is about 16 a day, so Scout never
-polls. It fetches only when asked, caches every response for 30 minutes, and
-reports `x-requests-remaining` so you can see what is left rather than
-discovering the limit by hitting it.
+**Politeness, not quota.** These are somebody else's servers and nobody asked
+them. Scout never polls, caches every response, and holds a five-minute floor
+between requests per competition. Kambi returned a 429 during development for
+being asked twice quickly, which is why that floor exists.
 
 **How an edge is computed**, and what it refuses:
 
@@ -304,9 +307,13 @@ discovering the limit by hitting it.
 - Fewer than **three** independent books → refused. Below three the median has
   no resistance to one bad price, which is the only reason to use one.
 - Stale quotes (older than 6h) are dropped and the drop is reported.
-- An **unmapped league is refused, never guessed.** Matching "LaLiga" to a
-  second-division key by string similarity would produce a large and entirely
-  fictional edge.
+- A competition is identified by **sport AND country AND league**, never by
+  league name. This is not theoretical: on 2026-09-06 Duel was simultaneously
+  serving `Soccer | Malta | Premier League`, `Basketball | Kenya | Premier
+  League`, `Handball | Germany | Bundesliga` and `eSoccer | Germany | Bundesliga
+  (2x6 min)`. A name-only map — which this had, and which is now fixed — would
+  have priced Maltese football against the English top flight. `Bundesliga,
+  Women` is refused for the same reason.
 - **Fixture matching is the most dangerous step in the project**, because a
   wrong match yields a number that is arithmetically perfect and complete
   nonsense. Both teams must match, kickoffs must agree within two hours, and two

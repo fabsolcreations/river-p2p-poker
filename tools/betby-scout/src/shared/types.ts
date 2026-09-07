@@ -137,6 +137,16 @@ export interface NormalizedEvent {
   /** The book's own id, when the payload exposes one. */
   sourceEventId: string | null;
   sport: string | null;
+  /**
+   * Country or region the competition belongs to.
+   *
+   * Load-bearing, not decoration. "Premier League" alone is served by Duel for
+   * England, Malta AND Kenya, and "Bundesliga" for both German football and
+   * German handball. Mapping a competition to another book without the country
+   * matches Maltese football to the English top flight and produces an enormous
+   * fictional edge.
+   */
+  country: string | null;
   league: string | null;
   /** Competitors in listed order; 2 for most, N for outrights. */
   competitors: string[];

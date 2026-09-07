@@ -22,7 +22,9 @@
  * exception - it is a read-only key for a public odds service, kept the same way.
  */
 
+import { resolveSportKey } from './sport-keys.ts';
 import type {
+  Competition,
   ExternalBook,
   ExternalEvent,
   ExternalMarket,
@@ -190,6 +192,10 @@ export class TheOddsApiSource implements ExternalOddsSource {
     if (remaining !== null) this.quota.remaining = remaining;
     if (used !== null) this.quota.used = used;
     if (last !== null) this.quota.lastCost = last;
+  }
+
+  keyForLeague(competition: Competition): string | null {
+    return resolveSportKey(competition).key;
   }
 
   async listSports(): Promise<Array<{ key: string; title: string; group: string; active: boolean }>> {

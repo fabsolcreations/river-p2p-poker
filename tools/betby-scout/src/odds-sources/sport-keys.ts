@@ -16,6 +16,8 @@
  */
 
 import { normalizeName } from '../shared/ids.ts';
+import { competitionKey } from './scrapers/pinnacle.ts';
+import type { Competition } from './types.ts';
 
 export interface SportMapping {
   /** External sport key. */
@@ -32,29 +34,30 @@ export interface SportMapping {
  * until someone has checked it.
  */
 const LEAGUE_MAP: ReadonlyMap<string, SportMapping> = new Map([
-  ['premier league', { key: 'soccer_epl', note: 'England top flight' }],
-  ['laliga', { key: 'soccer_spain_la_liga', note: 'Spain top flight' }],
-  ['la liga', { key: 'soccer_spain_la_liga', note: 'Spain top flight' }],
-  ['serie a', { key: 'soccer_italy_serie_a', note: 'Italy top flight' }],
-  ['bundesliga', { key: 'soccer_germany_bundesliga', note: 'Germany top flight' }],
-  ['ligue 1', { key: 'soccer_france_ligue_one', note: 'France top flight' }],
-  ['uefa champions league', { key: 'soccer_uefa_champs_league', note: 'UEFA Champions League' }],
-  ['champions league', { key: 'soccer_uefa_champs_league', note: 'UEFA Champions League' }],
-  ['mls', { key: 'soccer_usa_mls', note: 'Major League Soccer' }],
-  ['nfl', { key: 'americanfootball_nfl', note: 'NFL' }],
-  ['ncaa', { key: 'americanfootball_ncaaf', note: 'NCAA football' }],
-  ['nba', { key: 'basketball_nba', note: 'NBA' }],
-  ['mlb', { key: 'baseball_mlb', note: 'MLB' }],
-  ['nhl', { key: 'icehockey_nhl', note: 'NHL' }],
-  ['atp', { key: 'tennis_atp_aus_open_singles', note: 'ATP - tournament-specific upstream, verify before use' }],
+  ['soccer|england|premier league', { key: 'soccer_epl', note: 'England top flight' }],
+  ['soccer|spain|laliga', { key: 'soccer_spain_la_liga', note: 'Spain top flight' }],
+  ['soccer|spain|la liga', { key: 'soccer_spain_la_liga', note: 'Spain top flight' }],
+  ['soccer|italy|serie a', { key: 'soccer_italy_serie_a', note: 'Italy top flight' }],
+  ['soccer|germany|bundesliga', { key: 'soccer_germany_bundesliga', note: 'Germany top flight' }],
+  ['soccer|france|ligue 1', { key: 'soccer_france_ligue_one', note: 'France top flight' }],
+  ['soccer|international|champions league', { key: 'soccer_uefa_champs_league', note: 'UEFA Champions League' }],
+  ['soccer|europe|champions league', { key: 'soccer_uefa_champs_league', note: 'UEFA Champions League' }],
+  ['soccer|usa|mls', { key: 'soccer_usa_mls', note: 'Major League Soccer' }],
+  ['american football|usa|nfl', { key: 'americanfootball_nfl', note: 'NFL' }],
+  ['american football|usa|ncaa', { key: 'americanfootball_ncaaf', note: 'NCAA football' }],
+  ['basketball|usa|nba', { key: 'basketball_nba', note: 'NBA' }],
+  ['baseball|usa|mlb', { key: 'baseball_mlb', note: 'MLB' }],
+  ['ice hockey|usa|nhl', { key: 'icehockey_nhl', note: 'NHL' }],
 ]);
 
-/** Sport-level fallback, used only when the league itself is unmapped. */
-const SPORT_MAP: ReadonlyMap<string, SportMapping> = new Map([
-  ['american football', { key: 'americanfootball_nfl', note: 'defaults to NFL; college fixtures will not match' }],
-  ['baseball', { key: 'baseball_mlb', note: 'defaults to MLB' }],
-  ['ice hockey', { key: 'icehockey_nhl', note: 'defaults to NHL' }],
-]);
+/**
+ * The sport-level fallback is GONE, deliberately.
+ *
+ * It used to map bare "Baseball" to MLB and "American Football" to the NFL.
+ * That is the same class of error as mapping "Premier League" to England:
+ * "Baseball / Japan / NPB" would have been compared against MLB prices. A
+ * competition is identified by sport AND country AND league, or not at all.
+ */
 
 export interface SportKeyResult {
   key: string | null;
@@ -69,25 +72,17 @@ export interface SportKeyResult {
  * because "Baseball" meaning MLB is an assumption that fails on the day a
  * Japanese league fixture appears.
  */
-export function resolveSportKey(sport: string | null, league: string | null): SportKeyResult {
-  const leagueKey = league === null ? '' : normalizeName(league);
-  if (leagueKey) {
-    const hit = LEAGUE_MAP.get(leagueKey);
-    if (hit) return { key: hit.key, note: hit.note };
-  }
-
-  const sportKey = sport === null ? '' : normalizeName(sport);
-  if (sportKey) {
-    const hit = SPORT_MAP.get(sportKey);
-    if (hit) return { key: hit.key, note: `${hit.note} (matched on sport, not league)` };
-  }
+export function resolveSportKey(competition: Competition): SportKeyResult {
+  const hit = LEAGUE_MAP.get(competitionKey(competition));
+  if (hit) return { key: hit.key, note: hit.note };
 
   return {
     key: null,
     note:
-      `no external sport key is mapped for ${sport ?? 'unknown sport'} / ${league ?? 'unknown league'}. ` +
-      'Unmapped is deliberate: guessing between a first and second division would produce a large, entirely ' +
-      'fictional edge. Add it to LEAGUE_MAP once the correspondence has been checked.',
+      `no external sport key is mapped for ${competition.sport ?? '?'} / ${competition.country ?? '?'} / ` +
+      `${competition.league ?? '?'}. Unmapped is deliberate: Duel serves "Premier League" for England, Malta ` +
+      'and Kenya, so a name-only match would compare Maltese football against the English top flight. Add it to ' +
+      'LEAGUE_MAP once the correspondence has been checked.',
   };
 }
 

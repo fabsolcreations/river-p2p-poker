@@ -231,6 +231,78 @@ export function buildConsensus(markets: readonly BookMarket[], opts: ConsensusOp
   };
 }
 
+/**
+ * Fair value from ONE sharp book, when a three-book consensus is unavailable.
+ *
+ * The tier below a consensus, and it says so in every warning it returns. It is
+ * admissible for the one reason that matters - the price did not come from the
+ * book being judged - and because de-vigging Pinnacle is the standard method in
+ * betting analytics rather than a shortcut invented here.
+ *
+ * What it cannot do is notice that the reference book is the one that is wrong.
+ * A consensus has that redundancy; this does not.
+ */
+export function buildSharpReference(market: BookMarket, opts: ConsensusOptions = {}): ConsensusResult {
+  const method = opts.method ?? 'shin';
+  const now = opts.now ?? Date.now();
+  const maxAge = opts.maxPriceAgeMs ?? MAX_PRICE_AGE_MS;
+
+  if (market.lastUpdate !== null && now - market.lastUpdate > maxAge) {
+    return { ok: false, reason: `the reference book's prices are older than ${Math.round(maxAge / 3_600_000)}h` };
+  }
+
+  const names = [...market.prices.keys()].filter((n) => isValidDecimalOdds(market.prices.get(n)));
+  if (names.length < 2) {
+    return { ok: false, reason: 'the reference book does not price at least two outcomes' };
+  }
+
+  const devigged = devigMarket(
+    {
+      marketKey: `sharp:${market.bookKey}`,
+      eventKey: 'sharp',
+      sportsbookId: market.bookKey,
+      name: null,
+      type: null,
+      line: null,
+      ts: market.lastUpdate ?? now,
+      outcomes: names.map((name) => ({
+        selectionKey: name,
+        name,
+        decimalOdds: market.prices.get(name) as number,
+        line: null,
+      })),
+    },
+    { method, source: 'sharp-reference' },
+  );
+  if (!devigged.ok) return devigged;
+
+  return {
+    ok: true,
+    consensus: {
+      source: 'sharp-reference',
+      method,
+      outcomes: devigged.fair.outcomes.map((o) => ({
+        name: o.selectionKey,
+        fairProbability: o.fairProbability,
+        fairDecimalOdds: o.fairDecimalOdds,
+        // One book has no spread of opinion. Reporting the same number for both
+        // bounds is honest; inventing a range would not be.
+        minProbability: o.fairProbability,
+        maxProbability: o.fairProbability,
+        books: 1,
+      })),
+      contributingBooks: [market.bookTitle],
+      medianOverround: devigged.fair.overround,
+      warnings: [
+        `Fair value comes from ${market.bookTitle} alone, not from a consensus. It is admissible because it is ` +
+          'not the book being judged, and because de-vigging a sharp book is the standard method - but it has no ' +
+          'redundancy. If this book is the one that is wrong, nothing here can tell.',
+        ...devigged.fair.warnings.filter((w) => !/own prices/.test(w)),
+      ],
+    },
+  };
+}
+
 /* ------------------------------------------------------------------ *
  * The edge
  * ------------------------------------------------------------------ */

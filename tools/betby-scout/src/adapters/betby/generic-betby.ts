@@ -1019,6 +1019,7 @@ function parseEventList(
       sportsbookId,
       sourceEventId,
       sport,
+      country: null,
       league,
       competitors,
       home,
@@ -1145,6 +1146,9 @@ function parseTreeEntities(
     const competitors = event.competitors.map((c) => c.name);
     const sport = event.sportId !== null ? (tree.sports.get(event.sportId) ?? null) : null;
     const league = event.tournamentId !== null ? (tree.tournaments.get(event.tournamentId) ?? null) : null;
+    // Without this, "Premier League" is indistinguishable between England,
+    // Malta and Kenya - all three of which Duel serves under that exact name.
+    const country = event.categoryId !== null ? (tree.categories.get(event.categoryId) ?? null) : null;
 
     const evKey = makeEventKey({ sportsbookId, sourceEventId: event.id });
     events.push({
@@ -1152,6 +1156,7 @@ function parseTreeEntities(
       sportsbookId,
       sourceEventId: event.id,
       sport,
+      country,
       league,
       competitors,
       home: competitors[0] ?? null,

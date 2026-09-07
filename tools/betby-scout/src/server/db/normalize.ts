@@ -101,12 +101,13 @@ function statements(db: DatabaseSync): Statements {
     // first_seen is preserved by the upsert; only last_seen and fields that can
     // legitimately improve (a name we did not have) are refreshed.
     event: db.prepare(
-      `INSERT INTO events (event_key, sportsbook_id, source_event_id, sport, league, home, away, competitors,
+      `INSERT INTO events (event_key, sportsbook_id, source_event_id, sport, country, league, home, away, competitors,
                            name, start_time, live, status, first_seen, last_seen)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(event_key) DO UPDATE SET
          last_seen   = excluded.last_seen,
          sport       = COALESCE(excluded.sport, events.sport),
+         country     = COALESCE(excluded.country, events.country),
          league      = COALESCE(excluded.league, events.league),
          home        = COALESCE(excluded.home, events.home),
          away        = COALESCE(excluded.away, events.away),
@@ -243,7 +244,7 @@ export function writeNormalized(
 
   for (const e of preview.events) {
     const res = s.event.run(
-      e.key, e.sportsbookId, e.sourceEventId, e.sport, e.league, e.home, e.away,
+      e.key, e.sportsbookId, e.sourceEventId, e.sport, e.country, e.league, e.home, e.away,
       JSON.stringify(e.competitors), e.name, e.startTime, bool(e.live), e.status, observedAt, observedAt,
     );
     if (res.changes > 0) out.events += 1;

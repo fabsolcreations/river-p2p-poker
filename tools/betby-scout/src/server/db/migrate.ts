@@ -215,6 +215,8 @@ export function migrate(db: DatabaseSync, opts?: { busyTimeoutMs?: number }): Mi
   setMetaValue(db, META_PROTOCOL_VERSION, String(PROTOCOL_VERSION));
   if (getMetaValue(db, META_CREATED_AT) === null) setMetaValue(db, META_CREATED_AT, String(now));
 
+  ensureAddedColumns(db);
+
   return {
     schemaVersion: SCHEMA_VERSION,
     schemaPath: source.path,
@@ -222,4 +224,28 @@ export function migrate(db: DatabaseSync, opts?: { busyTimeoutMs?: number }): Mi
     pragmas: outcomes,
     warnings,
   };
+}
+
+
+/**
+ * Columns added after the first release.
+ *
+ * schema.sql is all CREATE TABLE IF NOT EXISTS, which does nothing to a table
+ * that already exists - so a new column has to be ALTERed in for databases
+ * created before it. Guarded by table_info so it is safe to run every boot.
+ */
+const ADDED_COLUMNS: ReadonlyArray<{ table: string; column: string; ddl: string }> = [
+  { table: 'events', column: 'country', ddl: 'ALTER TABLE events ADD COLUMN country TEXT' },
+];
+
+export function ensureAddedColumns(db: DatabaseSync): string[] {
+  const applied: string[] = [];
+  for (const entry of ADDED_COLUMNS) {
+    const columns = db.prepare(`PRAGMA table_info(${entry.table})`).all() as Array<{ name?: unknown }>;
+    if (columns.length === 0) continue; // table not created yet; schema.sql owns it
+    if (columns.some((c) => c.name === entry.column)) continue;
+    db.exec(entry.ddl);
+    applied.push(`${entry.table}.${entry.column}`);
+  }
+  return applied;
 }

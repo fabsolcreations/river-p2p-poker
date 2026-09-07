@@ -117,6 +117,8 @@ CREATE TABLE IF NOT EXISTS events (
   sportsbook_id   TEXT NOT NULL,
   source_event_id TEXT,
   sport           TEXT,
+  -- Country/region. Required to tell England's Premier League from Malta's.
+  country         TEXT,
   league          TEXT,
   home            TEXT,
   away            TEXT,

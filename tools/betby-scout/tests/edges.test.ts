@@ -45,6 +45,11 @@ const stub: ExternalOddsSource = {
     lastError: null,
   }),
   listSports: async () => [{ key: 'soccer_spain_la_liga', title: 'La Liga', group: 'Soccer', active: true }],
+  // The stub owns its own mapping, exactly as a real source does - and keys on
+  // sport AND country AND league, because the league name alone is not an
+  // identifier ("Premier League" is served for England, Malta and Kenya).
+  keyForLeague: (c) =>
+    c.sport === 'Soccer' && c.country === 'Spain' && c.league === 'LaLiga' ? 'soccer_spain_la_liga' : null,
   fetchOdds: async (): Promise<FetchResult> => ({
     fetchedAt: NOW,
     cached: false,
@@ -85,9 +90,9 @@ function seedDuelMarket(app: FastifyInstance): void {
   db.exec(`
     INSERT OR REPLACE INTO sportsbooks (sportsbook_id, label, platform, adapter_id, origins, first_seen, last_seen)
       VALUES ('duel','duel','betby','betby.duel','[]',${t},${t});
-    INSERT OR REPLACE INTO events (event_key, sportsbook_id, source_event_id, sport, league, home, away,
+    INSERT OR REPLACE INTO events (event_key, sportsbook_id, source_event_id, sport, country, league, home, away,
                                    competitors, name, start_time, live, status, first_seen, last_seen)
-      VALUES ('e_edge','duel','1','Soccer','LaLiga','Real Betis Seville','Real Madrid',
+      VALUES ('e_edge','duel','1','Soccer','Spain','LaLiga','Real Betis Seville','Real Madrid',
               '["Real Betis Seville","Real Madrid"]','Real Betis Seville vs Real Madrid',${KICKOFF},0,NULL,${t},${t});
     INSERT OR REPLACE INTO markets (market_key, event_key, sportsbook_id, source_market_id, type, name, line,
                                     period, status, first_seen, last_seen)
@@ -121,11 +126,13 @@ test('a genuinely better price than the market surfaces as a positive edge', asy
   const res = await app.inject({ method: 'GET', url: '/api/edges' });
   assert.equal(res.statusCode, 200);
   const body = res.json() as {
-    configured: boolean;
+    sources: Array<{ id: string }>;
     edges: Array<{
+      strength: string;
+      fairSource: string;
+      fairOdds: number;
       selection: string;
       duelOdds: number;
-      consensusFairOdds: number;
       ev: number;
       books: number;
       matchConfidence: number;
@@ -137,7 +144,7 @@ test('a genuinely better price than the market surfaces as a positive edge', asy
     skipped: Record<string, number>;
   };
 
-  assert.equal(body.configured, true);
+  assert.equal(body.sources.length, 1, 'the stub is the only active source');
   assert.ok(body.edges.length > 0, `expected at least one edge, skipped: ${JSON.stringify(body.skipped)}`);
 
   const home = body.edges.find((e) => e.selection === 'Real Betis Seville');
@@ -146,8 +153,11 @@ test('a genuinely better price than the market surfaces as a positive edge', asy
   // Duel offers 4.20 where three books imply roughly 3.3 fair. That is a real,
   // claimable edge - the first this codebase can produce.
   assert.ok(home.ev > 0, `expected positive EV, got ${home.ev}`);
-  assert.ok(home.duelOdds > home.consensusFairOdds, 'a positive edge means beating the fair price');
+  assert.ok(home.duelOdds > home.fairOdds, 'a positive edge means beating the fair price');
   assert.equal(home.books, 3, 'all three independent books contributed');
+  // Three independent books is the strong tier, not the single-reference one.
+  assert.equal(home.fairSource, 'multi-book-consensus');
+  assert.equal(home.strength, 'strong');
   assert.ok(home.matchConfidence >= 0.7);
   assert.ok(home.matchReasons.some((r) => /Real Betis/.test(r)), 'the match reasoning must be auditable');
 
@@ -156,7 +166,9 @@ test('a genuinely better price than the market surfaces as a positive edge', asy
   assert.ok(away && away.ev < 0, 'the other side of a +EV market is -EV');
 
   // Every edge ships with its caveats.
-  assert.ok(body.caveats.some((c) => /estimate with a confidence interval/.test(c)));
+  assert.ok(body.caveats.some((c) => /not a guaranteed return/.test(c)));
+  // The weaker single-reference tier must be explained wherever it can appear.
+  assert.ok(body.caveats.some((c) => /no redundancy/.test(c)));
   assert.ok(body.caveats.some((c) => /Nothing here places a bet/.test(c)));
 });
 
@@ -166,9 +178,9 @@ test('an unmapped league is skipped rather than guessed at', async () => {
   // A Valorant fixture. There is no mapped external key, and guessing one would
   // compare it against an unrelated sport.
   db.exec(`
-    INSERT OR REPLACE INTO events (event_key, sportsbook_id, source_event_id, sport, league, home, away,
+    INSERT OR REPLACE INTO events (event_key, sportsbook_id, source_event_id, sport, country, league, home, away,
                                    competitors, name, start_time, live, status, first_seen, last_seen)
-      VALUES ('e_val','duel','2','Valorant','VCT Americas','G2 Esports','LOUD',
+      VALUES ('e_val','duel','2','Valorant','Americas','VCT Americas','G2 Esports','LOUD',
               '["G2 Esports","LOUD"]','G2 Esports vs LOUD',${KICKOFF},0,NULL,${t},${t});
     INSERT OR REPLACE INTO markets (market_key, event_key, sportsbook_id, source_market_id, type, name, line,
                                     period, status, first_seen, last_seen)

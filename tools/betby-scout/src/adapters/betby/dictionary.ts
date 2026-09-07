@@ -60,6 +60,7 @@ export interface EventDescription {
   id: string;
   competitors: EventCompetitor[];
   sportId: string | null;
+  /** Country/region id. Resolved via the tree's `categories` map. */
   categoryId: string | null;
   tournamentId: string | null;
   /** Epoch ms. BETBY sends seconds; converted on the way in. */
@@ -474,6 +475,7 @@ export function referenceEvents(ref: BetbyReference, sportsbookId: string, makeK
       sportsbookId,
       sourceEventId: event.id,
       sport: event.sportId !== null ? (ref.sports.get(event.sportId) ?? null) : null,
+      country: event.categoryId !== null ? (ref.categories.get(event.categoryId) ?? null) : null,
       league: event.tournamentId !== null ? (ref.tournaments.get(event.tournamentId) ?? null) : null,
       competitors,
       home: competitors[0] ?? null,

@@ -88,6 +88,21 @@ export interface SourceStatus {
   lastError: string | null;
 }
 
+/**
+ * A competition, identified the only way that is actually unambiguous.
+ *
+ * The league NAME alone is not an identifier. Duel serves "Premier League" for
+ * England, Malta and Kenya, and "Bundesliga" for German football, German
+ * handball and even a 2x6-minute esports variant. Mapping on the name alone
+ * matches Maltese football to the English top flight, and the resulting "edge"
+ * is enormous and entirely fictional.
+ */
+export interface Competition {
+  sport: string | null;
+  country: string | null;
+  league: string | null;
+}
+
 export interface ExternalOddsSource {
   id: string;
   label: string;
@@ -96,6 +111,16 @@ export interface ExternalOddsSource {
   status(): SourceStatus;
   /** Sports this source can be asked for, cheapest call available. */
   listSports(): Promise<Array<{ key: string; title: string; group: string; active: boolean }>>;
+  /**
+   * This source's own key for a Duel sport/league pair, or null when it has no
+   * mapping.
+   *
+   * Owned by the source rather than by a central table so that adding a book is
+   * one new file. It also removes a trap: a router that mapped leagues centrally
+   * could only ever address the sources it already knew about, and a newly added
+   * source would silently never be asked for anything.
+   */
+  keyForLeague(competition: Competition): string | null;
   /**
    * Priced events for one sport. Implementations must serve from cache when the
    * cached copy is younger than `maxAgeMs`, because quota is the binding
