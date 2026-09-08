@@ -10,9 +10,9 @@ import {
   serializeCiphertext,
   type MaskingRound,
   type PointHex,
-} from "./mental-poker";
-import { commitment, randomHex } from "./proof";
-import { BOARD_POSITIONS, HOLE_POSITIONS } from "../../worker/mental-poker-protocol";
+} from "./mental-poker.ts";
+import { commitment, randomHex } from "./proof.ts";
+import { BOARD_POSITIONS, HOLE_POSITIONS } from "../../worker/mental-poker-protocol.ts";
 
 /**
  * Browser half of a trustless hand. This is where the secrets live: the
@@ -54,8 +54,39 @@ export type MpSession = {
   receivedHolePartials: Record<number, string>;
   /** Our resolved hole cards, once both halves are available. */
   holeCards: string[];
+  /**
+   * The deck this hand is committed to, pinned the first time a complete one
+   * is seen. Every later partial decryption is checked against it, because
+   * `maskedDeck` arrives from the relay on every update and a dishonest relay
+   * could otherwise substitute chosen ciphertexts and use this browser as a
+   * decryption oracle for its own key.
+   */
+  pinnedDeck: string | null;
   sentFor: Set<string>;
 };
+
+/** Phases in which the masked deck is final and may be pinned. */
+const DECK_SETTLED_PHASES = new Set(["hole-partials", "betting", "board-partials", "showdown", "settle", "complete"]);
+
+/**
+ * Everything in an MpProgress comes from the relay, which in this design is
+ * explicitly NOT trusted with cards. Before this browser will apply its secret
+ * key to any ciphertext, the deck that ciphertext came from must be the same
+ * deck this hand was dealt from - pinned on first sight and never allowed to
+ * change. Without it a relay can hand over any ciphertext it likes (including
+ * the opponent's hole card, or one it crafted) and have the browser decrypt a
+ * layer of it.
+ */
+function deckIsTrusted(session: MpSession, progress: MpProgress): boolean {
+  if (!progress.maskedDeck || progress.maskedDeck.length !== 52) return false;
+  const seen = progress.maskedDeck.join("|");
+  if (session.pinnedDeck === null) {
+    if (!DECK_SETTLED_PHASES.has(progress.phase)) return false;
+    session.pinnedDeck = seen;
+    return true;
+  }
+  return session.pinnedDeck === seen;
+}
 
 // The crypto layer names the two parties rather than numbering them; seat 0
 // is "player" and seat 1 "opponent" purely as a stable mapping.
@@ -79,7 +110,7 @@ function roleForSeat(seat: number): "player" | "opponent" {
  */
 export async function createMpSession(handId: string, seat: number, maskerSeed = randomHex()): Promise<MpSession> {
   const round = await deriveMaskingRound(handId, roleForSeat(seat), maskerSeed);
-  return { handId, seat, maskerSeed, round, receivedHolePartials: {}, holeCards: [], sentFor: new Set() };
+  return { handId, seat, maskerSeed, round, receivedHolePartials: {}, holeCards: [], pinnedDeck: null, sentFor: new Set() };
 }
 
 export async function initialCommitment(session: MpSession): Promise<MpOutbound> {
@@ -116,6 +147,7 @@ export async function stepsFor(session: MpSession, progress: MpProgress): Promis
   }
 
   if (progress.phase === "hole-partials" && progress.maskedDeck) {
+    if (!deckIsTrusted(session, progress)) return out;
     // Strip our layer off the OPPONENT's hole cards - never our own.
     const opponentSeat = session.seat === 0 ? 1 : 0;
     for (const position of HOLE_POSITIONS[opponentSeat]) {
@@ -129,7 +161,15 @@ export async function stepsFor(session: MpSession, progress: MpProgress): Promis
   }
 
   if (progress.phase === "board-partials" && progress.maskedDeck) {
+    if (!deckIsTrusted(session, progress)) return out;
     for (const position of progress.openBoardPositions) {
+      // openBoardPositions is the relay's word for which cards are being
+      // turned up. Taken at face value it is a request to decrypt ANY deck
+      // position - naming the opponent's hole positions here made this
+      // browser hand over a share of its own cards, which combined with the
+      // share the relay already held from the hole-partials phase reveals the
+      // card with no key at all. Only real board positions are ever unsealed.
+      if (!BOARD_POSITIONS.includes(position)) continue;
       const key = `board:${position}`;
       if (session.sentFor.has(key)) continue;
       const partial = await revealPartialDecryption(session.round.secretKeyHex, parseCiphertext(progress.maskedDeck[position]));
@@ -140,6 +180,7 @@ export async function stepsFor(session: MpSession, progress: MpProgress): Promis
   }
 
   if (progress.phase === "showdown" && mine && progress.maskedDeck) {
+    if (!deckIsTrusted(session, progress)) return out;
     const key = "showdown";
     if (session.sentFor.has(key)) return out;
     const positions = HOLE_POSITIONS[session.seat];
@@ -180,6 +221,9 @@ export async function receiveHolePartial(
 ): Promise<string | null> {
   if (!maskedDeck) return null;
   if (!HOLE_POSITIONS[session.seat].includes(position)) return null;
+  // Same reasoning as deckIsTrusted: this applies our secret key to a
+  // ciphertext the relay chose, so it must come from the pinned deck.
+  if (session.pinnedDeck !== null && session.pinnedDeck !== maskedDeck.join("|")) return null;
   session.receivedHolePartials[position] = partial;
   const table = await cardPointTable();
   const code = dealPrivateCard(
