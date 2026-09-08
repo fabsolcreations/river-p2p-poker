@@ -90,11 +90,38 @@ Mental poker. The dealer genuinely cannot see cards.
 - Cost: real curve work in-browser, noticeably slower than server-dealt.
   That is why it is a separate mode, heads-up only.
 
-**Three bugs were found here by live stall testing, not by unit tests** —
-all interactions between the engine's street advance, the single DO alarm,
-and the phase machine: betting accepted on a sealed street; the action clock
-armed against undealt cards; and an action alarm overwriting the protocol
-stall deadline. If you touch this area, re-run a live stall test.
+#### Where the guarantee actually lives — read this before touching the client
+
+The server not holding a key is **necessary but not sufficient**. Every field
+of an `mp-progress` message is chosen by the relay, and the browser applies its
+secret key to ciphertexts named in it. So the guarantee ultimately rests on the
+browser refusing bad requests, in `app/play/mental-poker-client.ts`:
+
+- **The deck is pinned.** The first complete masked deck a session sees is the
+  only one it will ever decrypt against. Without this the relay can hand over
+  any ciphertext — including the opponent's hole card, or one it crafted — and
+  get a layer stripped off it. This is the load-bearing check; position
+  validation alone does not stand in for it.
+- **Positions are validated locally.** Board partials are only produced for
+  real `BOARD_POSITIONS`; hole partials only for `HOLE_POSITIONS[opponent]`.
+
+This is not hypothetical. The board-partials branch used to iterate the
+relay's `openBoardPositions` verbatim, so a frame naming the victim's own hole
+positions made the browser hand back shares of its own cards — which, with the
+shares the relay already holds from the dealing phase, recovers the card with
+no key. The receipt still verified clean, because the relay had indeed never
+held a key. **Treat every field of a relay message as adversarial input.**
+
+**Bugs found here by testing the real thing, never by unit tests** — the
+interactions between the engine's street advance, the single DO alarm, and the
+phase machine: betting accepted on a sealed street; the action clock armed
+against undealt cards; an action alarm overwriting the protocol stall deadline;
+and a hand-start alarm consuming the only alarm slot mid-deal, leaving a stall
+deadline with nothing pending. If you touch this area, re-run a live stall
+test.
+
+`tests/mental-poker-client-oracle.test.mjs` drives the client with hostile
+frames. Keep adding to it — that file is the guarantee's regression suite.
 
 ---
 
