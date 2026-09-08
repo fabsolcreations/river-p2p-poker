@@ -90,6 +90,21 @@ Mental poker. The dealer genuinely cannot see cards.
 - Cost: real curve work in-browser, noticeably slower than server-dealt.
   That is why it is a separate mode, heads-up only.
 
+#### What trustless tables do NOT give you
+
+**Folded cards are not private after the hand.** Replaying the shuffle
+requires both players' masking seeds, and the finished receipt publishes them
+— so anyone holding a receipt can decrypt every position in that deck,
+including hole cards that were folded and never shown. Verified directly:
+mucked cards recovered exactly from the receipt's seeds alone.
+
+This is inherent, not a bug to fix. In-hand secrecy and public verifiability
+pull in opposite directions here, and the design chose verifiability. It is
+disclosed on `/fairness` and at table creation; **do not let a claim creep in
+that says trustless tables keep folded cards secret.** One case is genuinely
+private: a hand folded before any card is turned up publishes no receipt at
+all.
+
 #### Where the guarantee actually lives — read this before touching the client
 
 The server not holding a key is **necessary but not sufficient**. Every field
