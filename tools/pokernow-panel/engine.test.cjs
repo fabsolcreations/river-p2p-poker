@@ -240,5 +240,67 @@ ok('playing the board is called out',
 ok('no equity yet => no recommendation',
   adv({ board: H('2c 7d 9s'), sim: null }).action === '—');
 
+console.log('blind levels');
+ok('reads the big blind, not the small one', (() => {
+  const b = E.parseBlinds('NLH ~ 20 / 40');
+  return b.sb === 20 && b.bb === 40;
+})(), JSON.stringify(E.parseBlinds('NLH ~ 20 / 40')));
+ok('ignores the level that has not started', E.parseBlinds('NEXT BLIND: 40/80 IN 00:42') === null);
+ok('handles thousands separators', E.parseBlinds('1,000 / 2,000').bb === 2000);
+ok('a lone number is treated as the big blind', E.parseBlinds('BB 50').bb === 50);
+ok('no digits => nothing', E.parseBlinds('No Limit Hold’em') === null);
+ok('zero is not a blind level', E.parseBlinds('0 / 0') === null);
+
+console.log('equity against face-up cards');
+const eq = (h, b, opps, unknown, sims) => E.equityVsKnown(H(h), b ? H(b) : [], opps.map(H), unknown || 0, sims);
+
+ok('made royal is unbeatable and enumerated exactly', (() => {
+  const r = eq('Ah Kh', 'Qh Jh Th 2c', ['Ac Kc']);
+  return r.exact === true && r.equity === 1;
+})());
+ok('aces over kings on a blank turn: 42 of 44 runouts', (() => {
+  const r = eq('As Ad', '2c 7d 9h 3s', ['Ks Kd']);
+  return r.exact === true && r.trials === 44 && Math.abs(r.equity - 42 / 44) < 1e-12;
+})(), JSON.stringify(eq('As Ad', '2c 7d 9h 3s', ['Ks Kd'])));
+ok('identical straights split the pot', (() => {
+  const r = eq('As Ks', 'Qc Jd Ts 2h 3c', ['Ah Kh']);
+  return r.exact === true && r.trials === 1 && r.tie === 1 && r.equity === 0.5;
+})());
+ok('a completed board needs no runout', eq('As Ks', 'Qc Jd Ts 2h 3c', ['Ah Kh']).trials === 1);
+ok('three-way equities sum to one', (() => {
+  const board = '9h 8h 2c 3d';
+  const a = eq('Ah Kh', board, ['9c 9d', '7s 6s']);
+  const b = eq('9c 9d', board, ['Ah Kh', '7s 6s']);
+  const c = eq('7s 6s', board, ['Ah Kh', '9c 9d']);
+  return Math.abs(a.equity + b.equity + c.equity - 1) < 1e-9;
+})());
+ok('flop with two to come is still enumerated', (() => {
+  const r = eq('As Ad', 'Kc 7d 2h', ['Qs Qd']);
+  return r.exact === true && r.trials === 990;
+})(), 'trials ' + eq('As Ad', 'Kc 7d 2h', ['Qs Qd']).trials);
+ok('an unknown opponent forces sampling, not enumeration', (() => {
+  const r = eq('As Ad', 'Kc 7d 2h', ['Qs Qd'], 1, 3000);
+  return r.exact === false && r.trials === 3000;
+})());
+ok('sampling against one unknown matches the random-hand model', (() => {
+  const r = eq('Ah As', '', [], 1, 40000);
+  return Math.abs(r.equity - 0.852) <= 0.02;
+})(), 'got ' + (eq('Ah As', '', [], 1, 40000).equity * 100).toFixed(1) + '%');
+ok('a card dealt twice is refused rather than answered', eq('Ah As', 'Kc 7d 2h', ['Ah Qd']) === null);
+ok('no opponents at all returns nothing', eq('Ah As', 'Kc 7d 2h', []) === null);
+ok('category distribution still sums to one', (() => {
+  const r = eq('As Ad', 'Kc 7d 2h', ['Qs Qd']);
+  return Math.abs(r.cats.reduce((a, b) => a + b, 0) - 1) < 1e-9;
+})());
+// A set over an overpair, worked by hand: 990 two-card runouts, of which 87
+// contain an ace (86 single + 1 both). Two of those pair the case king and give
+// the set quads, so the overpair wins exactly 85 and the set wins 905.
+ok('set over overpair is exactly 905 of 990 runouts', (() => {
+  const r = eq('Kc Kd', 'Ks 7d 2h', ['Ah Ad']);
+  return r.trials === 990 && Math.round(r.win * r.trials) === 905 && r.tie === 0;
+})(), JSON.stringify(eq('Kc Kd', 'Ks 7d 2h', ['Ah Ad']).equity));
+ok('combination counts are exact', E.combinationCount(45, 2) === 990 && E.combinationCount(44, 1) === 44
+  && E.combinationCount(10, 0) === 1);
+
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);

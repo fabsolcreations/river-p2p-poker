@@ -36,6 +36,29 @@ fired and which returned nothing.
 Header buttons cycle **TIGHT / NORMAL / LOOSE** (which shifts the calling threshold) and export
 — click for a stats CSV, shift-click for full JSON.
 
+## What a real table turned up
+
+Four things the mock did not have, all visible in one screenshot of a live table:
+
+**Blinds render as `NLH ~ 20 / 40`, with `NEXT BLIND: 40/80` beside them.** Grabbing the first
+number found returns the *small* blind, and reading the neighbouring line returns a level that
+has not started — either one makes every "cheap enough to see a flop" call wrong by a factor of
+two. `parseBlinds` takes the second number of the pair and skips anything saying "next".
+
+**Run it twice puts two boards on the felt at once.** Blending them yields a board that was never
+dealt, and therefore an equity figure for a hand that does not exist. The reader groups cards by
+container, prefers the brighter run when one container holds both, and shows a warning rather
+than silently picking. This is a heuristic — it tells you what it did.
+
+**At an all-in showdown the hole cards are face up.** Dealing those opponents random hands is
+simply wrong, so when cards are visible the panel switches to `equityVsKnown`, which enumerates
+every remaining runout instead of sampling when it can. The footer then reads
+`40 runouts (exact)` rather than a simulation count.
+
+**The log starts closed, behind a LOG / LEDGER control.** The HUD offers a button that opens it
+instead of sitting empty. Note the control has to be the clickable element, not the wrapper
+around it — clicking a wrapper fires nothing.
+
 ## Two bugs worth knowing about, because they are easy to reintroduce
 
 **Never dedupe log lines by their text.** `"Bob @ bbb" folds` recurs every few hands. Content
@@ -53,9 +76,14 @@ returned` come out right. The tests assert each hand's books balance — chips i
 node tools/pokernow-panel/engine.test.cjs
 ```
 
-89 checks. The userscript is loaded in a bare VM (no `document`), so only the engine half runs.
+108 checks. The userscript is loaded in a bare VM (no `document`), so only the engine half runs.
 Covers hand evaluation and ordering, draws and outs, board texture, Monte Carlo equity against
-known figures (AA 85.2%, 72o 35.2%, AKs 6-way ~29%), log parsing, hand replay, stats, and advice.
+known figures (AA 85.2%, 72o 35.2%, AKs 6-way ~29%), log parsing, hand replay, stats, advice,
+blind-level parsing, and exact equity.
+
+The exact-equity checks are worked by hand rather than trusted: a set over an overpair on
+`Ks 7d 2h` is 905 of 990 runouts, because 87 of them contain an ace and two of *those* pair the
+case king and give the set quads. Three-way equities are asserted to sum to exactly one.
 
 Note on the evaluator: ranks are packed **base-14**, not base-13. Base-13 lets a nut flush
 overflow into the full-house band — it misclassified hands during development.
@@ -68,17 +96,29 @@ python -m http.server 5599 --directory tools/pokernow-panel
 
 Open <http://localhost:5599/mock-table.html>. **Play hand history** streams the same two-hand
 fixture the Node suite uses into a DOM log panel, so ingestion → stats → HUD can be watched
-end to end. Add `?reverse=1` to render the log newest-first and exercise orientation detection.
+end to end.
+
+| Query | Reproduces |
+| --- | --- |
+| `?reverse=1` | a log rendered newest-first, exercising orientation detection |
+| `?showdown=1` | the three-way all-in above: two boards, three hands face up |
+| `?closedlog=1` | the log closed behind its control |
 
 Verified there: pots 65 / 130, nets +105 / −65 / −40 summing to zero, identical in both log
 orders; replaying the same hands changes nothing; a new hand whose lines repeat earlier text
-verbatim still counts.
+verbatim still counts. On the showdown fixture: big blind 40, the dimmed second board excluded,
+three face-up hands read, and equity computed over 40 exact runouts — trip tens losing only to
+an 8, which is 4 outs, which is the 90% shown.
 
 ## Honest limits
 
-- **Equity assumes opponents hold random cards.** Nobody calls a raise with a random hand, so
-  your real equity against a range that keeps betting is lower than the number shown. Treat it
-  as an upper bound, not a read.
+- **Equity assumes opponents hold random cards** *until their cards are actually visible*.
+  Nobody calls a raise with a random hand, so mid-hand your real equity against a range that
+  keeps betting is lower than the number shown — treat it as an upper bound, not a read. At a
+  showdown, where the cards are face up, the figure is exact.
+- **Run-it-twice detection is a heuristic**, based on container grouping and opacity. If both
+  boards are fully lit and share one container it will read the first five cards and say so in
+  the warning; it will not pretend it knew.
 - **Advice is heuristics, not a solver.** Chen preflop, pot odds and equity postflop. It has no
   model of your opponents' ranges and no concept of bluffing you specifically.
 - **Selectors are inferred from a live table's markup, not from documentation.** PokerNow's game

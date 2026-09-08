@@ -711,6 +711,139 @@
     return { action, sub, notes, warns, potOdds };
   }
 
+  /*
+   * Blind levels read as "NLH ~ 20 / 40", and the same corner of the screen also
+   * carries "NEXT BLIND: 40/80". Taking the first number found gives the small
+   * blind, and reading the wrong line gives the level that has not started yet —
+   * both make every "cheap enough to see a flop" call wrong by a factor of two.
+   */
+  function parseBlinds(text) {
+    const s = String(text || '');
+    if (/next/i.test(s)) return null;
+
+    const num = (v) => {
+      const n = Number(String(v).replace(/,/g, ''));
+      return Number.isFinite(n) && n > 0 ? n : null;
+    };
+
+    const pair = s.match(/(\d[\d,]*(?:\.\d+)?)\s*\/\s*(\d[\d,]*(?:\.\d+)?)/);
+    if (pair) {
+      const sb = num(pair[1]);
+      const bb = num(pair[2]);
+      return bb ? { sb, bb } : null;
+    }
+
+    const one = s.match(/(\d[\d,]*(?:\.\d+)?)/);
+    const bb = one ? num(one[1]) : null;
+    return bb ? { sb: null, bb } : null;
+  }
+
+  const combinationCount = (n, k) => {
+    let c = 1;
+    for (let i = 0; i < k; i++) c = (c * (n - i)) / (i + 1);
+    return c;
+  };
+
+  /*
+   * Equity when some opponents' cards are face up — at an all-in showdown, or
+   * after someone shows. `simulate` deals every opponent a random hand, which is
+   * simply wrong once the cards are on the felt. With no unknown opponents left
+   * and few board cards to come this enumerates every runout instead of
+   * sampling, so the answer is exact rather than noisy.
+   */
+  function equityVsKnown(hero, board, oppHands, unknownOpps, sims) {
+    const opps = (oppHands || []).filter((h) => h && h.length === 2);
+    const unknown = unknownOpps || 0;
+    if (hero.length !== 2 || opps.length + unknown < 1) return null;
+
+    const used = hero.concat(board);
+    for (const h of opps) used.push(h[0], h[1]);
+    if (new Set(used).size !== used.length) return null; // a card read twice
+
+    const deck = [];
+    for (let c = 0; c < 52; c++) if (used.indexOf(c) < 0) deck.push(c);
+
+    const need = 5 - board.length;
+    if (need < 0 || need + 2 * unknown > deck.length) return null;
+
+    const full = new Array(7);
+    const oppBuf = new Array(7);
+    const cats = new Array(9).fill(0);
+    let win = 0;
+    let tieCount = 0;
+    let tieShare = 0;
+    let trials = 0;
+
+    full[0] = hero[0];
+    full[1] = hero[1];
+    for (let i = 0; i < board.length; i++) full[2 + i] = board[i];
+
+    const settle = (runout, extraOpps) => {
+      for (let i = 0; i < need; i++) full[2 + board.length + i] = runout[i];
+
+      const hs = evaluate(full);
+      cats[catOf(hs)]++;
+
+      let best = -1;
+      let tied = 1;
+      const consider = (a, b) => {
+        oppBuf[0] = a;
+        oppBuf[1] = b;
+        for (let i = 0; i < 5; i++) oppBuf[2 + i] = full[2 + i];
+        const os = evaluate(oppBuf);
+        if (os > best) { best = os; tied = 1; } else if (os === best) tied++;
+      };
+
+      for (const h of opps) consider(h[0], h[1]);
+      for (let o = 0; o < unknown; o++) consider(extraOpps[o * 2], extraOpps[o * 2 + 1]);
+
+      if (hs > best) win++;
+      else if (hs === best) { tieCount++; tieShare += 1 / (tied + 1); }
+      trials++;
+    };
+
+    const exact = unknown === 0 && combinationCount(deck.length, need) <= 200000;
+
+    if (exact) {
+      const pick = new Array(need);
+      const walk = (start, depth) => {
+        if (depth === need) { settle(pick, null); return; }
+        for (let i = start; i <= deck.length - (need - depth); i++) {
+          pick[depth] = deck[i];
+          walk(i + 1, depth + 1);
+        }
+      };
+      walk(0, 0);
+    } else {
+      const draws = need + 2 * unknown;
+      const drawn = new Array(draws);
+      const runout = new Array(need);
+      const extra = new Array(2 * unknown);
+
+      for (let s = 0; s < (sims || 8000); s++) {
+        for (let i = 0; i < draws; i++) {
+          const j = i + ((Math.random() * (deck.length - i)) | 0);
+          const t = deck[i]; deck[i] = deck[j]; deck[j] = t;
+          drawn[i] = deck[i];
+        }
+        for (let i = 0; i < need; i++) runout[i] = drawn[i];
+        for (let i = 0; i < 2 * unknown; i++) extra[i] = drawn[need + i];
+        settle(runout, extra);
+      }
+    }
+
+    return {
+      exact,
+      trials,
+      sims: trials,
+      win: win / trials,
+      tie: tieCount / trials,
+      lose: (trials - win - tieCount) / trials,
+      equity: (win + tieShare) / trials,
+      cats: cats.map((n) => n / trials),
+    };
+  }
+
   /* ==========================================================================
    * Node export: everything above is pure and unit-tested.
    * ========================================================================== */
@@ -720,6 +853,7 @@
     parseCard, cardStr, cardPretty, evaluate, catOf, handName, simulate,
     improvementOuts, drawInfo, boardTexture, chenScore, heroLabel, straightHigh,
     parseLogLine, replay, accumulate, statView, splitPlayer, advise,
+    parseBlinds, equityVsKnown, combinationCount,
   };
 
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
@@ -742,7 +876,7 @@
     stack: '.table-player-stack',
     bet: '.table-player-bet-value',
     pot: '.table-pot-size',
-    blinds: '.blind-value, .table-blinds',
+    blinds: '.blind-value, .table-blinds, [class*="blind"]',
     buttons: '.game-decisions-ctn button, .action-buttons button, .controls-ctn button',
     dealer: '.dealer-button-ctn, .dealer-button',
     log: ['.log-entries', '.game-log', '.messages-ctn', '.log-ctn'],
@@ -780,15 +914,98 @@
     return out;
   }
 
+  const opacityOf = (el) => {
+    try {
+      const v = parseFloat(getComputedStyle(el).opacity);
+      return Number.isFinite(v) ? v : 1;
+    } catch { return 1; }
+  };
+
+  const meanOpacity = (els) => els.reduce((a, el) => a + opacityOf(el), 0) / (els.length || 1);
+
+  function groupByContainer(els) {
+    const groups = [];
+    const index = new Map();
+    for (const el of els) {
+      const key = ((el.closest('.card-container') || el).parentElement) || el;
+      if (!index.has(key)) { index.set(key, groups.length); groups.push([]); }
+      groups[index.get(key)].push(el);
+    }
+    return groups;
+  }
+
+  const inDocOrder = (a, b) => ((a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING) ? -1 : 1);
+
+  /*
+   * Run it twice puts two boards on the felt at once. Blending them produces a
+   * board that was never dealt — and therefore an equity figure for a hand that
+   * does not exist. Prefer a single container; if one container holds both runs,
+   * keep the brighter five (the second run is rendered dimmed until it is live)
+   * and say so in Diag rather than quietly picking.
+   */
+  function pickBoard(els, diag) {
+    if (!els.length) return [];
+
+    const groups = groupByContainer(els);
+    let chosen = groups[0];
+
+    if (groups.length > 1) {
+      diag.boards = groups.length + ' card groups — run it twice?';
+      chosen = groups.slice().sort((a, b) => meanOpacity(b) - meanOpacity(a))[0];
+    }
+
+    if (chosen.length > 5) {
+      diag.boards = chosen.length + ' board cards — run it twice?';
+      chosen = chosen.slice()
+        .sort((a, b) => opacityOf(b) - opacityOf(a))
+        .slice(0, 5)
+        .sort(inDocOrder);
+    }
+
+    return collectCards(chosen, 5);
+  }
+
   function readBoard(diag) {
     for (const sel of SEL.board) {
-      const cards = collectCards(qa(sel), 5);
+      const els = qa(sel);
+      if (!els.length) continue;
+      const cards = pickBoard(els, diag);
       if (cards.length) { diag.board = sel; return cards; }
     }
+
     const loose = qa(SEL.anyCard).filter((el) => !el.closest(SEL.player));
-    const cards = collectCards(loose, 5);
+    const cards = pickBoard(loose, diag);
     diag.board = cards.length ? 'fallback: cards outside seats' : null;
     return cards;
+  }
+
+  /*
+   * The log lives behind a "LOG / LEDGER" control and is closed by default, so
+   * on a real table there is nothing to read until it is opened. Finding the
+   * control lets the panel offer a button instead of sitting there empty.
+   */
+  let logButtonCache = { at: 0, el: null };
+
+  function findLogButton() {
+    if (Date.now() - logButtonCache.at < 5000) return logButtonCache.el;
+
+    const looksLikeLog = (el) => {
+      const t = (el.textContent || '').replace(/\s+/g, ' ').trim();
+      return t && t.length <= 24 && /^log\s*\/?\s*(ledger)?$/i.test(t);
+    };
+
+    // Clickable elements first. A wrapper div can carry the same text, and
+    // clicking a wrapper does not fire the listener bound to the control inside
+    // it — so if a match is not itself clickable, drill down to what is.
+    let found = qa('button, a, [role="button"]').find(looksLikeLog)
+      || qa('[class*="log"]').find(looksLikeLog)
+      || null;
+    if (found && !found.matches('button, a, [role="button"]')) {
+      found = found.querySelector('button, a, [role="button"]') || found;
+    }
+
+    logButtonCache = { at: Date.now(), el: found };
+    return found;
   }
 
   function isActiveSeat(p) {
@@ -840,9 +1057,10 @@
 
   let bbGuess = 0;
   function guessBigBlind(pot) {
-    const el = q(SEL.blinds);
-    const n = el ? numFrom(el.textContent) : null;
-    if (n) { bbGuess = n; return n; }
+    for (const el of qa(SEL.blinds)) {
+      const level = parseBlinds(el.textContent);
+      if (level && level.bb) { bbGuess = level.bb; return bbGuess; }
+    }
     if (!bbGuess && pot > 0) bbGuess = Math.max(1, Math.round(pot / 3));
     return bbGuess || 1;
   }
@@ -859,6 +1077,7 @@
     const board = readBoard(diag).filter((c) => hero.indexOf(c) < 0).slice(0, 5);
 
     const seatNums = [];
+    const shownHands = [];
     let opponents = 0;
     let maxOppStack = 0;
     let maxBet = 0;
@@ -877,6 +1096,10 @@
         opponents++;
         const st = numFrom((q(SEL.stack, p) || {}).textContent) || 0;
         if (st > maxOppStack) maxOppStack = st;
+
+        // Face-up cards at a showdown: card backs read as -1 and are skipped.
+        const shown = collectCards(qa(SEL.anyCard, p), 2);
+        if (shown.length === 2) shownHands.push(shown);
       }
     }
 
@@ -901,6 +1124,8 @@
       heroStack,
       bigBlind: guessBigBlind(pot),
       opponents: Math.max(opponents, 1),
+      shownHands,
+      multiBoard: !!diag.boards,
       seats: players.length,
       position: readPosition(seatNums, heroSeat),
       spr: pot > 0 && Number.isFinite(effStack) ? effStack / pot : null,
@@ -1144,13 +1369,21 @@
       return `<div class="pnp-empty">Waiting for your hole cards…</div>`;
     }
 
+    const shown = s.shownHands.filter((h) => h.every((c) => s.hero.indexOf(c) < 0 && s.board.indexOf(c) < 0));
+    const unknownOpps = Math.max(0, s.opponents - shown.length);
+
     const key = [s.hero.map(cardStr).join(''), s.board.map(cardStr).join(''),
+      shown.map((h) => h.map(cardStr).join('')).join('/'),
       s.opponents, s.pot, s.toCall, state.mode, state.sims].join('|');
 
     let sim = simCache.get(key);
     if (!sim) {
       const budget = Math.max(1500, Math.min(state.sims, Math.round(40000 / (s.opponents + 1))));
-      sim = simulate(s.hero, s.board, s.opponents, budget);
+      // Once cards are face up, dealing opponents random hands is just wrong.
+      sim = shown.length
+        ? equityVsKnown(s.hero, s.board, shown, unknownOpps, budget)
+        : simulate(s.hero, s.board, s.opponents, budget);
+      if (!sim) sim = simulate(s.hero, s.board, s.opponents, budget);
       if (simCache.size > 60) simCache.clear();
       simCache.set(key, sim);
     }
@@ -1164,6 +1397,7 @@
 
     const meta = [
       heroLabel(s.hero),
+      shown.length ? shown.length + ' hand' + (shown.length > 1 ? 's' : '') + ' face up' : null,
       s.spr !== null ? `SPR ${s.spr.toFixed(1)}` : null,
       a.potOdds !== null ? `MDF ${pctText(1 - a.potOdds)}` : null,
       `Pot ${s.pot}`,
@@ -1182,7 +1416,8 @@
       <div class="pnp-hand">${esc(s.board.length ? handName(made) : heroLabel(s.hero))}</div>
       <div class="pnp-cards">${esc(s.hero.map(cardPretty).join(' '))}${s.board.length ? `   |   ${esc(s.board.map(cardPretty).join(' '))}` : ''}</div>
       <div class="pnp-meta">${esc(meta)}</div>
-      ${a.warns.map((w) => `<div class="pnp-warn">⚠ ${esc(w)}</div>`).join('')}
+      ${(s.multiBoard ? ['Two boards on the felt (run it twice) — reading the brighter one.'] : [])
+        .concat(a.warns).map((w) => `<div class="pnp-warn">⚠ ${esc(w)}</div>`).join('')}
       ${bar('Win', sim.win, '#20e39c')}
       ${bar('Equity', sim.equity, '#4dc9ff')}
       ${bar('Pot odds', a.potOdds, '#f0c14b')}
@@ -1190,7 +1425,7 @@
       <div class="pnp-sub">${esc(a.sub)}</div>
       <div class="pnp-notes">${a.notes.map((n) => `<div class="pnp-note">${esc(n)}</div>`).join('')}</div>
       <div class="pnp-cats">${cats}</div>
-      <div class="pnp-foot">${s.opponents} opp · ${sim.sims} sims</div>`;
+      <div class="pnp-foot">${s.opponents} opp · ${sim.exact ? sim.trials + ' runouts (exact)' : sim.sims + ' sims'}</div>`;
   }
 
   function hudTab() {
@@ -1200,7 +1435,11 @@
       .slice(0, 12);
 
     if (!rows.length) {
-      return `<div class="pnp-empty">No hands recorded yet.<br><span class="pnp-dim">Open the table's Log panel — stats are built from it.</span></div>`;
+      const btn = findLogButton();
+      return `<div class="pnp-empty">No hands recorded yet.<br>
+        <span class="pnp-dim">Stats are built from the table log, which starts closed.</span><br><br>
+        ${btn ? '<button data-a="openlog">Open the log panel</button>'
+          : '<span class="pnp-dim">Open LOG / LEDGER yourself — the control was not found.</span>'}</div>`;
     }
 
     const body = rows.map((r) => `
@@ -1252,6 +1491,7 @@
       <div class="pnp-sect">Log</div>
       <div class="pnp-diagrow"><span>panel</span><span class="${logDiag.selector ? 'ok' : 'bad'}">${esc(logDiag.selector ?? 'not found — open the table Log')}</span></div>
       <div class="pnp-diagrow"><span>lines read</span><span>${logDiag.lines}</span></div>
+      <div class="pnp-diagrow"><span>log control</span><span class="${findLogButton() ? 'ok' : 'bad'}">${findLogButton() ? 'found' : 'not found'}</span></div>
       <div class="pnp-diagrow"><span>order</span><span>${logState.orientation < 0 ? 'newest first' : logState.orientation > 0 ? 'oldest first' : 'assumed oldest first'}</span></div>
       <div class="pnp-diagrow"><span>hands banked</span><span>${Object.keys(state.recorded).length}</span></div>
       <div class="pnp-diagrow"><span>unparsed</span><span class="${logDiag.unknownCount ? 'warn' : 'ok'}">${logDiag.unknownCount}</span></div>
@@ -1305,6 +1545,14 @@
       state.collapsed = !state.collapsed;
       save();
     });
+
+    const openLog = panel.querySelector('[data-a="openlog"]');
+    if (openLog) {
+      openLog.addEventListener('click', () => {
+        const target = findLogButton();
+        if (target) target.click();
+      });
+    }
 
     for (const btn of panel.querySelectorAll('[data-tab]')) {
       btn.addEventListener('click', () => { state.tab = btn.dataset.tab; save(); });

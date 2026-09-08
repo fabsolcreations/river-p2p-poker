@@ -37,6 +37,11 @@
 <body>
 <div class="table-felt"></div>
 
+<div class="table-blinds" style="position:absolute;right:16px;top:10px;text-align:right">
+  <div class="blind-value">NLH ~ 20 / 40</div>
+  <div style="color:#c66;font-size:11px">NEXT BLIND: 40/80 IN 00:42</div>
+</div>
+
 <!-- seat 1: folded -->
 <div class="table-player table-player-1 fold" style="left:60px;top:200px">
   <div class="table-player-name">Luckyhold'em</div><div class="table-player-stack">179</div>
@@ -92,6 +97,7 @@
 
 <div class="table-pot-size">12</div>
 
+<!-- ?showdown=1 rebuilds the felt as the three-way all-in from the screenshot -->
 <div class="table-cards">
   <div class="card-container"><div class="card"><div class="value">K</div><div class="suit">♣</div></div></div>
   <div class="card-container"><div class="card red"><div class="value">K</div><div class="suit">♦</div></div></div>
@@ -106,6 +112,10 @@
   <button class="button-3">Raise</button>
 </div>
 
+<div class="log-toggle" style="position:absolute;left:12px;bottom:250px">
+  <button id="log-ledger">LOG / LEDGER</button>
+</div>
+
 <div class="log-ctn">
   <h4>LOG</h4>
   <div class="log-entries"></div>
@@ -114,6 +124,35 @@
     <button id="play">Play hand history</button>
   </div>
 </div>
+
+<script>
+// Rebuild the felt as a three-way all-in with a dimmed second board, the shape a
+// real table takes at a run-it-twice showdown.
+if (new URLSearchParams(location.search).get('showdown') === '1') {
+  const card = (r, su) => {
+    const red = su === '♥' || su === '♦';
+    return `<div class="card-container"><div class="card ${red ? 'red' : ''}">`
+      + `<div class="value">${r}</div><div class="suit">${su}</div></div></div>`;
+  };
+
+  document.querySelector('.table-cards').innerHTML =
+    card('J', '♣') + card('7', '♣') + card('6', '♦') + card('10', '♠')
+    + `<span style="opacity:.35">${card('K', '♠')}${card('8', '♠')}</span>`;
+
+  const face = (el, a, b) => {
+    el.querySelector('.table-player-cards').innerHTML = card(a[0], a[1]) + card(b[0], b[1]);
+  };
+  face(document.querySelector('.table-player-3'), ['9', '♦'], ['7', '♦']);
+  face(document.querySelector('.table-player-5'), ['6', '♣'], ['7', '♠']);
+  face(document.querySelector('.table-player-6'), ['Q', '♦'], ['J', '♦']);
+
+  // hero holds the pair of tens
+  face(document.querySelector('.you-player'), ['T', '♥'], ['T', '♣']);
+  document.querySelector('.table-pot-size').textContent = '3112';
+  document.querySelector('.table-player-2').classList.add('fold');
+  document.querySelector('.table-player-2 .table-player-cards').innerHTML = '<div>FOLD</div>';
+}
+</script>
 
 <script src="pokernow-panel.user.js"></script>
 <script>
@@ -159,6 +198,14 @@ const FIXTURE = [
   `"Alice @ aaa" collected 130 from pot with Three of a Kind`,
   `-- ending hand #2 --`,
 ];
+
+// A real table keeps the log closed behind a LOG / LEDGER control; ?closedlog=1
+// reproduces that so the panel's "open the log" path can be exercised.
+const logPanel = document.querySelector('.log-ctn');
+if (new URLSearchParams(location.search).get('closedlog') === '1') logPanel.hidden = true;
+document.getElementById('log-ledger').addEventListener('click', () => {
+  logPanel.hidden = !logPanel.hidden;
+});
 
 const entries = document.querySelector('.log-entries');
 // ?reverse=1 renders newest-first, to exercise the panel's orientation detection.
