@@ -167,6 +167,21 @@ test("a showdown reveal is checked against the committed deck, so a claimed hand
   await assert.rejects(() => applyShowdownReveal(state, 0, lie, ownPartials), MpProtocolError);
 });
 
+test("all-in runout keeps board order when partials arrive out of order", async () => {
+  const setup = await setupThroughDealing("mp-out-of-order");
+  let ordered = openBoardStreet(setup.state, "showdown");
+  let scrambled = openBoardStreet(setup.state, "showdown");
+  const partials = new Map();
+  for (const position of BOARD_POSITIONS) {
+    const values = await Promise.all([0, 1].map(seat => revealPartialDecryption(setup.rounds[seat].secretKeyHex, parseCiphertext(setup.state.maskedDeck[position]))));
+    partials.set(position, values);
+    for (const seat of [0, 1]) ({ state: ordered } = await applyBoardPartial(ordered, seat, position, values[seat]));
+  }
+  for (const position of [11, 6, 9, 7, 5]) for (const seat of [1, 0]) ({ state: scrambled } = await applyBoardPartial(scrambled, seat, position, partials.get(position)[seat]));
+  assert.deepEqual(scrambled.board, ordered.board);
+  assert.equal(scrambled.board.length, 5);
+});
+
 test("waitingOn names the seat that is stalling, which is what the timeout acts on", async () => {
   const handId = "mp-waiting";
   const seeds = [randomHex(), randomHex()];
@@ -250,7 +265,7 @@ test("a trustless hand that folds out never needs a reveal at all", async () => 
 
 test("a completed trustless hand produces a receipt the independent verifier accepts", async () => {
   const { verifyMentalPokerBundle, dealCommunityCard } = await import("../app/play/mental-poker.ts");
-  const { buildMentalPokerBundle, applyMaskerSeedReveal } = await import("../worker/mental-poker-protocol.ts");
+  const { buildMentalPokerBundle, applyMaskerSeedReveal, beginSettle } = await import("../worker/mental-poker-protocol.ts");
 
   let { state, rounds, seeds } = await setupThroughDealing("mp-bundle");
   const table = await cardPointTable();
@@ -281,6 +296,9 @@ test("a completed trustless hand produces a receipt the independent verifier acc
   }
 
   // Masker seeds go last - only now can anyone replay the shuffle.
+  // Production reaches settle via completeTrustlessHand -> beginSettle;
+  // seed reveals are refused before that, so follow the same path here.
+  state = beginSettle(state);
   state = await applyMaskerSeedReveal(state, 0, seeds[0]);
   state = await applyMaskerSeedReveal(state, 1, seeds[1]);
   assert.equal(state.phase, "complete");
@@ -295,7 +313,7 @@ test("a completed trustless hand produces a receipt the independent verifier acc
 
 test("a folded trustless hand still verifies, without exposing the hand that folded", async () => {
   const { verifyMentalPokerBundle } = await import("../app/play/mental-poker.ts");
-  const { buildMentalPokerBundle, applyMaskerSeedReveal } = await import("../worker/mental-poker-protocol.ts");
+  const { buildMentalPokerBundle, applyMaskerSeedReveal, beginSettle } = await import("../worker/mental-poker-protocol.ts");
 
   let { state, rounds, seeds } = await setupThroughDealing("mp-bundle-fold");
 
@@ -310,6 +328,9 @@ test("a folded trustless hand still verifies, without exposing the hand that fol
   // Seat 1 takes it uncontested, so only seat 0 ever shows - or in a real
   // fold, nobody does. Reveal nothing and settle.
   state = beginShowdown(state);
+  // Production reaches settle via completeTrustlessHand -> beginSettle;
+  // seed reveals are refused before that, so follow the same path here.
+  state = beginSettle(state);
   state = await applyMaskerSeedReveal(state, 0, seeds[0]);
   state = await applyMaskerSeedReveal(state, 1, seeds[1]);
 
@@ -395,4 +416,24 @@ test("a seed that does not open its commitment is refused at the relay", async (
   // The honest seed still works, so the check does not break the normal path.
   const settled = await applyMaskerSeedReveal(state, 0, seeds[0]);
   assert.equal(settled.maskerSeeds[0], seeds[0]);
+});
+
+test("a seed reveal before settle is refused, so a losing player cannot freeze the pot", async () => {
+  const { applyMaskerSeedReveal, beginShowdown, beginSettle } = await import("../worker/mental-poker-protocol.ts");
+
+  let { state, seeds } = await setupThroughDealing("mp-early-reveal");
+  state = beginShowdown(state);
+  assert.equal(state.phase, "showdown");
+
+  // A player about to lose reveals early. Accepting this drives the phase to
+  // "complete" without the showdown reveals ever arriving - the hand can then
+  // never be finished, and armMpDeadline treats "complete" as inactive so the
+  // stall timer is cleared too. Nothing would ever resolve or abort it.
+  await assert.rejects(() => applyMaskerSeedReveal(state, 0, seeds[0]), MpProtocolError);
+  await assert.rejects(() => applyMaskerSeedReveal(state, 1, seeds[1]), MpProtocolError);
+
+  // The honest path is unaffected: once the hand is settled, reveals land.
+  const settling = beginSettle(state);
+  const after = await applyMaskerSeedReveal(settling, 0, seeds[0]);
+  assert.equal(after.maskerSeeds[0], seeds[0]);
 });

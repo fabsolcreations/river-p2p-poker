@@ -131,6 +131,7 @@ export function holeOwner(position: number): number {
 }
 
 export function positionsForStreet(street: string): number[] {
+  if (street === "showdown") return BOARD_POSITIONS;
   if (street === "flop") return FLOP_POSITIONS;
   if (street === "turn") return TURN_POSITIONS;
   if (street === "river") return RIVER_POSITIONS;
@@ -218,7 +219,6 @@ export async function applyBoardPartial(
 
   const boardPartials = { ...state.boardPartials, [position]: { ...pending, [seat]: partial } };
   const table = await cardPointTable();
-  const board = state.board.slice();
   const released = state.releasedBoardPositions.slice();
 
   // Any position that now has both partials can be turned into a real card.
@@ -233,10 +233,14 @@ export async function applyBoardPartial(
     assert(code !== null, `board partials at position ${pos} do not decrypt to a real card`);
     released.push(pos);
     revealedPositions.push(pos);
-    board.push(code);
   }
 
   const everyOpenPositionResolved = openPositions.every((pos) => released.includes(pos));
+  // Network delivery order cannot change flop/turn/river ordering.
+  const board = released.slice().sort((a, b) => a - b).map(pos =>
+    dealCommunityCard(parseCiphertext(state.maskedDeck![pos]), boardPartials[pos][0] as PointHex,
+      boardPartials[pos][1] as PointHex, table.byPointHex)!,
+  );
   return {
     state: {
       ...state,
@@ -297,7 +301,16 @@ export function beginSettle(state: MpState): MpState {
 }
 
 export async function applyMaskerSeedReveal(state: MpState, seat: number, seed: string): Promise<MpState> {
-  assert(state.phase === "settle" || state.phase === "showdown", `not accepting seed reveals (phase ${state.phase})`);
+  // ONLY in settle. beginSettle runs after the hand has already been
+  // resolved, so an honest client never reveals earlier - stepsFor emits
+  // mp-seed-reveal for the settle phase alone. Accepting one during showdown
+  // let a player who was about to lose escape the result: two early reveals
+  // drive the phase straight to "complete", the showdown reveals then never
+  // arrive so maybeFinishTrustlessShowdown can never finish the hand, and
+  // because armMpDeadline treats "complete" as inactive it clears the stall
+  // timer too - so nothing ever aborts it either. The hand freezes at
+  // showdown with the pot locked at the table.
+  assert(state.phase === "settle", `not accepting seed reveals (phase ${state.phase})`);
   assert(seat === 0 || seat === 1, "unknown seat");
   assert(HEX_64.test(seed), "masker seed must be 64-char hex");
   // The relay has been holding this seat's commitment since the start of the
